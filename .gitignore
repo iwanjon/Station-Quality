@@ -1,0 +1,58 @@
+# Node modules (backend & frontend)
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Build output (jika kamu build frontend)
+client/build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Env files (jika nanti digunakan untuk credentials)
+.env
+client/.env
+server/.env
+
+# Editor settings
+.vscode/
+.idea/
+*.swp
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage reports
+coverage/
+
+# Misc
+*.tgz
+*.zip
+*.bak
+*.tmp
+
+# Optional npm cache directory
+.npm/
+
+# Optional eslint cache
+.eslintcache
+
+# React test coverage
+client/coverage/
+
+# Local environment files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
