@@ -1,108 +1,105 @@
-import { Link } from 'react-router-dom';
+// Sidebar.tsx
+import { useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import {
+  SearchIcon,
+  CubeIcon,
+  MapIcon,
+  WifiIcon,
+  MenuIcon,
+  StatusOnlineIcon,
+} from '@heroicons/react/outline'
 
-const Sidebar: React.FC = () => (
-  <aside className="w-64 h-screen bg-gray-100 p-4 fixed left-0 top-0 flex flex-col gap-4 shadow">
-    <nav>
-      <ul className="space-y-2">
-        <li>
-          <Link to="/" className="block py-2 px-4 rounded hover:bg-gray-200">Home</Link>
-        </li>
-        <li>
-          <Link to="/about" className="block py-2 px-4 rounded hover:bg-gray-200">About</Link>
-        </li>
-        <li>
-          <Link to="/station-quality" className="block py-2 px-4 rounded hover:bg-gray-200">Station Quality</Link>
-        </li>
-      </ul>
-    </nav>
-  </aside>
-);
+interface NavItem {
+  label: string
+  to: string
+  Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
+}
 
-export default Sidebar;
+const navItems: NavItem[] = [
+  { label: 'Dashboard',            to: '/',                   Icon: CubeIcon },
+  { label: 'Station quality',      to: '/station-quality',    Icon: SearchIcon },
+  { label: 'Station availability', to: '/station-availability', Icon: StatusOnlineIcon },
+  { label: 'Station map',          to: '/station-map',        Icon: MapIcon },
+  { label: 'Station performance',  to: '/station-performance', Icon: WifiIcon },
+]
 
-// import { useState } from 'react'
-// import { Link, useLocation } from 'react-router-dom'
-// import { motion } from 'framer-motion'
-// import {
-//   HomeIcon,
-//   InformationCircleIcon,
-//   SearchIcon,
-//   CubeIcon,
-//   MapIcon,
-//   WifiIcon,
-//   MenuIcon,
-// } from '@heroicons/react/outline'
+const Sidebar: React.FC = () => {
+  const [open, setOpen] = useState(false)   // start collapsed
+  const { pathname } = useLocation()
 
-// interface NavItem {
-//   label: string
-//   to: string
-//   Icon: typeof HomeIcon
-// }
+  return (
+    <motion.aside
+      animate={{ width: open ? 240 : 64 }}
+      transition={{ type: 'tween', duration: 0.25 }}
+      className="fixed left-0 top-12 bottom-0 h-screen bg-gray-800 text-gray-200 shadow-lg overflow-hidden flex flex-col"
+    >
+      {/* HEADER: logo + burger, with a tooltip when collapsed */}
+      <div className="relative group flex items-center h-20 px-4 border-b border-gray-700">
+        {/* Logo */}
+        <div className="h-12 w-12 bg-gray-600 rounded-full" />
 
-// const navItems: NavItem[] = [
-//   { label: 'Dashboard',      to: '/',                 Icon: CubeIcon },
-//   { label: 'Station quality',to: '/station-quality',  Icon: SearchIcon },
-//   { label: 'Station availability', to: '/station-availability', Icon: CubeIcon /* swap for your icon */ },
-//   { label: 'Station map',    to: '/station-map',      Icon: MapIcon },
-//   { label: 'Station performance', to: '/station-performance', Icon: WifiIcon },
-// ]
+        {/* Burger */}
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="ml-auto p-2 rounded hover:bg-gray-700 focus:outline-none"
+          aria-label={open ? 'Close menu' : 'Open menu'}
+        >
+          <MenuIcon className="h-6 w-6" />
+        </button>
 
-// const Sidebar: React.FC = () => {
-//   const [open, setOpen] = useState(true)
-//   const { pathname } = useLocation()
+        {/* "Menu" bubble when collapsed */}
+        {!open && (
+          <span className="
+            tooltip absolute left-full top-1/2 -translate-y-1/2 ml-2
+            px-2 py-1 rounded bg-gray-900 text-sm opacity-0
+            group-hover:opacity-100
+          ">
+            Menu
+          </span>
+        )}
+      </div>
 
-//   return (
-//     <motion.aside
-//       animate={{ width: open ? 240 : 64 }}
-//       transition={{ type: 'tween', duration: 0.3 }}
-//       className="fixed top-0 left-0 h-screen bg-gray-800 text-gray-200 shadow-lg overflow-hidden flex flex-col"
-//     >
-//       {/* Logo + toggle */}
-//       <div className="flex items-center justify-between px-4 h-16 flex-shrink-0">
-//         <div className="h-8 w-8 bg-gray-600 rounded-full" />
-//         <button
-//           onClick={() => setOpen(o => !o)}
-//           className="p-2 rounded hover:bg-gray-700 focus:outline-none"
-//         >
-//           <MenuIcon className="h-6 w-6" />
-//         </button>
-//       </div>
+      {/* NAV ITEMS */}
+      <nav className="flex-1 px-2 py-4 space-y-1">
+        {navItems.map(({ label, to, Icon }) => {
+          const isActive = pathname === to
+          return (
+            <Link
+              key={to}
+              to={to}
+              className={`
+                group relative flex items-center gap-3 rounded-md
+                px-3 py-2 transition-colors duration-200
+                ${
+                  isActive
+                    ? 'bg-gray-700 text-white'
+                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                }
+              `}
+            >
+              <Icon className="h-6 w-6 flex-shrink-0" />
 
-//       {/* Nav */}
-//       <nav className="flex-1 px-2 space-y-1">
-//         {navItems.map(({ label, to, Icon }) => {
-//           const isActive = pathname === to
-//           return (
-//             <Link
-//               key={to}
-//               to={to}
-//               className={`
-//                 group relative flex items-center gap-3 rounded-md
-//                 px-3 py-2 transition-colors duration-200
-//                 ${
-//                   isActive
-//                     ? 'bg-gray-700 text-white'
-//                     : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-//                 }
-//               `}
-//             >
-//               <Icon className="h-6 w-6 flex-shrink-0" />
+              {/* label only when open */}
+              {open && <span className="whitespace-nowrap">{label}</span>}
 
-//               {/* label when open */}
-//               {open && <span className="whitespace-nowrap">{label}</span>}
+              {/* per-item tooltip when closed */}
+              {!open && (
+                <span className="
+                  tooltip absolute left-full top-1/2 -translate-y-1/2 ml-2
+                  px-2 py-1 rounded bg-gray-900 text-sm opacity-0
+                  group-hover:opacity-100
+                ">
+                  {label}
+                </span>
+              )}
+            </Link>
+          )
+        })}
+      </nav>
+    </motion.aside>
+  )
+}
 
-//               {/* tooltip when closed */}
-//               {!open && (
-//                 <span className="tooltip absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded bg-gray-900 text-sm opacity-0 group-hover:opacity-100">
-//                   {label}
-//                 </span>
-//               )}
-//             </Link>
-//           )
-//         })}
-//       </nav>
-//     </motion.aside>
-//   )
-// }
-
-// export default Sidebar
+export default Sidebar
