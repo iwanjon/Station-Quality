@@ -2,7 +2,7 @@ import Card from '../components/Card.tsx';
 import Footer from '../components/Footer.tsx';
 
 
-const Home = () => (
+const StationQuality = () => (
   <div className="min-h-screen flex flex-col">
     <main className="flex-1 flex flex-wrap justify-center items-center gap-6 p-8">
       {/* Example cards */}
@@ -14,4 +14,4 @@ const Home = () => (
   </div>
 );
 
-export default Home;
+export default StationQuality;
