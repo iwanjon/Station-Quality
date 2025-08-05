@@ -1,18 +1,13 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Home from './pages/Home';
-import About from './pages/About';
-import StationQuality from './pages/StationQuality';
+// src/App.tsx
+import { BrowserRouter } from 'react-router-dom';
+import Router from './routes';
 
-function App() {
+const App = () => {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/station-quality" element={<StationQuality />} />
-      </Routes>
-    </Router>
+    <BrowserRouter>
+      <Router />
+    </BrowserRouter>
   );
-}
+};
 
 export default App;
