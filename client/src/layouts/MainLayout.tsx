@@ -19,8 +19,8 @@ const MainLayout = ({ children, className }: Props) => {
         <Header />
 
         {/* apply the passed-in className here */}
-        <main className={className || 'p-4 bg-gray-100 flex-1'}>
-          {children}
+        <main className="mx-16 px-4 py-8 bg-gray-100 h-full">
+            {children}
         </main>
 
         <Footer />
