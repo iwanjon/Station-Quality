@@ -12,7 +12,7 @@ interface Props {
 const MainLayout = ({ children, className }: Props) => {
   return (
     <div className="flex min-h-screen">
-      <Sidebar />
+      {/* <Sidebar /> */}
 
       {/* content column */}
       <div className="flex-1 flex flex-col">
