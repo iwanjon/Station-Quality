@@ -14,7 +14,7 @@ const Card = ({
   buttonText = "View Analysis",
 }: CardProps) => {
   return (
-    <div className="bg-white rounded-2xl shadow-lg border border-yellow-300 p-6 w-80 flex flex-col items-center text-center hover:shadow-xl transition-shadow">
+    <div className="bg-white rounded-2xl shadow-lg border border-gray-300 p-6 w-80 flex flex-col items-center text-center hover:shadow-xl transition-shadow">
       <img
         src={imageSrc}
         alt={title}
@@ -32,9 +32,9 @@ const Card = ({
 
       <p className="text-gray-600 text-sm mb-3">{description}</p>
 
-      <button className="bg-black text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition">
+      {/* <button className="bg-black text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition">
         {buttonText}
-      </button>
+      </button> */}
     </div>
   );
 };
