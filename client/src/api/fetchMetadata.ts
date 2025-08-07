@@ -6,7 +6,7 @@ export async function fetchStationMetadata(staCode: string) {
     const response = await fetch(`${API_BASE_URL}api/metadata/pg-combined/${staCode}`, {
       headers: {
         'Accept': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`,  // if required by the backend
+        'Authorization': `Bearer ${API_KEY}`,  
       },
     });
 
