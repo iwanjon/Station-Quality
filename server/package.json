@@ -12,7 +12,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^5.1.0"
+    "axios": "^1.11.0",
+    "express": "^5.1.0",
+    "redis": "^5.8.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
