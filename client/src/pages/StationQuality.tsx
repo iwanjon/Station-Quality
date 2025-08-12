@@ -54,7 +54,7 @@ const StationQuality = () => {
     <div className="min-h-screen flex flex-col">
       <MainLayout className="flex-1 flex flex-wrap justify-center items-center gap-6 p-8">
         {loading && <p>Loading station data...</p>}
-        {stationData &&
+        {/* {stationData &&
           stationData.map((data: StationMetadata, idx: number) => (
             <Card
               key={idx}
@@ -62,7 +62,7 @@ const StationQuality = () => {
               title={data?.station_name || `Station ${idx + 1}`}
               description={`Code: ${data.sta_code || 'N/A'} | Location: ${data.location || 'N/A'}`}
             />
-          ))}
+          ))} */}
       </MainLayout>
       <Footer />
     </div>
