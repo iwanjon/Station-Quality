@@ -12,7 +12,9 @@ const MainLayout = ({ children, className }: Props) => {
 // const MainLayout = ({ children }: Props) => {
   return (
     <div className="flex min-h-screen">
-      <Sidebar />
+      <div className='z-50'>
+        <Sidebar />
+      </div>
 
       {/* content column */}
       <div className="flex-1 flex flex-col">
