@@ -6,29 +6,6 @@ import DataTable from "../components/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import axiosInstance from "../utilities/Axios";
 
-// Konfigurasi filter
-const filterConfig: Record<string, FilterConfig> = {
-  station: {
-    label: "Station",
-    type: "multi",
-    options: ["Station A", "Station B", "Station C"],
-  },
-  date: {
-    label: "Date",
-    type: "date",
-  },
-  status: {
-    label: "Status",
-    type: "multi",
-    options: ["Active", "Inactive"],
-  },
-  location: {
-    label: "Location",
-    type: "multi",
-    options: ["Location A", "Location B", "Location C"],
-  },
-};
-
 // Tipe data station
 interface Station {
   id: number;

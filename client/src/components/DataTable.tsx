@@ -6,6 +6,7 @@ import {
   getPaginationRowModel,
   getFilteredRowModel,
   useReactTable,
+  type SortingState,
   type ColumnDef,
 } from "@tanstack/react-table";
 
@@ -60,8 +61,8 @@ const SortIcon = ({
 };
 
 function DataTable<T extends object>({ columns, data }: DataTableProps<T>) {
-  const [sorting, setSorting] = React.useState([]);
-  const [globalFilter, setGlobalFilter] = React.useState("");
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [globalFilter, setGlobalFilter] = React.useState<string>("");
   const [pagination, setPagination] = React.useState({
     pageIndex: 0,
     pageSize: 10,
