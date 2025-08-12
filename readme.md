@@ -28,7 +28,7 @@ express-react-project/
 
 ---
 
-## 📦 Setup Environment
+## 📦 Setup Environment Local
 
 ### 1. Install dependency backend
 
@@ -75,6 +75,26 @@ npm start
 > Secara otomatis akan fetch data dari backend melalui proxy.
 
 ---
+
+## Setup Environtment Docker
+
+### 1. Install Docker Desktop
+
+### 2. Jalankan Container
+
+```bash
+cd ../client
+cp .env.example .env
+cd ..
+
+docker-compose up -d --build
+```
+### 3. Program Running di Localhost
+Client : http://localhost:5173/
+
+Server : http://localhost:5000/
+
+Redis  : http://localhost:6379/
 
 ## ❗ Catatan Tambahan
 
