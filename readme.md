@@ -22,6 +22,7 @@ express-react-project/
 │
 ├── client/      # Frontend React
 └── server/      # Backend Express
+└── server/      # Redis Services
 
 ````
 
@@ -40,6 +41,9 @@ npm install
 
 ```bash
 cd ../client
+cp .env.example .env
+or
+copy .env.example .env
 npm install
 ```
 
