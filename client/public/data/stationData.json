@@ -1,0 +1,56 @@
+[
+  {
+    "id": 1,
+    "net": "Net A",
+    "kode": "ST001",
+    "lokasi": "Jakarta",
+    "upt": "UPT 1",
+    "jaringan": "Jaringan 1",
+    "availability": [1, 0, 1]
+  },
+  {
+    "id": 2,
+    "net": "Net B",
+    "kode": "ST002",
+    "lokasi": "Bandung",
+    "upt": "UPT 2",
+    "jaringan": "Jaringan 2",
+    "availability": [0, 1, 1]
+  },
+  {
+    "id": 3,
+    "net": "Net D",
+    "kode": "ST004",
+    "lokasi": "Medan",
+    "upt": "UPT 4",
+    "jaringan": "Jaringan 4",
+    "availability": [1, 1, 1]
+  },
+  {
+    "id": 4,
+    "net": "Net C",
+    "kode": "ST003",
+    "lokasi": "Surabaya",
+    "upt": "UPT 3",
+    "jaringan": "Jaringan 3",
+    "availability": [1, 1, 0]
+  },
+  {
+    "id": 5,
+    "net": "Net D",
+    "kode": "ST004",
+    "lokasi": "Medan",
+    "upt": "UPT 4",
+    "jaringan": "Jaringan 4",
+    "availability": [1, 1, 1]
+  },
+  {
+    "id": 6,
+    "net": "Net G",
+    "kode": "ST005",
+    "lokasi": "Makassar",
+    "upt": "UPT 5",
+    "jaringan": "Jaringan 5",
+    "availability": [1, 0, 1]
+  }
+]
