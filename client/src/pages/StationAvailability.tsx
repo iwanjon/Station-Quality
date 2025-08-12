@@ -5,6 +5,7 @@ import type { FilterConfig } from "../components/TableFilters";
 import DataTable from "../components/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import axiosInstance from "../utilities/Axios";
+import DetailButton from "../components/DetailButton";
 
 // Tipe data station
 interface Station {
@@ -78,6 +79,12 @@ const StationAvailability = () => {
     { header: "Lokasi", accessorKey: "lokasi", enableSorting: true },
     { header: "UPT", accessorKey: "upt", enableSorting: false },
     { header: "Jaringan", accessorKey: "jaringan", enableSorting: false },
+    {
+      header: "Aksi",
+      id: "actions",
+      cell: ({ row }) => <DetailButton id={row.original.id} />,
+      enableSorting: false,
+    },
     { header: "Availability", columns: [
         {
         header: "Januari",
