@@ -33,7 +33,8 @@ const Sidebar: React.FC = () => {
     <motion.aside
       animate={{ width: open ? 240 : 64 }}
       transition={{ type: 'tween', duration: 0.25 }}
-      className="fixed left-0 top-12 bottom-0 z-50 h-screen bg-gray-800 text-gray-200 shadow-lg overflow-hidden flex flex-col"
+      // className="fixed left-0 top-12 bottom-0 z-50 h-screen bg-gray-800 text-gray-200 shadow-lg overflow-hidden flex flex-col"
+      className="fixed left-0 top-12 bottom-0 z-[9999] h-screen bg-gray-800 text-gray-200 shadow-lg overflow-hidden flex flex-col"
     >
       {/* HEADER: logo + burger, with a tooltip when collapsed */}
       <div className="relative group flex items-center h-20 px-4 border-b border-gray-700">

@@ -1,1 +1,15 @@
 @import "tailwindcss";@import "leaflet/dist/leaflet.css";
+
+/* Pastikan elemen map di bawah sidebar */
+.leaflet-container {
+  position: relative;
+  z-index: 0 !important;
+}
+
+.leaflet-control-container {
+  z-index: 0 !important;
+}
+
+.leaflet-pane {
+  z-index: 0 !important;
+}
