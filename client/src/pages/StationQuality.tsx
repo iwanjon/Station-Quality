@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import Footer from "../components/Footer.tsx";
 import MainLayout from "../layouts/MainLayout.tsx";
 import DataTable from "../components/DataTable.tsx";
 import TableFilters from "../components/TableFilters";
@@ -11,6 +10,7 @@ import L from "leaflet";
 import marker2x from "leaflet/dist/images/marker-icon-2x.png";
 import marker from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
+import CardContainer from "../components/Card.tsx"; 
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const API_KEY = import.meta.env.VITE_API_KEY;
@@ -54,11 +54,11 @@ const StationQuality = () => {
   const staCodes = ["KLSM", "PSR", "BDO"];
 
   const stationPositions = stationData
-  .filter((s) => s.lintang && s.bujur)
-  .map((s) => ({
-    name: s.kode ?? "Unknown",
-    coords: [s.lintang as number, s.bujur as number] as [number, number]
-  }));
+    .filter((s) => s.lintang && s.bujur)
+    .map((s) => ({
+      name: s.kode ?? "Unknown",
+      coords: [s.lintang as number, s.bujur as number] as [number, number]
+    }));
 
   const fetchStationMetadata = async (
     staCode: string
@@ -98,7 +98,6 @@ const StationQuality = () => {
     loadStations();
   }, []);
 
-  
   const columns: ColumnDef<StationMetadata>[] = [
     { accessorKey: "id_stasiun", header: "No" },
     { accessorKey: "kode", header: "Kode Stasiun" },
@@ -111,7 +110,6 @@ const StationQuality = () => {
     { accessorKey: "provinsi", header: "Provinsi" },
   ];
 
-  // Konfigurasi dropdown & datepicker
   const filterConfig: Record<string, FilterConfig> = {
     date: { label: "Select Date", type: "date" },
     prioritas: { label: "Prioritas", type: "multi", options: ["P1", "P2", "P3"] },
@@ -123,41 +121,49 @@ const StationQuality = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <MainLayout className="flex-1 p-8 ml-16">
+      {/* Judul */}
+      <h1 className="bg-gray-100 rounded-2xl text-center text-3xl font-bold my-4 mx-48 py-2">
+        Stasiun Quality
+      </h1>
+        {/* Map di Card */}
+        <CardContainer className="mb-6">
+          <div className="w-full h-96 z-0">
+            <MapContainer
+              center={[-2.5, 118]}
+              zoom={5}
+              className="w-full h-full rounded-lg"
+            >
+              <TileLayer
+                {...({
+                  attribution: '&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors',
+                  url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+                } as any)}
+              />
+              {stationPositions.map((station, idx) => (
+                <Marker key={idx} position={station.coords}>
+                  <Popup>{station.name}</Popup>
+                </Marker>
+              ))}
+            </MapContainer>
+          </div>
+        </CardContainer>
 
-        {/* Map di atas tabel */}
-        <div className="w-full h-96 z-0 border border-dashed rounded-lg">
-          <MapContainer
-            center={[-2.5, 118]} // posisi awal (tengah Indonesia)
-            zoom={5}
-            className="w-full h-full rounded-lg"
-                    >
-          <TileLayer
-            {...({
-              attribution: '&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors',
-              url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-            } as any)}
-          />
-          {stationPositions.map((station: { name: string; coords: [number, number] }, idx: number) => (
-            <Marker key={idx} position={station.coords}>
-              <Popup>{station.name}</Popup>
-            </Marker>
-          ))}
-          </MapContainer>
-        </div>
+        {/* Table di Card */}
+        <CardContainer>
+          {/* Filter Bar */}
+          <div className="mb-6">
+            <TableFilters
+              filters={filters}
+              setFilters={setFilters}
+              filterConfig={filterConfig}
+            />
+          </div>
 
-        {/* Filter Bar */}
-        <div className="mt-6 mb-6">
-          <TableFilters
-            filters={filters}
-            setFilters={setFilters}
-            filterConfig={filterConfig}
-          />
-        </div>
+          {loading && <p>Loading station data...</p>}
+          {!loading && <DataTable columns={columns} data={stationData} />}
+        </CardContainer>
 
-        {loading && <p>Loading station data...</p>}
-        {!loading && <DataTable columns={columns} data={stationData} />}
       </MainLayout>
-      <Footer />
     </div>
   );
 };
