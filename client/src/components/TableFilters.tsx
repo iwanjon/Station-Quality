@@ -3,7 +3,7 @@ import Select, { components } from "react-select";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
-export type FilterType = "multi" | "date";
+export type FilterType = "multi" | "date" | (string & {});
 
 export interface FilterConfig {
   label: string;
@@ -15,6 +15,7 @@ interface TableFiltersProps {
   filters: Record<string, any>;
   setFilters: React.Dispatch<React.SetStateAction<Record<string, any>>>;
   filterConfig: Record<string, FilterConfig>;
+  closeOnClickOutside?: boolean;
 }
 
 // Override ValueContainer untuk custom ringkasan pilihan
