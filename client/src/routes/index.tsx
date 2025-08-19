@@ -4,7 +4,7 @@ import NotFound from '../pages/NotFound';
 import Dashboard from '../pages/Dashboard';
 import StationQuality from '../pages/StationQuality';
 import StationAvailability from '../pages/StationAvailability';
-
+import StationDetail from '../pages/StationDetail';
 const Router = () => {
   return (
     <Routes>
@@ -14,6 +14,7 @@ const Router = () => {
       <Route path="/about" element={<About />} />
       <Route path="/" element={<Dashboard />} />
       <Route path="*" element={<NotFound />} />
+      <Route path="/station/:id" element={<StationDetail />} />
     </Routes>
   );
 };

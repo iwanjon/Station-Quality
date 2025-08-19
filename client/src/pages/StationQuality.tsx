@@ -11,6 +11,7 @@ import marker2x from "leaflet/dist/images/marker-icon-2x.png";
 import marker from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import CardContainer from "../components/Card.tsx"; 
+import { useNavigate } from "react-router-dom";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -84,6 +85,21 @@ const StationQuality = () => {
     { accessorKey: "prioritas", header: "Prioritas" },
     { accessorKey: "upt_penanggung_jawab", header: "UPT" },
     { accessorKey: "Summary", header: "Summary" },
+    {
+      id: "detail",
+      header: "Detail Stasiun",
+      cell: ({ row }) => {
+        const navigate = useNavigate();
+        return (
+          <button
+            onClick={() => navigate(`/stasiun/${row.original.id_stasiun}`)}
+            className="bg-black text-white rounded-lg px-3 py-1 hover:bg-gray-800"
+          >
+            <span className="text-sm">Lihat Detail</span>
+          </button>
+        );
+      },
+    }
   ];
 
   const filterConfig: Record<string, FilterConfig> = {
