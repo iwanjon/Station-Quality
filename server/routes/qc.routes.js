@@ -1,8 +1,9 @@
-// routes/qc.routes.js
-const express = require('express');
-const router = express.Router();
-const { cached } = require('../utils/cacheHelper');
-const { fetchQCDetail } = require('../services/externalApi');
+// // routes/qc.routes.js
+import { Router } from 'express';
+import { cached } from '../utils/cacheHelper.js'; 
+import { fetchQCDetail } from '../services/externalApi.js'; 
+
+const router = Router();
 
 router.get("/data/detail/:stationId/:date", async (req, res) => {
   const { stationId, date } = req.params;
@@ -19,6 +20,9 @@ router.get("/data/detail/:stationId/:date", async (req, res) => {
   }
 });
 
+// module.exports = router;
+export default router;
+
 // router.get('/data/detail/:stationId/:date', async (req, res, next) => {
 //   try {
 //     const { stationId, date } = req.params;
@@ -30,5 +34,3 @@ router.get("/data/detail/:stationId/:date", async (req, res) => {
 //     next(err);
 //   }
 // });
-
-module.exports = router;

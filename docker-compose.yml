@@ -10,7 +10,6 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: station_quality_control
-      MYSQL_USER: root
       MYSQL_PASSWORD: root
     volumes:
       - db_data:/var/lib/mysql
@@ -21,9 +20,13 @@ services:
     ports:
       - "6379:6379"
 
-  server:
-    build: ./server
+  server-app:
+    # build: ./server
+    build:
+      context: ./server 
+      dockerfile: Dockerfile
     container_name: server-app
+    command: npm run dev
     ports:
       - "5000:5000"
     environment:
@@ -45,6 +48,7 @@ services:
       DB_NAME: station_quality_control
     depends_on:
       - redis-cache
+      - db
       # - db   # aktifkan kalau pakai MySQL container
     volumes:
       - ./server:/app
@@ -56,7 +60,7 @@ services:
     ports:
       - "5173:5173"
     depends_on:
-      - server
+      - server-app
     volumes:
       - ./client:/app
       - /app/node_modules

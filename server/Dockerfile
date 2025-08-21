@@ -1,4 +1,4 @@
-FROM node:22.18.0
+FROM node:lts-alpine
 
 WORKDIR /app
 
@@ -7,11 +7,12 @@ COPY package*.json ./
 RUN npm install
 
 # Install nodemon global
-RUN npm install -g nodemon
+RUN npm install 
 
 COPY . .
 
 EXPOSE 5000
 
 # Jalankan backend dengan nodemon
-CMD ["nodemon", "--legacy-watch", "server.ts"]
+CMD [ "npm", "run", "dev" ]
+# CMD ["nodemon", "--legacy-watch", "server.js"]

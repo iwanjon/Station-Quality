@@ -10,10 +10,9 @@ import L from "leaflet";
 import marker2x from "leaflet/dist/images/marker-icon-2x.png";
 import marker from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
-import CardContainer from "../components/Card.tsx"; 
+import CardContainer from "../components/Card.tsx";
 import { useNavigate } from "react-router-dom";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import axiosInstance from "../utilities/Axios.tsx"; // ✅ pakai axiosInstance
 
 export interface StationMetadata {
   id_stasiun: number;
@@ -30,10 +29,10 @@ export interface StationMetadata {
   tahun_instalasi_site: number;
   jaringan: string;
   prioritas: string;
-  keterangan: string;
+  keterangan: string | null;
   accelerometer: string;
   digitizer_komunikasi: string;
-  tipe_shelter: string;
+  tipe_shelter: string | null;
   lokasi_shelter: string;
   penjaga_shelter: string;
 }
@@ -55,16 +54,15 @@ const StationQuality = () => {
     .filter((s) => s.lintang && s.bujur)
     .map((s) => ({
       name: s.kode ?? "Unknown",
-      coords: [s.lintang, s.bujur] as [number, number]
+      coords: [s.lintang, s.bujur] as [number, number],
     }));
 
+  // ✅ versi axiosInstance
   const fetchStationMetadata = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:5000/api/stasiun`);
-      if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-      const data: StationMetadata[] = await response.json();
-      setStationData(data);
+      const response = await axiosInstance.get("/api/stasiun"); 
+      setStationData(response.data);
     } catch (error) {
       console.error("Error fetching station data:", error);
     } finally {
@@ -99,14 +97,30 @@ const StationQuality = () => {
           </button>
         );
       },
-    }
+    },
   ];
 
   const filterConfig: Record<string, FilterConfig> = {
-    prioritas: { label: "Prioritas", type: "multi", options: ["P1", "P2", "P3"] },
-    upt_penanggung_jawab: { label: "UPT", type: "multi", options: ["UPT A", "UPT B", "UPT C"] },
-    jaringan: { label: "Jaringan", type: "multi", options: ["ALOPTAMA 2023", "LAINNYA"] },
-    provinsi: { label: "Provinsi", type: "multi", options: ["Aceh", "Sumut", "Sumbar"] },
+    prioritas: {
+      label: "Prioritas",
+      type: "multi",
+      options: ["P1", "P2", "P3"],
+    },
+    upt_penanggung_jawab: {
+      label: "UPT",
+      type: "multi",
+      options: ["UPT A", "UPT B", "UPT C"],
+    },
+    jaringan: {
+      label: "Jaringan",
+      type: "multi",
+      options: ["ALOPTAMA 2023", "LAINNYA"],
+    },
+    provinsi: {
+      label: "Provinsi",
+      type: "multi",
+      options: ["Aceh", "Sumut", "Sumbar"],
+    },
   };
 
   return (
