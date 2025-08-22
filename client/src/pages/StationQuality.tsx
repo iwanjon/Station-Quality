@@ -12,7 +12,8 @@ import marker from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import CardContainer from "../components/Card.tsx";
 import { useNavigate } from "react-router-dom";
-import axiosInstance from "../utilities/Axios.tsx"; // ✅ pakai axiosInstance
+// import axiosInstance from "../utilities/Axios";
+import axiosServer from "../utilities/AxiosServer.tsx";
 
 export interface StationMetadata {
   id_stasiun: number;
@@ -57,18 +58,20 @@ const StationQuality = () => {
       coords: [s.lintang, s.bujur] as [number, number],
     }));
 
-  // ✅ versi axiosInstance
-  const fetchStationMetadata = async () => {
-    try {
-      setLoading(true);
-      const response = await axiosInstance.get("/api/stasiun"); 
-      setStationData(response.data);
-    } catch (error) {
-      console.error("Error fetching station data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+
+const fetchStationMetadata = async () => {
+  try {
+    setLoading(true);
+    const response = await axiosServer.get("/api/stasiun"); 
+    console.log("Station API Response:", response.data);  // 👈 cek hasilnya
+    setStationData(response.data);
+  } catch (error) {
+    console.error("Error fetching station data:", error);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     fetchStationMetadata();

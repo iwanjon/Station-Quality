@@ -20,17 +20,5 @@ router.get("/data/detail/:stationId/:date", async (req, res) => {
   }
 });
 
-// module.exports = router;
 export default router;
 
-// router.get('/data/detail/:stationId/:date', async (req, res, next) => {
-//   try {
-//     const { stationId, date } = req.params;
-//     const cacheKey = `qc:detail:${stationId}:${date}`;
-
-//     const data = await cached(cacheKey, 300, () => fetchQCDetail(stationId, date));
-//     res.json(data);
-//   } catch (err) {
-//     next(err);
-//   }
-// });

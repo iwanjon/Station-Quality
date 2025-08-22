@@ -1,11 +1,19 @@
 import express, { json } from 'express';
+import cors from 'cors';
 import dashboardRoutes from './routes/dashboard.routes.js';
-// import qcRoutes from './routes/qc.routes.js';
 import qcRoutes from './routes/qc.routes.js'; // Import QC routes
 import pool from './config/db.js'; 
 
 const app = express();
 app.use(json());
+
+app.use(
+  cors({
+    origin: "http://localhost:5173", // alamat client-app
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 app.use('/api', dashboardRoutes);
 app.use('/api/qc', qcRoutes); // <--- pasang prefix untuk QC routes
