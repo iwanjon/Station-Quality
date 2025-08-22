@@ -92,12 +92,12 @@ const fetchStationMetadata = async () => {
       cell: ({ row }) => {
         const navigate = useNavigate();
         return (
-          <button
-            onClick={() => navigate(`/stasiun/${row.original.id_stasiun}`)}
-            className="bg-black text-white rounded-lg px-3 py-1 hover:bg-gray-800"
-          >
-            <span className="text-sm">Lihat Detail</span>
-          </button>
+        <button
+          onClick={() => navigate(`/station/${row.original.kode}`)}  // konsisten dengan Router.tsx
+          className="bg-black text-white rounded-lg px-3 py-1 hover:bg-gray-800"
+        >
+          <span className="text-sm">Lihat Detail</span>
+        </button>
         );
       },
     },

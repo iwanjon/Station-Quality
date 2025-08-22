@@ -1,8 +1,10 @@
 {
   "dependencies": {
     "cors": "^2.8.5",
+    "dayjs": "^1.11.13",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
-    "mysql2": "^3.14.3"
+    "mysql2": "^3.14.3",
+    "recharts": "^3.1.2"
   }
 }
