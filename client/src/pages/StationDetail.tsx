@@ -1,87 +1,95 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import MainLayout from "../layouts/MainLayout";
-import CardContainer from "../components/Card";
+import axiosServer from "../utilities/AxiosServer";
+import {
+  LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer,
+} from "recharts";
+import CardContainer from "../components/Card"; // pastikan path sesuai
 
-export interface StationMetadata {
-  id_stasiun: number;
-  net: string;
-  id: number;
-  kode: string;
-  lintang: number;
-  bujur: number;
-  elevasi: number;
-  lokasi: string;
-  provinsi: string;
-  upt_penanggung_jawab: string;
-  status: string;
-  tahun_instalasi_site: number;
-  jaringan: string;
-  prioritas: string;
-  keterangan: string;
-  accelerometer: string;
-  digitizer_komunikasi: string;
-  tipe_shelter: string;
-  lokasi_shelter: string;
-  penjaga_shelter: string;
+interface QCData {
+  date: string;
+  rms: number;
+  amplitude_ratio: number;
+  availability: number;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
-const StasiunDetail = () => {
-  const { id } = useParams<{ id: string }>(); // ambil id dari URL
-  const [station, setStation] = useState<StationMetadata | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const fetchDetail = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/stasiun/${id}`);
-      if (!res.ok) throw new Error("Gagal mengambil data detail stasiun");
-      const data: StationMetadata = await res.json();
-      setStation(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+const StationDetail = () => {
+  const { stationCode } = useParams();
+  const [qcData, setQcData] = useState<QCData[]>([]);
 
   useEffect(() => {
-    fetchDetail();
-  }, [id]);
-
-  if (loading) {
-    return (
-      <MainLayout>
-        <p className="p-8">Memuat data...</p>
-      </MainLayout>
-    );
-  }
-
-  if (!station) {
-    return (
-      <MainLayout>
-        <p className="p-8">Data stasiun tidak ditemukan</p>
-      </MainLayout>
-    );
-  }
+    const fetchData = async () => {
+      try {
+        const res = await axiosServer.get(`/api/qc/data/detail/7days/${stationCode}`);
+        setQcData(res.data);
+      } catch (err) {
+        console.error("Error fetching QC 7days:", err);
+      }
+    };
+    if (stationCode) fetchData();
+  }, [stationCode]);
 
   return (
-  <MainLayout className="p-8">
-    {loading && <p>Memuat data...</p>}
-    {!loading && !station && <p>Data stasiun tidak ditemukan</p>}
-    {!loading && station && (
-      <>
-        <h1 className="text-2xl font-bold text-center mb-6">
-          Stasiun {station.lokasi}
-        </h1>
-        {/* ...card-card detail di sini */}
-      </>
-    )}
-  </MainLayout>
-);
+    <div className="p-6">
+      {/* Judul */}
+      <h1 className="text-center text-lg font-semibold mb-6">
+        Detail Stasiun {stationCode}
+      </h1>
 
+      {/* Grid 2x2 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* RMS */}
+        <CardContainer>
+          <h2 className="text-base font-medium mb-2">RMS</h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={qcData}>
+              <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
+              <XAxis dataKey="date" />
+              <YAxis domain={[0, 4000]} />
+              <Tooltip />
+              <Line type="monotone" dataKey="rms" stroke="#8884d8" name="RMS" />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContainer>
+
+        {/* Amplitude Ratio */}
+        <CardContainer>
+          <h2 className="text-base font-medium mb-2">Amplitude Ratio</h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={qcData}>
+              <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
+              <XAxis dataKey="date" />
+              <YAxis domain={['auto', 'auto']} />
+              <Tooltip />
+              <Line type="monotone" dataKey="amplitude_ratio" stroke="#82ca9d" name="Amplitude Ratio" />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContainer>
+
+        {/* Availability */}
+        {/* <CardContainer>
+          <h2 className="text-base font-medium mb-2">Availability</h2>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={qcData}>
+              <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip />
+              <Line type="monotone" dataKey="availability" stroke="#ff7300" name="Availability" />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContainer> */}
+
+        {/* Placeholder / Metric lain */}
+        {/* <CardContainer>
+          <h2 className="text-base font-medium mb-2">Metric Lain</h2>
+          <div className="flex items-center justify-center text-gray-400 h-[200px]">
+            Coming Soon
+          </div>
+        </CardContainer> */}
+      </div>
+    </div>
+  );
 };
 
-export default StasiunDetail;
+export default StationDetail;

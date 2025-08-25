@@ -1,11 +1,32 @@
-const express = require('express');
-const dashboardRoutes = require('./routes/dashboard.routes');
-const qcRoutes = require('./routes/qc.routes');
+import express, { json } from 'express';
+import cors from 'cors';
+import dashboardRoutes from './routes/dashboard.routes.js';
+import qcRoutes from './routes/qc.routes.js'; // Import QC routes
+import pool from './config/db.js'; 
 
 const app = express();
-app.use(express.json());
+app.use(json());
+
+app.use(
+  cors({
+    origin: "http://localhost:5173", // alamat client-app
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 app.use('/api', dashboardRoutes);
 app.use('/api/qc', qcRoutes); // <--- pasang prefix untuk QC routes
 
-module.exports = app;
+// Tambahkan route stasiun
+app.get('/api/stasiun', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM stasiun');
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Gagal ambil data stasiun' });
+  }
+});
+
+export default app;

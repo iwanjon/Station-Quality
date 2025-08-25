@@ -1,7 +1,8 @@
-const express = require('express');
-const router = express.Router();
-const { getData } = require('../services/externalApi');
+import { Router } from 'express';
+// import { getData } from '../services/externalApi';
+import { getData } from '../services/externalApi.js'; // Uncomment if using ES Modules
 
+const router = Router();
 router.get('/data', async (req, res) => {
   try {
     const data = await getData();
@@ -11,4 +12,4 @@ router.get('/data', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

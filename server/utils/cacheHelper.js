@@ -1,7 +1,7 @@
 // utils/cacheHelper.js
-const redisClient = require("../config/redisClient");
+import redisClient from '../config/redisClient.js'; 
 
-async function cached(key, ttlSeconds, fetcher) {
+export async function cached(key, ttlSeconds, fetcher) {
   const cachedData = await redisClient.get(key);
   if (cachedData) {
     console.log(`Cache hit for ${key}`);
@@ -14,6 +14,6 @@ async function cached(key, ttlSeconds, fetcher) {
   return data;
 }
 
-module.exports = { cached };
+export default { cached };
 
 
