@@ -135,7 +135,7 @@ const fetchStationMetadata = async () => {
 
         {/* Map */}
         <CardContainer className="mb-6">
-          <div className="w-full h-96 z-0">
+          <div className="w-full h-120 z-0">
             <MapContainer
               center={[-2.5, 118]}
               zoom={5}

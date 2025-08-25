@@ -41,11 +41,11 @@ const StationDetail = () => {
         {/* RMS */}
         <CardContainer>
           <h2 className="text-base font-medium mb-2">RMS</h2>
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={300}>
             <LineChart data={qcData}>
               <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
               <XAxis dataKey="date" />
-              <YAxis />
+              <YAxis domain={[0, 4000]} />
               <Tooltip />
               <Line type="monotone" dataKey="rms" stroke="#8884d8" name="RMS" />
             </LineChart>
@@ -55,11 +55,11 @@ const StationDetail = () => {
         {/* Amplitude Ratio */}
         <CardContainer>
           <h2 className="text-base font-medium mb-2">Amplitude Ratio</h2>
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={300}>
             <LineChart data={qcData}>
               <CartesianGrid stroke="#ccc" strokeDasharray="5 5" />
               <XAxis dataKey="date" />
-              <YAxis />
+              <YAxis domain={['auto', 'auto']} />
               <Tooltip />
               <Line type="monotone" dataKey="amplitude_ratio" stroke="#82ca9d" name="Amplitude Ratio" />
             </LineChart>
