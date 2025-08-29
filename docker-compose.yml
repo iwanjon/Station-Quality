@@ -6,7 +6,7 @@ services:
     image: mysql:8
     container_name: mysql-db
     ports:
-      - "3307:3306"   # ganti ke 3307 biar gak bentrok sama XAMPP
+      - "3306:3306"   # ganti ke 3307 biar gak bentrok sama XAMPP
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: station_quality_control

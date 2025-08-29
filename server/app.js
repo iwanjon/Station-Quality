@@ -1,8 +1,8 @@
 import express, { json } from 'express';
 import cors from 'cors';
 import dashboardRoutes from './routes/dashboard.routes.js';
-import qcRoutes from './routes/qc.routes.js'; // Import QC routes
-import pool from './config/db.js'; 
+import qcRoutes from './routes/qc.routes.js';
+import pool, {testConnection} from './config/database.js' 
 
 const app = express();
 app.use(json());
@@ -16,7 +16,7 @@ app.use(
 );
 
 app.use('/api', dashboardRoutes);
-app.use('/api/qc', qcRoutes); // <--- pasang prefix untuk QC routes
+app.use('/api/qc', qcRoutes);
 
 // Tambahkan route stasiun
 app.get('/api/stasiun', async (req, res) => {

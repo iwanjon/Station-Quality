@@ -1,0 +1,23 @@
+CREATE TABLE `stasiun` (
+  `stasiun_id` integer PRIMARY KEY AUTO_INCREMENT,
+  `net` ENUM ('II', 'IA'),
+  `kode_stasiun` varchar(8) UNIQUE NOT NULL,
+  `lintang` float,
+  `bujur` float,
+  `elevasi` float,
+  `lokasi` varchar(255),
+  `provinsi_id` integer,
+  `upt` integer,
+  `status` ENUM ('aktif', 'nonaktif'),
+  `tahun_instalasi` integer,
+  `jaringan_id` integer,
+  `prioritas` ENUM ('P1', 'P2', 'P3'),
+  `keterangan` text,
+  `accelerometer` ENUM ('installed', 'not_installed'),
+  `digitizer_komunikasi` varchar(255),
+  `tipe_shelter` ENUM ('bunker', 'posthole', 'surface'),
+  `lokasi_shelter` ENUM ('outside_office', 'inside_office'),
+  `penjaga_shelter` ENUM ('ada', 'tidak_ada'),
+  `penggantian_terakhir_alat` datetime,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
