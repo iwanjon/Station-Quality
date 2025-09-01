@@ -23,8 +23,14 @@ router.get("/data/detail/7days/:stationId", async (req, res) => {
         );
 
         if (data && data.length > 0) {
-          results.push({ date, ...data[0] });
+          data.forEach((item) => {
+            results.push({ date, ...item });
+          });
         }
+
+        // if (data && data.length > 0) {
+        //   results.push({ date, ...data[0] });
+        // }
       } catch (err) {
         // kalau external API balikin 404, lewati aja hari itu
         if (err.response && err.response.status === 404) {
