@@ -12,11 +12,11 @@ CREATE TABLE `stasiun` (
   `tahun_instalasi` integer,
   `jaringan_id` integer,
   `prioritas` ENUM ('P1', 'P2', 'P3'),
-  `keterangan` text,
+  `keterangan` text NULL,
   `accelerometer` ENUM ('installed', 'not_installed'),
   `digitizer_komunikasi` varchar(255),
   `tipe_shelter` ENUM ('bunker', 'posthole', 'surface'),
-  `lokasi_shelter` ENUM ('outside_office', 'inside_office'),
+  `lokasi_shelter` ENUM ('outside_BMKG_office', 'inside_BMKG_office'),
   `penjaga_shelter` ENUM ('ada', 'tidak_ada'),
   `penggantian_terakhir_alat` datetime,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP

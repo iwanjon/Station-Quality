@@ -1,10 +1,10 @@
 import mysql from 'mysql2/promise';
 
 const dbConfig = {
-  host: process.env.MYSQL_HOST || 'localhost',
-  user: process.env.MYSQL_USER || 'root',
-  password: process.env.MYSQL_PASS || '',
-  database: process.env.MYSQL_NAME || 'station_quality',
+  host: process.env.MYSQL_HOST,
+  user: process.env.MYSQL_USER,
+  password: process.env.MYSQL_PASS,
+  database: process.env.MYSQL_NAME,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0

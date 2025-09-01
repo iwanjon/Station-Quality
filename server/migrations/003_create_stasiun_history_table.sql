@@ -11,7 +11,8 @@ CREATE TABLE `stasiun_history` (
   `end_date` datetime,
   `PAZ` float,
   `total_gain` float,
-  `status` boolean DEFAULT true
+  `status` boolean DEFAULT true,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE `availability` (
