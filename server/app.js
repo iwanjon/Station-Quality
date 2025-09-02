@@ -3,6 +3,8 @@ import cors from 'cors';
 import dashboardRoutes from './routes/dashboard.routes.js';
 import qcRoutes from './routes/qc.routes.js'; // Import QC routes
 import pool from './config/db.js'; 
+import signalRoutes from "./routes/signal.routes.js";
+import latencyRoutes from "./routes/latency.routes.js";
 
 const app = express();
 app.use(json());
@@ -28,5 +30,8 @@ app.get('/api/stasiun', async (req, res) => {
     res.status(500).json({ error: 'Gagal ambil data stasiun' });
   }
 });
+
+app.use("/api/qc", signalRoutes);
+app.use('/api', latencyRoutes);
 
 export default app;

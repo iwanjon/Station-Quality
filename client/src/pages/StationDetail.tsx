@@ -2,18 +2,11 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axiosServer from "../utilities/AxiosServer";
-import {
-  LineChart,
-  Line,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import CardContainer from "../components/Card";
 import "keen-slider/keen-slider.min.css";
 import { useKeenSlider } from "keen-slider/react";
+import ChartSlide from "../components/ChartSlide";
+import LazyChartSection from "../components/LazyChartSection";
+import dayjs from "dayjs";
 
 type QCData = {
   code?: string;
@@ -33,6 +26,11 @@ type QCData = {
   bw_percentage?: number;
   lp_percentage?: number;
 };
+
+type FormattedLatencyData = {
+  date: string; // Ini akan menjadi timestamp
+  latency: number;
+}
 
 const CHANNELS = ["SHE", "SHN", "SHZ"];
 
@@ -118,6 +116,7 @@ const ChartSection = ({
 const StationDetail = () => {
   const { stationCode } = useParams<{ stationCode: string }>();
   const [qcData, setQcData] = useState<QCData[]>([]);
+  const [latencyData, setLatencyData] = useState<Record<string, FormattedLatencyData[]>>({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -149,6 +148,41 @@ const StationDetail = () => {
     if (stationCode) fetchData();
   }, [stationCode]);
 
+  // useEffect untuk fetch data latensi
+  useEffect(() => {
+    const fetchLatencyData = async () => {
+      if (!stationCode) return;
+
+      try {
+        const requests = CHANNELS.map(channel =>
+          axiosServer.get(`/api/metadata/latency/${stationCode}/${channel}`)
+        );
+        const responses = await Promise.all(requests);
+        
+        const allLatencyData: Record<string, FormattedLatencyData[]> = {};
+
+        responses.forEach((response, index) => {
+          const channel = CHANNELS[index];
+          const rawData = response.data;
+          
+          // Transformasi data: dari object ke array of objects
+          const formattedData = Object.entries(rawData).map(([timestamp, value]) => ({
+            date: dayjs(timestamp).format('YYYY-MM-DD HH:mm'), // Format agar mudah dibaca di grafik
+            latency: value as number,
+          }));
+          
+          allLatencyData[channel] = formattedData;
+        });
+        
+        setLatencyData(allLatencyData);
+
+      } catch (err) {
+        console.error("Error fetching latency data:", err);
+      }
+    };
+    fetchLatencyData();
+  }, [stationCode]);
+
   const groupedByChannel = CHANNELS.reduce<Record<string, QCData[]>>(
     (acc, ch) => {
       acc[ch] = qcData.filter((d) => d.channel === ch);
@@ -175,10 +209,14 @@ const StationDetail = () => {
     mode: "snap",
     slides: { perView: 2, spacing: 8 },
   });
+
+  const [sliderRefLatency, sliderLatency] = useKeenSlider<HTMLDivElement>({ mode: "snap", slides: { perView: 2, spacing: 8 } });
+
   // const [sliderRefDead, sliderDead] = useKeenSlider<HTMLDivElement>({
   //   mode: "snap",
   //   slides: { perView: 2, spacing: 8 },
   // });
+
   const [sliderRefPerc, sliderPerc] = useKeenSlider<HTMLDivElement>({
     mode: "snap",
     slides: { perView: 2, spacing: 8 },
@@ -187,21 +225,6 @@ const StationDetail = () => {
   const slideClass =
     "keen-slider__slide flex-shrink-0 min-w-[0px] md:min-w-[0px] lg:min-w-[0px]";
 
-  const arrowStyle: React.CSSProperties = {
-    position: "absolute",
-    top: "50%",
-    transform: "translateY(-50%)",
-    zIndex: 40,
-    background: "transparent",
-    border: "none",
-    padding: 8,
-    cursor: "pointer",
-    color: "#475569", // gray-600
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  };
-
   return (
     <div className="p-6 space-y-8">
       <h1 className="text-center text-2xl font-bold">
@@ -209,157 +232,69 @@ const StationDetail = () => {
       </h1>
 
       {/* RMS */}
-      <section className="relative">
-        <div className="mb-3">
-          <h2 className="text-lg font-semibold text-gray-700">
-            RMS per Channel
-          </h2>
-        </div>
-
-        <div className="relative">
-          <button
-            aria-label="Prev RMS"
-            style={{ ...arrowStyle, left: 12 }}
-            onClick={() => sliderRMS.current?.prev()}
-          >
-            <Arrow dir="left" />
-          </button>
-          <button
-            aria-label="Next RMS"
-            style={{ ...arrowStyle, right: 12 }}
-            onClick={() => sliderRMS.current?.next()}
-          >
-            <Arrow dir="right" />
-          </button>
-
-          <div
-            ref={sliderRefRMS}
-            className="keen-slider px-3"
-            style={{
-              touchAction: "pan-y",
-              userSelect: "none",
-              cursor: "grab",
-            }}
-          >
-            {CHANNELS.map((ch) => (
-              <div key={ch} className={slideClass}>
-                <div className="px-2 w-full">
-                  <CardContainer>
-                    <h3 className="text-base font-medium mb-2">RMS - {ch}</h3>
-                    <div style={{ width: "100%", height: 240 }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={groupedByChannel[ch]}>
-                          <CartesianGrid stroke="#e5e7eb" strokeDasharray="5 5" />
-                          <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                          <YAxis
-                            domain={["auto", "auto"]}
-                            tick={{ fontSize: 12 }}
-                            width={56}
-                          />
-                          <Tooltip />
-                          <Line
-                            type="monotone"
-                            dataKey="rms"
-                            stroke="#6366f1"
-                            dot={false}
-                            isAnimationActive={false}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContainer>
-                </div>
-              </div>
-            ))}
+      <ChartSection title="RMS per Channel" sliderRef={sliderRefRMS} sliderInstance={sliderRMS}>
+        {CHANNELS.map((ch) => (
+          <div key={ch} className={slideClass}>
+            {/* FIX: Tambahkan kembali div ini untuk memberikan jarak antar grafik */}
+            <div className="px-2 w-full">
+              <ChartSlide
+                channel={ch}
+                titlePrefix="RMS"
+                data={groupedByChannel[ch]}
+                lines={[{ dataKey: "rms", stroke: "#6366f1" }]}
+              />
+            </div>
           </div>
-        </div>
-      </section>
+        ))}
+      </ChartSection>
 
       {/* Amplitude */}
-      <section className="relative">
-        <div className="mb-3">
-          <h2 className="text-lg font-semibold text-gray-700">
-            Amplitude Ratio per Channel
-          </h2>
-        </div>
-
-        <div className="relative">
-          <button
-            aria-label="Prev Amp"
-            style={{ ...arrowStyle, left: 12 }}
-            onClick={() => sliderAmp.current?.prev()}
-          >
-            <Arrow dir="left" />
-          </button>
-          <button
-            aria-label="Next Amp"
-            style={{ ...arrowStyle, right: 12 }}
-            onClick={() => sliderAmp.current?.next()}
-          >
-            <Arrow dir="right" />
-          </button>
-
-          <div
-            ref={sliderRefAmp}
-            className="keen-slider px-3"
-            style={{
-              touchAction: "pan-y",
-              userSelect: "none",
-              cursor: "grab",
-            }}
-          >
-            {CHANNELS.map((ch, idx) => (
-              <div key={ch} className={slideClass}>
-                <div className="px-2 w-full">
-                  <CardContainer>
-                    <h3 className="text-base font-medium mb-2">
-                      Amplitude Ratio - {ch}
-                    </h3>
-                    <div style={{ width: "100%", height: 260 }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={groupedByChannel[ch]}>
-                          <CartesianGrid stroke="#e5e7eb" strokeDasharray="5 5" />
-                          <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                          <YAxis domain={["auto", "auto"]} tick={{ fontSize: 12 }} />
-                          <Tooltip />
-                          <Line
-                            type="monotone"
-                            dataKey="amplitude_ratio"
-                            stroke={["#10b981", "#3b82f6", "#f59e0b"][idx]}
-                            dot={false}
-                            isAnimationActive={false}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContainer>
-                </div>
-              </div>
-            ))}
+      <ChartSection title="Amplitude Ratio per Channel" sliderRef={sliderRefAmp} sliderInstance={sliderAmp}>
+        {CHANNELS.map((ch, idx) => (
+          <div key={ch} className={slideClass}>
+            {/* FIX: Tambahkan kembali div ini untuk memberikan jarak antar grafik */}
+            <div className="px-2 w-full">
+              <ChartSlide
+                channel={ch}
+                titlePrefix="Amplitude Ratio"
+                data={groupedByChannel[ch]}
+                lines={[{ dataKey: "amplitude_ratio", stroke: ["#10b981", "#3b82f6", "#f59e0b"][idx] }]}
+                height={260}
+              />
+            </div>
           </div>
-        </div>
-      </section>
+        ))}
+      </ChartSection>
+      
+      {/* latensi */}
+      <ChartSection title="Latency per Channel" sliderRef={sliderRefLatency} sliderInstance={sliderLatency}>
+        {CHANNELS.map((ch, idx) => (
+          <div key={ch} className={slideClass}>
+            <div className="px-2 w-full">
+              <ChartSlide
+                channel={ch}
+                titlePrefix="Latency"
+                data={latencyData[ch] || []} // Ambil data dari state latency
+                lines={[{ dataKey: "latency", stroke: ["#8b5cf6", "#ec4899", "#f97316"][idx] }]}
+              />
+            </div>
+          </div>
+        ))}
+      </ChartSection>
 
-      {/* Gap / Overlap / Spikes */}
+      {/* Spikes */}
       <ChartSection title="Spikes" sliderRef={sliderRefGap} sliderInstance={sliderGap}>
         {CHANNELS.map((ch) => (
           <div key={ch} className={slideClass}>
-            <CardContainer>
-              <h3 className="text-base font-medium mb-2">Gap/Overlap/Spikes - {ch}</h3>
-              <div style={{ width: "100%", height: 240 }}>
-                <ResponsiveContainer>
-                  <LineChart data={groupedByChannel[ch]}>
-                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="5 5" />
-                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                    <YAxis domain={["auto", "auto"]} tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    {/* <Line dataKey="num_gap" stroke="#ef4444" dot={false} /> */}
-                    {/* <Line dataKey="num_overlap" stroke="#3b82f6" dot={false} /> */}
-                    <Line dataKey="num_spikes" stroke="#10b981" dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContainer>
+            {/* FIX: Tambahkan kembali div ini untuk memberikan jarak antar grafik */}
+            <div className="px-2 w-full">
+              <ChartSlide
+                  channel={ch}
+                  titlePrefix="Spikes"
+                  data={groupedByChannel[ch]}
+                  lines={[{ dataKey: 'num_spikes', stroke: '#10b981' }]}
+              />
+            </div>
           </div>
         ))}
       </ChartSection>
@@ -368,26 +303,46 @@ const StationDetail = () => {
       <ChartSection title="Noise" sliderRef={sliderRefNoise} sliderInstance={sliderNoise}>
         {CHANNELS.map((ch) => (
           <div key={ch} className={slideClass}>
-            <CardContainer>
-              <h3 className="text-base font-medium mb-2">Noise - {ch}</h3>
-              <div style={{ width: "100%", height: 240 }}>
-                <ResponsiveContainer>
-                  <LineChart data={groupedByChannel[ch]}>
-                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="5 5" />
-                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                    <YAxis domain={[0, 10]} tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Line dataKey="perc_above_nhnm" stroke="#f59e0b" dot={false} />
-                    <Line dataKey="perc_below_nlnm" stroke="#3b82f6" dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContainer>
+            {/* FIX: Tambahkan kembali div ini untuk memberikan jarak antar grafik */}
+            <div className="px-2 w-full">
+              <ChartSlide
+                  channel={ch}
+                  titlePrefix="Noise"
+                  data={groupedByChannel[ch]}
+                  lines={[
+                    { dataKey: 'perc_above_nhnm', stroke: '#f59e0b' },
+                    { dataKey: 'perc_below_nlnm', stroke: '#3b82f6' },
+                  ]}
+                  yAxisProps={{ domain: [0, 10] }}
+              />
+            </div>
+          </div>
+        ))}
+      </ChartSection>
+      
+      {/* SP / BW / LP */}
+      <ChartSection title="SP / BW / LP Percentage" sliderRef={sliderRefPerc} sliderInstance={sliderPerc}>
+        {CHANNELS.map((ch) => (
+          <div key={ch} className={slideClass}>
+            {/* FIX: Tambahkan kembali div ini untuk memberikan jarak antar grafik */}
+            <div className="px-2 w-full">
+              <ChartSlide
+                channel={ch}
+                titlePrefix="SP / BW / LP"
+                data={groupedByChannel[ch]}
+                lines={[
+                  { dataKey: 'sp_percentage', stroke: '#6366f1' },
+                  { dataKey: 'bw_percentage', stroke: '#10b981' },
+                  { dataKey: 'lp_percentage', stroke: '#f59e0b' },
+                ]}
+                yAxisProps={{ domain: [50, 120] }}
+              />
+            </div>
           </div>
         ))}
       </ChartSection>
 
-      {/* Dead Channel
+     {/* Dead Channel
       <ChartSection title="Dead Channel" sliderRef={sliderRefDead} sliderInstance={sliderDead}>
         {CHANNELS.map((ch) => (
           <div key={ch} className={slideClass}>
@@ -409,30 +364,6 @@ const StationDetail = () => {
           </div>
         ))}
       </ChartSection> */}
-
-      {/* SP / BW / LP */}
-      <ChartSection title="SP / BW / LP Percentage" sliderRef={sliderRefPerc} sliderInstance={sliderPerc}>
-        {CHANNELS.map((ch) => (
-          <div key={ch} className={slideClass}>
-            <CardContainer>
-              <h3 className="text-base font-medium mb-2">SP / BW / LP - {ch}</h3>
-              <div style={{ width: "100%", height: 240 }}>
-                <ResponsiveContainer>
-                  <LineChart data={groupedByChannel[ch]}>
-                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="5 5" />
-                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                    <YAxis domain={[50, 120]} tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Line dataKey="sp_percentage" stroke="#6366f1" dot={false} />
-                    <Line dataKey="bw_percentage" stroke="#10b981" dot={false} />
-                    <Line dataKey="lp_percentage" stroke="#f59e0b" dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContainer>
-          </div>
-        ))}
-      </ChartSection>
     </div>
   );
 };

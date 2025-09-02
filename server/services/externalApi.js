@@ -34,8 +34,27 @@ export async function fetchQCDetail(stationId, date) {
   }
 }
 
-// export default { fetchQCDetail };
+export const fetchLatencyDetail = async (sta_code, channel) => {
+  try {
+    const url = `${API_BASE_URL}/metadata/latency/${sta_code}/${channel}`;
+    console.log("🔎 Fetching Latency Detail from:", url);
 
+    const response = await axios.get(url, {
+      headers: {
+        Authorization: `Bearer ${API_KEY}`,
+        Accept: "application/json",
+      },
+    });
+    return response.data;
+  } catch (err) {
+    if (err.response) {
+      console.error("❌ API Error:", err.response.status, err.response.data);
+    } else {
+      console.error("❌ Request setup error:", err.message);
+    }
+    throw err;
+  }
+};
 
 export async function getData() {
   const cacheKey = 'external:data';

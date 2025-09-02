@@ -1,39 +1,12 @@
-// routes/qc.routes.js
-import { Router } from "express";
-import axios from "axios";
-import { cached } from "../utils/cacheHelper.js";
-import { fetchQCDetail } from "../services/externalApi.js";
+// // routes/qc.routes.js
+import { Router } from 'express';
+import { cached } from '../utils/cacheHelper.js'; 
+import { fetchQCDetail } from '../services/externalApi.js'; 
 import dayjs from "dayjs";
 
 const router = Router();
 
-// 🔹 GET signal image proxy
-router.get("/data/signal/:date/:stationId/:channel", async (req, res) => {
-  const { date, stationId, channel } = req.params;
-
-  try {
-    const url = `http://103.169.3.72:2107/api/qc/data/signal/${date}/${stationId}/${channel}`;
-    const response = await axios.get(url, {
-      responseType: "arraybuffer", // karena file image (bukan JSON)
-      headers: {
-        Authorization: `Bearer DEBUG-BYPASS-TOKEN-2107`,
-        Accept: "*/*",
-      },
-    });
-
-    // Set headers biar client ngerti ini image
-    res.set("Content-Type", response.headers["content-type"] || "image/png");
-    res.send(response.data);
-  } catch (err) {
-    if (err.response && err.response.status === 404) {
-      return res.status(404).json({ error: "Image file not found" });
-    }
-    console.error("Error fetching signal image:", err.message);
-    res.status(500).json({ error: "Failed to fetch signal image" });
-  }
-});
-
-// 🔹 GET QC detail 7 hari
+// Ambil data QC untuk 7 hari terakhir
 router.get("/data/detail/7days/:stationId", async (req, res) => {
   const { stationId } = req.params;
   const today = dayjs();
@@ -54,12 +27,17 @@ router.get("/data/detail/7days/:stationId", async (req, res) => {
             results.push({ date, ...item });
           });
         }
+
+        // if (data && data.length > 0) {
+        //   results.push({ date, ...data[0] });
+        // }
       } catch (err) {
+        // kalau external API balikin 404, lewati aja hari itu
         if (err.response && err.response.status === 404) {
           console.warn(`⚠️ Data not found for ${stationId} at ${date}`);
           continue;
         }
-        throw err;
+        throw err; // selain 404, lempar error beneran
       }
     }
 
@@ -71,7 +49,7 @@ router.get("/data/detail/7days/:stationId", async (req, res) => {
   }
 });
 
-// 🔹 GET QC detail by station & date
+
 router.get("/data/detail/:stationId/:date", async (req, res) => {
   const { stationId, date } = req.params;
   const cacheKey = `qc:${stationId}:${date}`;
@@ -88,3 +66,4 @@ router.get("/data/detail/:stationId/:date", async (req, res) => {
 });
 
 export default router;
+
