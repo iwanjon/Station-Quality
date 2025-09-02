@@ -1,10 +1,8 @@
 import express, { json } from 'express';
 import cors from 'cors';
 import dashboardRoutes from './routes/dashboard.routes.js';
-import qcRoutes from './routes/qc.routes.js'; // Import QC routes
-import pool from './config/database.js'; 
-import signalRoutes from "./routes/signal.routes.js";
-import latencyRoutes from "./routes/latency.routes.js";
+import qcRoutes from './routes/qc.routes.js';
+import pool, {testConnection} from './config/database.js' 
 
 const app = express();
 app.use(json());
