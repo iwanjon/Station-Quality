@@ -1,11 +1,9 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import MainLayout from "../layouts/MainLayout";
-import TableFilters from "../components/TableFilters";
-import type { FilterConfig } from "../components/TableFilters";
-import DataTable from "../components/DataTable";
-import type { ColumnDef } from "@tanstack/react-table";
 import axiosInstance from "../utilities/Axios";
-import DetailButton from "../components/DetailButton";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
 
 // Tipe data station
 interface Station {
@@ -16,7 +14,17 @@ interface Station {
   upt: string;
   jaringan: string;
   availability: number[];
+  lat?: number;
+  lng?: number;
 }
+
+  // Custom marker icon (optional)
+  const stationIcon = new L.Icon({
+    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+  });
 
 const StationMap = () => {
   const [data, setData] = useState<Station[]>([]);
@@ -25,7 +33,7 @@ const StationMap = () => {
   // Fetch data dari JSON
   useEffect(() => {
     axiosInstance
-      .get("/data/stationData.json")
+      .get("/api/stasiun")
       .then((res) => {
         setData(res.data);
       })
@@ -37,90 +45,47 @@ const StationMap = () => {
       });
   }, []);
 
-  const filterConfig: Record<string, FilterConfig> = {
-    net: {
-      label: "Net",
-      type: "multi",
-      options: ["Net A", "Net B", "Net C"], // sesuaikan dengan data asli
-    },
-    lokasi: {
-      label: "Lokasi",
-      type: "multi",
-      options: ["Lokasi A", "Lokasi B", "Lokasi C"], // sesuaikan dengan data asli
-    },
-  };
-
-  const [filters, setFilters] = useState<Record<string, any>>({
-    net: [],
-    lokasi: [],
-  });
-
-  const filteredData = useMemo(() => {
-    return data.filter((item) => {
-      // Filter net
-      if (filters.net.length > 0 && !filters.net.includes(item.net)) {
-        return false;
-      }
-      // Filter lokasi
-      if (filters.lokasi.length > 0 && !filters.lokasi.includes(item.lokasi)) {
-        return false;
-      }
-      return true;
-    });
-  }, [filters, data]);
-
-
-  // Kolom untuk TanStack Table
-  const columns: ColumnDef<Station>[] = [
-    { header: "Id", accessorKey: "id", enableSorting: false},
-    { header: "Net", accessorKey: "net", enableSorting: false },
-    { header: "Kode", accessorKey: "kode", enableSorting: false },
-    { header: "Lokasi", accessorKey: "lokasi", enableSorting: true },
-    { header: "UPT", accessorKey: "upt", enableSorting: false },
-    { header: "Jaringan", accessorKey: "jaringan", enableSorting: false },
-    {
-      header: "Aksi",
-      id: "actions",
-      cell: ({ row }) => <DetailButton id={row.original.id} />,
-      enableSorting: false,
-    },
-    { header: "Availability", columns: [
-        {
-        header: "Januari",
-        accessorFn: row => row.availability[0], // index 0 = Januari
-        },
-        {
-          header: "Februari",
-          accessorFn: row => row.availability[1], // index 1 = Februari
-        },
-        {
-          header: "Maret",
-          accessorFn: row => row.availability[2], // index 2 = Maret
-        },
-      ] },
-  ];
+  console.log(data);
+  // Default center Indonesia
+  const center: [number, number] = [-2.5, 118];
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <MainLayout>
         <div className="bg-white p-4 rounded-xl shadow mb-6">
-          {/* <h1 className="bg-gray-100 rounded-2xl text-center text-4xl font-bold my-4 mx-48 py-2 border-2"> */}
-          <h1 className="bg-gray-100 rounded-2xl text-center text-3xl font-bold my-4 mx-48 py-2">
-            Stasiun Availability
+          <h1 className="bg-gray-100 rounded-2xl text-center text-3xl font-bold my-2 mx-48">
+            Stasiun Map
           </h1>
-          <TableFilters
-            filters={filters}
-            setFilters={setFilters}
-            filterConfig={filterConfig}
-          />
         </div>
-
-        <div className="bg-white p-4 rounded-xl shadow">
-          {loading ? (
-            <p className="text-center text-gray-500">Loading data...</p>
-          ) : (
-            <DataTable columns={columns} data={filteredData} />
-          )}
+        <div className="w-full h-[70vh] rounded-xl overflow-hidden">
+          <MapContainer center={center} zoom={5} style={{ height: "100%", width: "100%" }}>
+            <TileLayer
+              attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            {!loading &&
+              data.map((station) =>
+                station.lat && station.lng ? (
+                  <Marker
+                    key={station.id}
+                    position={[station.lat, station.lng]}
+                    icon={stationIcon}
+                  >
+                    <Popup>
+                      <div>
+                        <strong>{station.kode}</strong>
+                        <br />
+                        {station.lokasi}
+                        <br />
+                        Jaringan: {station.jaringan}
+                        <br />
+                        UPT: {station.upt}
+                      </div>
+                    </Popup>
+                  </Marker>
+                ) : null
+              )}
+          </MapContainer>
         </div>
       </MainLayout>
     </div>
