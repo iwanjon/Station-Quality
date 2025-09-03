@@ -15,8 +15,8 @@ interface Stasiun {
   bujur: number;
   elevasi: number;
   lokasi: string;
-  provinsi_id: number;
-  upt: number;
+  nama_provinsi: string;
+  nama_upt: string;
   status: string;
   tahun_instalasi: number;
   jaringan_id: number;
@@ -70,33 +70,35 @@ const StationMap = () => {
       });
   }, []);
 
-  // Ambil nilai unik untuk dropdown filter
-  const jaringanOptions = Array.from(
-    new Set(data.map((station) => station.jaringan_id))
-  ).filter((v) => v !== null && v !== undefined);
-
-  const provinsiOptions = Array.from(
-    new Set(data.map((station) => station.provinsi_id))
-  ).filter((v) => v !== null && v !== undefined);
-
-  const uptOptions = Array.from(
-    new Set(data.map((station) => station.upt))
-  ).filter((v) => v !== null && v !== undefined);
-
-  const tahunOptions = Array.from(
-    new Set(data.map((station) => station.tahun_instalasi))
-  ).filter((v) => v !== null && v !== undefined);
-
   // Filter data berdasarkan semua filter
   const filteredData = data.filter((station) => {
     return (
       (filterJaringan === "" || String(station.jaringan_id) === filterJaringan) &&
-      (filterProvinsi === "" || String(station.provinsi_id) === filterProvinsi) &&
-      (filterUpt === "" || String(station.upt) === filterUpt) &&
+      (filterProvinsi === "" || String(station.nama_provinsi) === filterProvinsi) &&
+      (filterUpt === "" || String(station.nama_upt) === filterUpt) &&
       (filterTahun === "" || String(station.tahun_instalasi) === filterTahun) &&
       (searchKode === "" || station.kode_stasiun.toLowerCase().includes(searchKode.toLowerCase()))
     );
   });
+
+  // Ambil nilai unik untuk dropdown filter
+  const jaringanOptions = Array.from(
+    new Set(filteredData.map((station) => station.jaringan_id))
+  ).filter((v) => v !== null && v !== undefined);
+
+  const provinsiOptions = Array.from(
+    new Set(filteredData.map((station) => station.nama_provinsi))
+  ).filter((v) => v !== null && v !== undefined);
+
+  const uptOptions = Array.from(
+    new Set(filteredData.map((station) => station.nama_upt))
+  ).filter((v) => v !== null && v !== undefined);
+
+  const tahunOptions = Array.from(
+    new Set(filteredData.map((station) => station.tahun_instalasi))
+  ).filter((v) => v !== null && v !== undefined);
+
+  
 
   // Default center Indonesia
   const center: [number, number] = [-2.5, 118];
@@ -175,7 +177,7 @@ const StationMap = () => {
             </label>
             <select
               id="filter-jaringan"
-              className="border rounded px-2 py-1"
+              className="border rounded px-2 py-1 w-32"
               value={filterJaringan}
               onChange={(e) => setFilterJaringan(e.target.value)}
             >
@@ -192,7 +194,7 @@ const StationMap = () => {
             </label>
             <select
               id="filter-provinsi"
-              className="border rounded px-2 py-1"
+              className="border rounded px-2 py-1 w-40"
               value={filterProvinsi}
               onChange={(e) => setFilterProvinsi(e.target.value)}
             >
@@ -209,7 +211,7 @@ const StationMap = () => {
             </label>
             <select
               id="filter-upt"
-              className="border rounded px-2 py-1"
+              className="border rounded px-2 py-1 w-40"
               value={filterUpt}
               onChange={(e) => setFilterUpt(e.target.value)}
             >
@@ -226,7 +228,7 @@ const StationMap = () => {
             </label>
             <select
               id="filter-tahun"
-              className="border rounded px-2 py-1"
+              className="border rounded px-2 py-1 w-28"
               value={filterTahun}
               onChange={(e) => setFilterTahun(e.target.value)}
             >
@@ -267,11 +269,9 @@ const StationMap = () => {
                       <div>
                         <strong>{station.kode_stasiun}</strong>
                         <br />
-                        {station.lokasi}
+                        Lokasi: {station.lokasi}
                         <br />
-                        Jaringan: {station.jaringan_id}
-                        <br />
-                        UPT: {station.upt}
+                        UPT: {station.nama_upt}
                       </div>
                     </Popup>
                   </Marker>

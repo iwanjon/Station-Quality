@@ -7,7 +7,28 @@ const router = Router();
 router.get('/', async (req, res) => {
     try {
         console.log('Fetching all stasiun data');
-        const [rows] = await pool.query('SELECT * FROM stasiun');
+        const [rows] = await pool.query(`
+            SELECT 
+                s.stasiun_id,
+                s.net,
+                s.kode_stasiun,
+                s.lintang,
+                s.bujur,
+                s.elevasi,
+                s.lokasi,
+                p.nama_provinsi,
+                u.nama_upt,
+                s.status,
+                s.tahun_instalasi,
+                s.jaringan_id,
+                s.prioritas,
+                s.keterangan,
+                s.accelerometer,
+                s.digitizer_komunikasi
+            FROM stasiun s
+            LEFT JOIN provinsi p ON s.provinsi_id = p.provinsi_id
+            LEFT JOIN upt u ON s.upt = u.upt_id
+        `);
         const stasiun = rows;
 
         res.json({
