@@ -15,11 +15,11 @@ interface Stasiun {
   bujur: number;
   elevasi: number;
   lokasi: string;
-  nama_provinsi: string;
-  nama_upt: string;
+  provinsi: string; // field sebenarnya
+  upt_penanggung_jawab: string; // field sebenarnya
   status: string;
   tahun_instalasi: number;
-  jaringan_id: number;
+  jaringan: string; // field sebenarnya
   prioritas: string;
   keterangan: string | null;
   accelerometer: string;
@@ -60,7 +60,7 @@ const StationMap = () => {
     axiosServer
       .get("/api/stasiun")
       .then((res) => {
-        setData(res.data.data);
+        setData(res.data);
       })
       .catch((err) => {
         console.error("Error fetching station data:", err);
@@ -71,32 +71,32 @@ const StationMap = () => {
   }, []);
 
   // Filter data berdasarkan semua filter
-  const filteredData = data.filter((station) => {
+  const filteredData = data && Array.isArray(data) ? data.filter((station) => {
     return (
-      (filterJaringan === "" || String(station.jaringan_id) === filterJaringan) &&
-      (filterProvinsi === "" || String(station.nama_provinsi) === filterProvinsi) &&
-      (filterUpt === "" || String(station.nama_upt) === filterUpt) &&
+      (filterJaringan === "" || String(station.jaringan) === filterJaringan) &&
+      (filterProvinsi === "" || String(station.provinsi) === filterProvinsi) &&
+      (filterUpt === "" || String(station.upt_penanggung_jawab) === filterUpt) &&
       (filterTahun === "" || String(station.tahun_instalasi) === filterTahun) &&
       (searchKode === "" || station.kode_stasiun.toLowerCase().includes(searchKode.toLowerCase()))
     );
-  });
+  }) : [];
 
   // Ambil nilai unik untuk dropdown filter
-  const jaringanOptions = Array.from(
-    new Set(filteredData.map((station) => station.jaringan_id))
-  ).filter((v) => v !== null && v !== undefined);
+  const jaringanOptions = data && Array.isArray(data) ? Array.from(
+    new Set(data.map((station) => station.jaringan))
+  ).filter((v) => v !== null && v !== undefined) : [];
 
-  const provinsiOptions = Array.from(
-    new Set(filteredData.map((station) => station.nama_provinsi))
-  ).filter((v) => v !== null && v !== undefined);
+  const provinsiOptions = data && Array.isArray(data) ? Array.from(
+    new Set(data.map((station) => station.provinsi))
+  ).filter((v) => v !== null && v !== undefined) : [];
 
-  const uptOptions = Array.from(
-    new Set(filteredData.map((station) => station.nama_upt))
-  ).filter((v) => v !== null && v !== undefined);
+  const uptOptions = data && Array.isArray(data) ? Array.from(
+    new Set(data.map((station) => station.upt_penanggung_jawab))
+  ).filter((v) => v !== null && v !== undefined) : [];
 
-  const tahunOptions = Array.from(
-    new Set(filteredData.map((station) => station.tahun_instalasi))
-  ).filter((v) => v !== null && v !== undefined);
+  const tahunOptions = data && Array.isArray(data) ? Array.from(
+    new Set(data.map((station) => station.tahun_instalasi))
+  ).filter((v) => v !== null && v !== undefined) : [];
 
   
 
@@ -121,18 +121,18 @@ const StationMap = () => {
     },
     {
       header: "Provinsi",
-      accessorKey: "provinsi_id",
-      cell: (info: { getValue: () => number }) => info.getValue(),
+      accessorKey: "provinsi",
+      cell: (info: { getValue: () => string }) => info.getValue(),
     },
     {
       header: "UPT",
-      accessorKey: "upt",
-      cell: (info: { getValue: () => number }) => info.getValue(),
+      accessorKey: "upt_penanggung_jawab",
+      cell: (info: { getValue: () => string }) => info.getValue(),
     },
     {
       header: "Jaringan",
-      accessorKey: "jaringan_id",
-      cell: (info: { getValue: () => number }) => info.getValue(),
+      accessorKey: "jaringan",
+      cell: (info: { getValue: () => string }) => info.getValue(),
     },
     {
       header: "Tahun Instalasi",
@@ -271,7 +271,7 @@ const StationMap = () => {
                         <br />
                         Lokasi: {station.lokasi}
                         <br />
-                        UPT: {station.nama_upt}
+                        UPT: {station.upt_penanggung_jawab}
                       </div>
                     </Popup>
                   </Marker>
