@@ -5,7 +5,6 @@ import type { FilterConfig } from "../components/TableFilters";
 import DataTable from "../components/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import axiosInstance from "../utilities/Axios";
-import DetailButton from "../components/DetailButton";
 
 interface Station {
   id: number;
@@ -109,10 +108,7 @@ const StationAvailability = () => {
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [filterConfig, setFilterConfig] = useState<Record<string, FilterConfig>>({});
   const [filters, setFilters] = useState<Record<string, string[]>>({
-    net: [],
-    lokasi: [],
-    upt: [],
-    jaringan: [],
+    kode: [],
   });
 
   useEffect(() => {
@@ -130,16 +126,10 @@ const StationAvailability = () => {
         const stations: Station[] = res.data;
         setData(stations);
 
-        const uniqueNet = Array.from(new Set(stations.map(s => s.net))).sort();
-        const uniqueLokasi = Array.from(new Set(stations.map(s => s.lokasi))).sort();
-        const uniqueUPT = Array.from(new Set(stations.map(s => s.upt))).sort();
-        const uniqueJaringan = Array.from(new Set(stations.map(s => s.jaringan))).sort();
+        const uniqueKode = Array.from(new Set(stations.map(s => s.kode))).sort();
 
         setFilterConfig({
-          net: { label: "Net", type: "multi", options: uniqueNet },
-          lokasi: { label: "Lokasi", type: "multi", options: uniqueLokasi },
-          upt: { label: "UPT", type: "multi", options: uniqueUPT },
-          jaringan: { label: "Jaringan", type: "multi", options: uniqueJaringan },
+          kode: { label: "Kode Stasiun", type: "multi", options: uniqueKode },
         });
       })
       .catch((err) => console.error(err))
@@ -148,10 +138,7 @@ const StationAvailability = () => {
 
   const filteredData = useMemo(() => {
     return data.filter((item) => {
-      if (filters.net.length > 0 && !filters.net.includes(item.net)) return false;
-      if (filters.lokasi.length > 0 && !filters.lokasi.includes(item.lokasi)) return false;
-      if (filters.upt.length > 0 && !filters.upt.includes(item.upt)) return false;
-      if (filters.jaringan.length > 0 && !filters.jaringan.includes(item.jaringan)) return false;
+      if (filters.kode.length > 0 && !filters.kode.includes(item.kode)) return false;
       return true;
     });
   }, [filters, data]);
@@ -173,21 +160,38 @@ const StationAvailability = () => {
   }, [selectedMonthRange]);
 
   const columns: ColumnDef<Station>[] = [
-    { header: "Id", accessorKey: "id", enableSorting: false },
-    { header: "Net", accessorKey: "net", enableSorting: false },
-    { header: "Kode", accessorKey: "kode", enableSorting: false },
-    { header: "Lokasi", accessorKey: "lokasi", enableSorting: true },
-    { header: "UPT", accessorKey: "upt", enableSorting: false },
-    { header: "Jaringan", accessorKey: "jaringan", enableSorting: false },
-    {
-      header: "Aksi",
-      id: "actions",
-      cell: ({ row }) => <DetailButton id={row.original.id} />,
+    { 
+      header: "ID", 
+      accessorKey: "id", 
       enableSorting: false,
+      size: 80,
+    },
+    { 
+      header: "Kode Stasiun", 
+      accessorKey: "kode", 
+      enableSorting: false,
+      size: 120,
     },
     {
-      header: "Availability",
-      columns: availabilityColumns,
+      header: "Availability (%)",
+      columns: availabilityColumns.map(col => ({
+        ...col,
+        cell: ({ getValue }: { getValue: () => number | null }) => {
+          const value = getValue();
+          if (value === null || value === undefined) return "-";
+          
+          // Format dengan 2 decimal dan tambahkan warna berdasarkan nilai
+          const formatted = value.toFixed(2);
+          let colorClass = "";
+          
+          if (value >= 95) colorClass = "text-green-600 font-semibold";
+          else if (value >= 80) colorClass = "text-yellow-600 font-semibold";
+          else colorClass = "text-gray-600 font-semibold";
+          
+          return <span className={colorClass}>{formatted}</span>;
+        },
+        size: 100,
+      })),
     },
   ];
 
@@ -195,8 +199,7 @@ const StationAvailability = () => {
     <div className="min-h-screen flex flex-col bg-gray-50">
       <MainLayout>
         <div className="bg-white p-4 rounded-xl shadow mb-6">
-          {/* <h1 className="bg-gray-100 rounded-2xl text-center text-4xl font-bold my-4 mx-48 py-2 border-2"> */}
-          <h1 className="bg-gray-100 rounded-2xl text-center text-3xl font-bold my-4 mx-48 py-2">
+          <h1 className="bg-gray-100 rounded-2xl text-center text-4xl font-bold my-4 mx-48 py-2 border-2">
             Stasiun Availability
           </h1>
 

@@ -1,10 +1,10 @@
 import express, { json } from 'express';
 import cors from 'cors';
 import dashboardRoutes from './routes/dashboard.routes.js';
-
 import signalRoutes from "./routes/signal.routes.js";
 import latencyRoutes from "./routes/latency.routes.js";
 import qcRoutes from './routes/qc.routes.js';
+import availabilityRoutes from './routes/availability.routes.js';
 import pool, {testConnection} from './config/database.js' 
 import stasiunRoutes from './routes/stasiun.routes.js';
 
@@ -22,6 +22,7 @@ app.use(
 
 app.use('/api', dashboardRoutes);
 app.use('/api/qc', qcRoutes);
+app.use('/api/availability', availabilityRoutes);
 
 app.get('/api/stasiun', async (req, res) => {
   try {
