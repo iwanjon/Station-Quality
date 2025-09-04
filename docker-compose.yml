@@ -1,21 +1,57 @@
 version: '3.8'
 
 services:
-  redis:
-    image: redis:7-alpine
+  # MySQL dalam container (opsional, bisa dihapus kalau tetap pakai XAMPP)
+  db:
+    image: mysql:8
+    container_name: mysql-db
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: station_quality_control
+    volumes:
+      - db_data:/var/lib/mysql
+      
+  redis-cache:
+    image: redis:latest
     container_name: redis-cache
     ports:
       - "6379:6379"
 
-  server:
-    build: ./server
+  server-app:
+    build:
+      context: ./server 
+      dockerfile: Dockerfile
     container_name: server-app
+    command: npm run dev
     ports:
       - "5000:5000"
-    depends_on:
-      - redis
     environment:
-      REDIS_URL: redis://redis:6379
+      # Redis (koneksi ke service redis-cache)
+      REDIS_URL: redis://redis-cache:6379
+
+      # API eksternal (swagger)
+      API_BASE_URL: http://103.169.3.72:2107/api
+      API_KEY: DEBUG-BYPASS-TOKEN-2107
+
+      DB_HOST: db
+      DB_USER: root
+      DB_PASS: root  
+      DB_NAME: station_quality_control
+
+      # MYSQL_HOST: db
+      # MYSQL_USER: root
+      # MYSQL_PASS: admin
+      # MYSQL_NAME: station_quality_control
+
+      DB_MIGRATE: "true"
+      DB_SEED: "true"
+
+    depends_on:
+      - redis-cache
+      - db
+      # - db   # aktifkan kalau pakai MySQL container
     volumes:
       - ./server:/app
       - /app/node_modules
@@ -26,7 +62,10 @@ services:
     ports:
       - "5173:5173"
     depends_on:
-      - server
+      - server-app
     volumes:
       - ./client:/app
       - /app/node_modules
+
+volumes:
+  db_data:

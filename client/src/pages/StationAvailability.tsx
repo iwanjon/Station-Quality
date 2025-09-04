@@ -195,7 +195,8 @@ const StationAvailability = () => {
     <div className="min-h-screen flex flex-col bg-gray-50">
       <MainLayout>
         <div className="bg-white p-4 rounded-xl shadow mb-6">
-          <h1 className="bg-gray-100 rounded-2xl text-center text-4xl font-bold my-4 mx-48 py-2 border-2">
+          {/* <h1 className="bg-gray-100 rounded-2xl text-center text-4xl font-bold my-4 mx-48 py-2 border-2"> */}
+          <h1 className="bg-gray-100 rounded-2xl text-center text-3xl font-bold my-4 mx-48 py-2">
             Stasiun Availability
           </h1>
 
