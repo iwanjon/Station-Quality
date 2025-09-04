@@ -16,10 +16,10 @@ import { useNavigate } from "react-router-dom";
 import axiosServer from "../utilities/AxiosServer.tsx";
 
 export interface StationMetadata {
-  id_stasiun: number;
+  stasiun_id: number;
   net: string;
   id: number;
-  kode: string;
+  kode_stasiun: string;
   lintang: number;
   bujur: number;
   elevasi: number;
@@ -54,7 +54,7 @@ const StationQuality = () => {
   const stationPositions = stationData
     .filter((s) => s.lintang && s.bujur)
     .map((s) => ({
-      name: s.kode ?? "Unknown",
+      name: s.kode_stasiun ?? "Unknown",
       coords: [s.lintang, s.bujur] as [number, number],
     }));
 
@@ -78,8 +78,8 @@ const fetchStationMetadata = async () => {
   }, []);
 
   const columns: ColumnDef<StationMetadata>[] = [
-    { accessorKey: "id_stasiun", header: "No" },
-    { accessorKey: "kode", header: "Kode Stasiun" },
+    { accessorKey: "stasiun_id", header: "No" },
+    { accessorKey: "kode_stasiun", header: "Kode Stasiun" },
     { accessorKey: "lokasi", header: "Lokasi" },
     { accessorKey: "jaringan", header: "Jaringan" },
     { accessorKey: "status", header: "Status" },
@@ -93,7 +93,7 @@ const fetchStationMetadata = async () => {
         const navigate = useNavigate();
         return (
         <button
-          onClick={() => navigate(`/station/${row.original.kode}`)}  // konsisten dengan Router.tsx
+          onClick={() => navigate(`/station/${row.original.kode_stasiun}`)}  // konsisten dengan Router.tsx
           className="bg-black text-white rounded-lg px-3 py-1 hover:bg-gray-800"
         >
           <span className="text-sm">Lihat Detail</span>
