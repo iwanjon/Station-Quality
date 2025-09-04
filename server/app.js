@@ -1,10 +1,13 @@
 import express, { json } from 'express';
 import cors from 'cors';
 import dashboardRoutes from './routes/dashboard.routes.js';
+
 import signalRoutes from "./routes/signal.routes.js";
 import latencyRoutes from "./routes/latency.routes.js";
 import qcRoutes from './routes/qc.routes.js';
 import pool, {testConnection} from './config/database.js' 
+import stasiunRoutes from './routes/stasiun.routes.js';
+
 
 const app = express();
 app.use(json());
@@ -56,6 +59,17 @@ app.get('/api/stasiun', async (req, res) => {
     res.status(500).json({ error: 'Gagal ambil data stasiun' });
   }
 });
+// Tambahkan route stasiun
+// app.use('/api/stasiun', stasiunRoutes);
+// app.get('/api/stasiun', async (req, res) => {
+//   try {
+//     const [rows] = await pool.query('SELECT * FROM stasiun');
+//     res.json(rows);
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ error: 'Gagal ambil data stasiun' });
+//   }
+// });
 
 
 
