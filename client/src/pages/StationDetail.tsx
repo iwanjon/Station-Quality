@@ -5,7 +5,7 @@ import axiosServer from "../utilities/AxiosServer";
 import "keen-slider/keen-slider.min.css";
 import { useKeenSlider } from "keen-slider/react";
 import ChartSlide from "../components/ChartSlide";
-import LazyChartSection from "../components/LazyChartSection";
+// import LazyChartSection from "../components/LazyChartSection";f
 import dayjs from "dayjs";
 
 type QCData = {

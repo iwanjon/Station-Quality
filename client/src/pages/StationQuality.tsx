@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import MainLayout from "../layouts/MainLayout.tsx";
 import DataTable from "../components/DataTable.tsx";
 import TableFilters from "../components/TableFilters";
@@ -50,6 +50,7 @@ const StationQuality = () => {
   const [stationData, setStationData] = useState<StationMetadata[]>([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<Record<string, any>>({});
+  const [filterConfig, setFilterConfig] = useState<Record<string, FilterConfig>>({});
 
   const stationPositions = stationData
     .filter((s) => s.lintang && s.bujur)
@@ -72,6 +73,62 @@ const fetchStationMetadata = async () => {
   }
 };
 
+  useEffect(() => {
+    if (stationData.length > 0) {
+      const getUniqueOptions = (key: keyof StationMetadata): string[] => {
+        const allValues = stationData.map(item => item[key]);
+        return [...new Set(allValues)].filter(Boolean).sort() as string[];
+      };
+
+      const dynamicFilterConfig: Record<string, FilterConfig> = {
+        prioritas: {
+          label: "Prioritas",
+          type: "multi",
+          options: getUniqueOptions("prioritas"),
+        },
+        upt_penanggung_jawab: {
+          label: "UPT",
+          type: "multi",
+          options: getUniqueOptions("upt_penanggung_jawab"),
+        },
+        jaringan: {
+          label: "Jaringan",
+          type: "multi",
+          options: getUniqueOptions("jaringan"),
+        },
+        provinsi: {
+          label: "Provinsi",
+          type: "multi",
+          options: getUniqueOptions("provinsi"),
+        },
+      };
+      
+      setFilterConfig(dynamicFilterConfig);
+    }
+  }, [stationData]); // Dijalankan setiap kali stationData berubah
+
+  const filteredData = useMemo(() => {
+    // Jika tidak ada filter yang aktif, kembalikan semua data
+    const activeFilterKeys = Object.keys(filters).filter(key =>
+      filters[key] && filters[key].length > 0
+    );
+
+    if (activeFilterKeys.length === 0) {
+      return stationData;
+    }
+
+    // Lakukan proses filter
+    return stationData.filter(station => {
+      // 'every' berarti stasiun harus memenuhi SEMUA kriteria filter yang aktif
+      return activeFilterKeys.every(key => {
+        const filterValues = filters[key]; // Array, contoh: ['P1', 'P2']
+        const stationValue = station[key as keyof StationMetadata]; 
+        
+
+        return filterValues.includes(stationValue);
+      });
+    });
+  }, [stationData, filters]); 
 
   useEffect(() => {
     fetchStationMetadata();
@@ -102,30 +159,7 @@ const fetchStationMetadata = async () => {
       },
     },
   ];
-
-  const filterConfig: Record<string, FilterConfig> = {
-    prioritas: {
-      label: "Prioritas",
-      type: "multi",
-      options: ["P1", "P2", "P3"],
-    },
-    upt_penanggung_jawab: {
-      label: "UPT",
-      type: "multi",
-      options: ["UPT A", "UPT B", "UPT C"],
-    },
-    jaringan: {
-      label: "Jaringan",
-      type: "multi",
-      options: ["ALOPTAMA 2023", "LAINNYA"],
-    },
-    provinsi: {
-      label: "Provinsi",
-      type: "multi",
-      options: ["Aceh", "Sumut", "Sumbar"],
-    },
-  };
-
+  
   return (
     <div className="min-h-screen flex flex-col">
       <MainLayout className="flex-1 p-8 ml-16">
@@ -165,7 +199,8 @@ const fetchStationMetadata = async () => {
           </div>
 
           {loading && <p>Loading station data...</p>}
-          {!loading && <DataTable columns={columns} data={stationData} />}
+          {/* {!loading && <DataTable columns={columns} data={stationData} />} */}
+        {!loading && <DataTable columns={columns} data={filteredData} />} 
         </CardContainer>
       </MainLayout>
     </div>

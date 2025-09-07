@@ -71,8 +71,6 @@ app.get('/api/stasiun', async (req, res) => {
 //   }
 // });
 
-
-
 app.use("/api/qc", signalRoutes);
 app.use('/api', latencyRoutes);
 
