@@ -6,7 +6,7 @@ import latencyRoutes from "./routes/latency.routes.js";
 import qcRoutes from './routes/qc.routes.js';
 import availabilityRoutes from './routes/availability.routes.js'; 
 import stasiunRoutes from './routes/stasiun.routes.js';
-
+import pool, { testConnection } from './config/database.js';
 
 const app = express();
 app.use(json());
