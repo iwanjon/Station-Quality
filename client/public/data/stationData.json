@@ -6,7 +6,7 @@
     "lokasi": "Jakarta",
     "upt": "UPT 1",
     "jaringan": "Jaringan 1",
-    "availability": [1, 0, 1]
+    "availability": [1, 50, 1]
   },
   {
     "id": 2,

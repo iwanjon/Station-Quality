@@ -1,11 +1,10 @@
 import express, { json } from 'express';
 import cors from 'cors';
 import dashboardRoutes from './routes/dashboard.routes.js';
-
 import signalRoutes from "./routes/signal.routes.js";
 import latencyRoutes from "./routes/latency.routes.js";
 import qcRoutes from './routes/qc.routes.js';
-import pool, {testConnection} from './config/database.js' 
+import availabilityRoutes from './routes/availability.routes.js'; 
 import stasiunRoutes from './routes/stasiun.routes.js';
 
 
@@ -70,6 +69,10 @@ app.get('/api/stasiun', async (req, res) => {
 //     res.status(500).json({ error: 'Gagal ambil data stasiun' });
 //   }
 // });
+
+
+app.use('/api/availability', availabilityRoutes);
+// app.use('/api/stasiun', stasiunRoutes);
 
 app.use("/api/qc", signalRoutes);
 app.use('/api', latencyRoutes);
