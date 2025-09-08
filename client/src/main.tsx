@@ -11,8 +11,3 @@ createRoot(document.getElementById('root')!).render(
     </BrowserRouter>
   </StrictMode>,
 );
-
-  // <StrictMode>
-  //   <App />
-  // </StrictMode>,
-// )
