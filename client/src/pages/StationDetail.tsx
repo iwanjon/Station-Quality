@@ -118,7 +118,7 @@ const CHANNELS = ["SHE", "SHN", "SHZ"];
 const StationDetail = () => {
   const { stationCode } = useParams<{ stationCode: string }>();
   const [qcData, setQcData] = useState<QCData[]>([]);
-  const [latencyData, setLatencyData] = useState<Record<string, FormattedLatencyData[]>>({});
+  // const [latencyData, setLatencyData] = useState<Record<string, FormattedLatencyData[]>>({});
 
   useEffect(() => {
     window.scrollTo(0, 0);

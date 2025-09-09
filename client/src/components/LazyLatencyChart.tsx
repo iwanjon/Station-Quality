@@ -5,8 +5,6 @@ import { useKeenSlider } from "keen-slider/react";
 import axiosServer from "../utilities/AxiosServer";
 import dayjs from "dayjs";
 import ChartSlide from "./ChartSlide";
-// Pastikan Anda juga mengimpor ChartSection jika sudah dipisah
-// import ChartSection from "./ChartSection"; 
 
 // Tipe data yang dibutuhkan
 type FormattedLatencyData = {
@@ -118,17 +116,11 @@ const LazyLatencyChart = ({ stationCode }: { stationCode?: string }) => {
     }
   }, [inView, stationCode, isLoading]);
 
-  // ======================================================================
-  // KUNCI PERBAIKAN: useEffect ini yang hilang dari kode Anda.
-  // Pastikan ini ada di dalam komponen LazyLatencyChart.
-  // ======================================================================
   useEffect(() => {
-    // Setelah data latensi berubah (selesai dimuat),
-    // panggil method `update()` pada slider untuk me-render ulang.
     if (sliderLatency.current) {
       sliderLatency.current.update();
     }
-  }, [latencyData, sliderLatency]); // Dijalankan setiap kali data latensi berubah
+  }, [latencyData, sliderLatency]); 
 
   const slideClass = "keen-slider__slide flex-shrink-0 min-w-[0px] md:min-w-[0px] lg:min-w-[0px]";
   
