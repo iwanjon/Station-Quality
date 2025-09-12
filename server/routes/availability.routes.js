@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { getStationAvailabilityByCode } from '../controllers/stasiunAvailability.controller.js';
+import { getAllStationAvailability } from '../controllers/stasiunAvailability.controller.js';
 
 const router = Router();
 
-// GET /api/availability/:stationCode - Get availability data for specific station by code in date range
-router.get('/:stationCode', getStationAvailabilityByCode);
+// GET /api/availability - Get availability data for all stations from database
+router.get('/', getAllStationAvailability);
 
 export default router;
