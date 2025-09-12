@@ -4,6 +4,9 @@ import axiosServer from "../utilities/AxiosServer";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import marker2x from "leaflet/dist/images/marker-icon-2x.png";
+import marker from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import DataTable from "../components/DataTable";
 
 // Tipe data station
@@ -31,9 +34,14 @@ interface Stasiun {
   updated_at: string;
 }
 
-const stationIcon = new L.Icon({
-  iconUrl: '/broadcast-tower.png',
-  iconSize: [10, 10],
+// Fix Leaflet default markers
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: marker2x,
+  iconUrl: marker,
+  shadowUrl: markerShadow,
 });
 
 const StationMap = () => {
@@ -271,7 +279,6 @@ const StationMap = () => {
                   <Marker
                     key={station.stasiun_id}
                     position={[station.lintang, station.bujur]}
-                    icon={stationIcon}
                   >
                     <Popup>
                       <div>
