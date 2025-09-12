@@ -4,71 +4,108 @@ import TableFilters from "../components/TableFilters";
 import type { FilterConfig } from "../components/TableFilters";
 import DataTable from "../components/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
-import axiosInstance from "../utilities/Axios";
+import axiosInstance from "../utilities/AxiosServer";
 
+interface StationData {
+  timestamp: string;
+  availability: number | null;
+  note?: string;
+}
+
+interface APIResponse {
+  success: boolean;
+  message: string;
+  cached: boolean;
+  cache_key: string;
+  meta: {
+    stationCount: number;
+    totalRecords: number;
+    dateRange: {
+      start_date: string;
+      end_date: string;
+    };
+  };
+  data: Record<string, StationData[]>;
+}
+
+interface ProcessedStation {
+  id: number;
+  kode: string;
+  dailyData: StationData[]; // Raw daily data dari API
+  monthlyAverage: number | null; // Rata-rata keseluruhan untuk periode
+  totalDays: number;
+  availableDays: number;
+  missingDays: number;
+}
+
+// Legacy interface untuk kompatibilitas dengan komponen yang ada
 interface Station {
   id: number;
-  net: string;
   kode: string;
-  lokasi: string;
-  upt: string;
-  jaringan: string;
-  availability: number[];
+  monthlyAverage: number | null;
+  totalDays: number;
+  availableDays: number;
+  missingDays: number;
+  status: 'Good' | 'Poor' | 'No Data';
 }
 
-const monthNames = [
-  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
-];
+// Function untuk memproses response API dan menghitung statistik per stasiun
+function processStationData(apiResponse: APIResponse): ProcessedStation[] {
+  const stations: ProcessedStation[] = [];
+  let id = 1;
 
-function getDefaultMonthRange() {
-  const now = new Date();
-  const end = now.getMonth();
-  let start = end - 2;
-  if (start <= 0) start += 12;
-  return { start, end };
+  // Loop melalui setiap stasiun dalam data
+  Object.entries(apiResponse.data).forEach(([stationCode, stationData]) => {
+    // Filter data yang valid (availability tidak null)
+    const validData = stationData.filter(record => record.availability !== null);
+    const totalDays = stationData.length;
+    const availableDays = validData.length;
+    const missingDays = totalDays - availableDays;
+    
+    // Hitung rata-rata availability untuk periode
+    let monthlyAverage: number | null = null;
+    if (validData.length > 0) {
+      const sum = validData.reduce((acc, record) => acc + (record.availability || 0), 0);
+      monthlyAverage = Math.round((sum / validData.length) * 100) / 100;
+    }
+    
+    stations.push({
+      id: id++,
+      kode: stationCode,
+      dailyData: stationData,
+      monthlyAverage,
+      totalDays,
+      availableDays,
+      missingDays
+    });
+  });
+
+  return stations;
 }
 
-function MonthRangePicker({value, onChange,}: {
-    value: { start: number; end: number };
-    onChange: (range: { start: number; end: number }) => void;
-  }){
-    return (
-      <div className="flex gap-2 items-center mb-4">
-        <label>Rentang Bulan:</label>
-        <select
-          value={value?.start ?? 1}
-          onChange={(e) => {
-            const newStart = Number(e.target.value);
-            const currentEnd = value?.end ?? 12;
-            onChange({ start: newStart, end: newStart > currentEnd ? newStart : currentEnd });
-          }}
-          className="border p-1 rounded"
-        >
-          {monthNames.map((name, i) => (
-            <option key={i} value={i + 1}>
-              {name}
-            </option>
-          ))}
-        </select>
-        <span>s/d</span>
-        <select
-          value={value?.end ?? 12}
-          onChange={(e) => {
-            const newEnd = Number(e.target.value);
-            const currentStart = value?.start ?? 1;
-            onChange({ start: currentStart, end: newEnd > currentStart ? newEnd : currentStart });
-          }}
-          className="border p-1 rounded"
-        >
-          {monthNames.map((name, i) => (
-            <option key={i} value={i + 1}>
-              {name}
-            </option>
-          ))}
-        </select>
-      </div>
-    );
+// Function untuk mengkonversi ProcessedStation ke format Station
+function convertToStationFormat(processedStations: ProcessedStation[]): Station[] {
+  return processedStations.map(station => {
+    // Tentukan status berdasarkan availability
+    let status: 'Good' | 'Poor' | 'No Data';
+    if (station.monthlyAverage === null) {
+      status = 'No Data';
+    } else if (station.monthlyAverage >= 80) {
+      status = 'Good';
+    } else {
+      status = 'Poor';
+    }
+
+    return {
+      id: station.id,
+      kode: station.kode,
+      monthlyAverage: station.monthlyAverage,
+      totalDays: station.totalDays,
+      availableDays: station.availableDays,
+      missingDays: station.missingDays,
+      status
+    };
+  });
 }
 
 function YearPicker({
@@ -102,9 +139,11 @@ function YearPicker({
 const StationAvailability = () => {
   const [data, setData] = useState<Station[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMonthRange, setSelectedMonthRange] = useState<{ start: number; end: number }>(
-    getDefaultMonthRange()
-  );
+  const [apiInfo, setApiInfo] = useState<{
+    cached: boolean;
+    totalStations: number;
+    dateRange: string;
+  } | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [filterConfig, setFilterConfig] = useState<Record<string, FilterConfig>>({});
   const [filters, setFilters] = useState<Record<string, string[]>>({
@@ -112,29 +151,64 @@ const StationAvailability = () => {
   });
 
   useEffect(() => {
-    // Fetch data saat komponen pertama kali dimuat atau saat bulan/tahun berubah
+    // Fetch data dari API availability baru
     setLoading(true);
+    
+    // Generate date range untuk tahun yang dipilih (Januari - Desember)
+    const startDate = new Date(selectedYear, 0, 1); // 1 Januari
+    const endDate = new Date(selectedYear, 11, 31); // 31 Desember
+    
+    const start_date = startDate.toISOString().split('T')[0];
+    const end_date = endDate.toISOString().split('T')[0];
+    
     axiosInstance
-      .get("/data/stationData.json", {
+      .get("/api/station/availability", {
         params: {
-          startMonth: selectedMonthRange.start,
-          endMonth: selectedMonthRange.end,
-          year: selectedYear, // kirim tahun
+          start_date,
+          end_date
         },
       })
       .then((res) => {
-        const stations: Station[] = res.data;
-        setData(stations);
+        const apiResponse: APIResponse = res.data;
+        
+        if (apiResponse.success) {
+          // Process data untuk menghitung statistik per stasiun
+          const processedStations = processStationData(apiResponse);
+          
+          // Konversi ke format Station untuk tabel
+          const stations = convertToStationFormat(processedStations);
+          
+          setData(stations);
 
-        const uniqueKode = Array.from(new Set(stations.map(s => s.kode))).sort();
-
-        setFilterConfig({
-          kode: { label: "Kode Stasiun", type: "multi", options: uniqueKode },
-        });
+          // Setup filter config
+          const uniqueKode = Array.from(new Set(stations.map((s: Station) => s.kode))).sort();
+          setFilterConfig({
+            kode: { label: "Kode Stasiun", type: "multi", options: uniqueKode },
+          });
+          
+          // Set API info untuk display
+          setApiInfo({
+            cached: apiResponse.cached,
+            totalStations: apiResponse.meta.stationCount,
+            dateRange: `${apiResponse.meta.dateRange.start_date} to ${apiResponse.meta.dateRange.end_date}`
+          });
+          
+          // Log hasil untuk debugging
+          console.log("📊 Station Availability Summary:");
+          processedStations.forEach((station: ProcessedStation) => {
+            console.log(`${station.kode}: ${station.monthlyAverage}% (${station.availableDays}/${station.totalDays} days)`);
+          });
+        } else {
+          console.error("API Error:", apiResponse.message);
+          setData([]);
+        }
       })
-      .catch((err) => console.error(err))
+      .catch((err) => {
+        console.error("Request Error:", err);
+        setData([]);
+      })
       .finally(() => setLoading(false));
-  }, [selectedMonthRange, selectedYear]); // fetch ulang jika bulan atau tahun berubah
+  }, [selectedYear]);
 
   const filteredData = useMemo(() => {
     return data.filter((item) => {
@@ -143,55 +217,97 @@ const StationAvailability = () => {
     });
   }, [filters, data]);
 
-  const availabilityColumns = useMemo(() => {
-    if (!selectedMonthRange) return [];
-
-    let count = selectedMonthRange.end - selectedMonthRange.start + 1;
-    if (count <= 0) count += 12;
-
-    return Array.from({ length: count }).map((_, idx) => {
-      const monthIndex = (selectedMonthRange.start - 1 + idx) % 12;
-      return {
-        header: monthNames[monthIndex],
-        accessorFn: (row: Station) => row.availability[idx] ?? null,
-        id: `availability-${monthIndex}`,
-      };
-    });
-  }, [selectedMonthRange]);
-
   const columns: ColumnDef<Station>[] = [
     { 
       header: "ID", 
       accessorKey: "id", 
-      enableSorting: false,
+      enableSorting: true,
       size: 80,
     },
     { 
       header: "Kode Stasiun", 
       accessorKey: "kode", 
-      enableSorting: false,
-      size: 120,
+      enableSorting: true,
+      size: 150,
     },
     {
-      header: "Availability (%)",
-      columns: availabilityColumns.map(col => ({
-        ...col,
-        cell: ({ getValue }: { getValue: () => number | null }) => {
-          const value = getValue();
-          if (value === null || value === undefined) return "-";
-          
-          // Format dengan 2 decimal dan tambahkan warna berdasarkan nilai
-          const formatted = value.toFixed(2);
-          let colorClass = "";
-          
-          if (value >= 95) colorClass = "text-green-600 font-semibold";
-          else if (value >= 80) colorClass = "text-yellow-600 font-semibold";
-          else colorClass = "text-gray-600 font-semibold";
-          
-          return <span className={colorClass}>{formatted}</span>;
-        },
-        size: 100,
-      })),
+      header: "Rata-rata Availability (%)",
+      accessorKey: "monthlyAverage",
+      enableSorting: true,
+      size: 180,
+      cell: ({ getValue }) => {
+        const value = getValue() as number | null;
+        if (value === null || value === undefined) return "-";
+        
+        // Format dengan 2 decimal dan tambahkan warna berdasarkan nilai
+        const formatted = value.toFixed(2);
+        let colorClass = "";
+        
+        if (value >= 95) colorClass = "text-green-600 font-semibold";
+        else if (value >= 80) colorClass = "text-yellow-600 font-semibold";
+        else colorClass = "text-red-600 font-semibold";
+        
+        return <span className={colorClass}>{formatted}%</span>;
+      },
+    },
+    {
+      header: "Total Hari",
+      accessorKey: "totalDays",
+      enableSorting: true,
+      size: 100,
+    },
+    {
+      header: "Hari Tersedia",
+      accessorKey: "availableDays",
+      enableSorting: true,
+      size: 120,
+      cell: ({ getValue }) => {
+        const value = getValue() as number;
+        return <span className="text-green-600 font-semibold">{value}</span>;
+      },
+    },
+    {
+      header: "Hari Hilang",
+      accessorKey: "missingDays",
+      enableSorting: true,
+      size: 120,
+      cell: ({ getValue }) => {
+        const value = getValue() as number;
+        const colorClass = value > 0 ? "text-red-600" : "text-gray-600";
+        return <span className={`${colorClass} font-semibold`}>{value}</span>;
+      },
+    },
+    {
+      header: "Status",
+      accessorKey: "status",
+      enableSorting: true,
+      size: 100,
+      cell: ({ getValue }) => {
+        const status = getValue() as 'Good' | 'Poor' | 'No Data';
+        let colorClass = "";
+        let icon = "";
+        
+        switch (status) {
+          case 'Good':
+            colorClass = "bg-green-100 text-green-800";
+            icon = "✅";
+            break;
+          case 'Poor':
+            colorClass = "bg-yellow-100 text-yellow-800";
+            icon = "⚠️";
+            break;
+          case 'No Data':
+            colorClass = "bg-red-100 text-red-800";
+            icon = "❌";
+            break;
+        }
+        
+        return (
+          <span className={`${colorClass} px-2 py-1 rounded-full text-xs font-semibold`}>
+            {icon} {status}
+          </span>
+        );
+      },
     },
   ];
 
@@ -205,8 +321,22 @@ const StationAvailability = () => {
 
           <div className="flex gap-4 items-center flex-wrap mb-4">
             <YearPicker value={selectedYear} onChange={setSelectedYear} />
-            <MonthRangePicker value={selectedMonthRange} onChange={setSelectedMonthRange} />
           </div>
+          
+          {/* API Info Display */}
+          {apiInfo && (
+            <div className="bg-blue-50 p-3 rounded-lg mb-4 text-sm">
+              <div className="flex gap-4 items-center flex-wrap">
+                <span className="font-medium">Data Status:</span>
+                <span className={`px-2 py-1 rounded ${apiInfo.cached ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                  {apiInfo.cached ? '📋 From Cache' : '🌐 Fresh Data'}
+                </span>
+                <span>📊 {apiInfo.totalStations} Stations</span>
+                <span>📅 {apiInfo.dateRange}</span>
+              </div>
+            </div>
+          )}
+          
           {Object.keys(filterConfig).length > 0 && (
             <TableFilters
               filters={filters}
