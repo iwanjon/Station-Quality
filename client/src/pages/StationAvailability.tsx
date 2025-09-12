@@ -32,7 +32,7 @@ interface ProcessedStation {
   id: number;
   kode: string;
   dailyData: StationData[]; // Raw daily data dari API
-  monthlyAverage: number | null; // Rata-rata keseluruhan untuk periode
+  monthlyData: Record<string, number | null>; // Data per bulan: { "2025-07": 85.5, "2025-08": 92.3 }
   totalDays: number;
   availableDays: number;
   missingDays: number;
@@ -42,7 +42,7 @@ interface ProcessedStation {
 interface Station {
   id: number;
   kode: string;
-  monthlyAverage: number | null;
+  monthlyData: Record<string, number | null>; // Data per bulan
   totalDays: number;
   availableDays: number;
   missingDays: number;
@@ -50,7 +50,7 @@ interface Station {
 }
 
 // Function untuk memproses response API dan menghitung statistik per stasiun
-function processStationData(apiResponse: APIResponse): ProcessedStation[] {
+function processStationData(apiResponse: APIResponse, selectedRange: { startYear: number; startMonth: number; endYear: number; endMonth: number }): ProcessedStation[] {
   const stations: ProcessedStation[] = [];
   let id = 1;
 
@@ -62,18 +62,41 @@ function processStationData(apiResponse: APIResponse): ProcessedStation[] {
     const availableDays = validData.length;
     const missingDays = totalDays - availableDays;
     
-    // Hitung rata-rata availability untuk periode
-    let monthlyAverage: number | null = null;
-    if (validData.length > 0) {
-      const sum = validData.reduce((acc, record) => acc + (record.availability || 0), 0);
-      monthlyAverage = Math.round((sum / validData.length) * 100) / 100;
+    // Group data by month and calculate monthly averages
+    const monthlyData: Record<string, number | null> = {};
+    
+    // Generate all months in the selected range
+    const currentDate = new Date(selectedRange.startYear, selectedRange.startMonth, 1);
+    const endDate = new Date(selectedRange.endYear, selectedRange.endMonth, 1);
+    
+    while (currentDate <= endDate) {
+      const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+      
+      // Filter data untuk bulan ini
+      const monthData = stationData.filter(record => {
+        const recordDate = new Date(record.timestamp);
+        return recordDate.getFullYear() === currentDate.getFullYear() && 
+               recordDate.getMonth() === currentDate.getMonth();
+      });
+      
+      // Hitung rata-rata untuk bulan ini
+      const validMonthData = monthData.filter(record => record.availability !== null);
+      if (validMonthData.length > 0) {
+        const sum = validMonthData.reduce((acc, record) => acc + (record.availability || 0), 0);
+        monthlyData[monthKey] = Math.round((sum / validMonthData.length) * 100) / 100;
+      } else {
+        monthlyData[monthKey] = null;
+      }
+      
+      // Next month
+      currentDate.setMonth(currentDate.getMonth() + 1);
     }
     
     stations.push({
       id: id++,
       kode: stationCode,
       dailyData: stationData,
-      monthlyAverage,
+      monthlyData,
       totalDays,
       availableDays,
       missingDays
@@ -86,20 +109,25 @@ function processStationData(apiResponse: APIResponse): ProcessedStation[] {
 // Function untuk mengkonversi ProcessedStation ke format Station
 function convertToStationFormat(processedStations: ProcessedStation[]): Station[] {
   return processedStations.map(station => {
-    // Tentukan status berdasarkan availability
+    // Tentukan status berdasarkan availability (ambil rata-rata dari semua bulan)
+    const monthlyValues = Object.values(station.monthlyData).filter(val => val !== null) as number[];
     let status: 'Good' | 'Poor' | 'No Data';
-    if (station.monthlyAverage === null) {
+    
+    if (monthlyValues.length === 0) {
       status = 'No Data';
-    } else if (station.monthlyAverage >= 80) {
-      status = 'Good';
     } else {
-      status = 'Poor';
+      const overallAverage = monthlyValues.reduce((sum, val) => sum + val, 0) / monthlyValues.length;
+      if (overallAverage >= 80) {
+        status = 'Good';
+      } else {
+        status = 'Poor';
+      }
     }
 
     return {
       id: station.id,
       kode: station.kode,
-      monthlyAverage: station.monthlyAverage,
+      monthlyData: station.monthlyData,
       totalDays: station.totalDays,
       availableDays: station.availableDays,
       missingDays: station.missingDays,
@@ -108,32 +136,23 @@ function convertToStationFormat(processedStations: ProcessedStation[]): Station[
   });
 }
 
-function YearPicker({
-  value,
-  onChange,
-}: {
-  value: number;
-  onChange: (year: number) => void;
-}) {
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 5 }, (_, i) => currentYear - i); // 5 tahun terakhir
-
-  return (
-    <div className="flex gap-2 items-center mb-4">
-      <label>Tahun:</label>
-      <select
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="border p-1 rounded"
-      >
-        {years.map((year) => (
-          <option key={year} value={year}>
-            {year}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
+// Function untuk menentukan kategori availability berdasarkan rata-rata keseluruhan
+function getAvailabilityCategory(station: Station): string {
+  const monthlyValues = Object.values(station.monthlyData).filter(val => val !== null) as number[];
+  
+  if (monthlyValues.length === 0) {
+    return 'No Data';
+  }
+  
+  const overallAverage = monthlyValues.reduce((sum, val) => sum + val, 0) / monthlyValues.length;
+  
+  if (overallAverage < 50) {
+    return 'Rendah (< 50%)';
+  } else if (overallAverage >= 50 && overallAverage < 90) {
+    return 'Sedang (50% - 90%)';
+  } else {
+    return 'Tinggi (90% - 100%)';
+  }
 }
 
 const StationAvailability = () => {
@@ -144,25 +163,64 @@ const StationAvailability = () => {
     totalStations: number;
     dateRange: string;
   } | null>(null);
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<{ startYear: number; startMonth: number; endYear: number; endMonth: number }>(() => {
+    const today = new Date();
+    let endYear = today.getFullYear();
+    let endMonth = today.getMonth() - 1; // Bulan lalu (0-based)
+    if (endMonth < 0) {
+      endMonth = 11;
+      endYear -= 1;
+    }
+    // Start: 2 bulan sebelum endMonth
+    let startMonth = endMonth - 2;
+    let startYear = endYear;
+    if (startMonth < 0) {
+      startMonth += 12;
+      startYear -= 1;
+    }
+    return {
+      startYear,
+      startMonth,
+      endYear,
+      endMonth
+    };
+  });
   const [filterConfig, setFilterConfig] = useState<Record<string, FilterConfig>>({});
   const [filters, setFilters] = useState<Record<string, string[]>>({
     kode: [],
+    availabilityCategory: [],
   });
+
+  // Helper function untuk format range bulan
+  const getMonthRangeText = () => {
+    const monthNames = [
+      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ];
+    
+    const startMonthText = `${monthNames[selectedMonth.startMonth]} ${selectedMonth.startYear}`;
+    const endMonthText = `${monthNames[selectedMonth.endMonth]} ${selectedMonth.endYear}`;
+    
+    if (selectedMonth.startYear === selectedMonth.endYear && selectedMonth.startMonth === selectedMonth.endMonth) {
+      return startMonthText; // Hanya satu bulan
+    } else {
+      return `${startMonthText} - ${endMonthText}`; // Range bulan
+    }
+  };
 
   useEffect(() => {
     // Fetch data dari API availability baru
     setLoading(true);
     
-    // Generate date range untuk tahun yang dipilih (Januari - Desember)
-    const startDate = new Date(selectedYear, 0, 1); // 1 Januari
-    const endDate = new Date(selectedYear, 11, 31); // 31 Desember
+    // Gunakan range bulan yang dipilih
+    const firstDayOfRange = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
+    const lastDayOfRange = new Date(selectedMonth.endYear, selectedMonth.endMonth + 1, 0);
     
-    const start_date = startDate.toISOString().split('T')[0];
-    const end_date = endDate.toISOString().split('T')[0];
+    const start_date = firstDayOfRange.toISOString().split('T')[0];
+    const end_date = lastDayOfRange.toISOString().split('T')[0];
     
     axiosInstance
-      .get("/api/station/availability", {
+      .get("/api/availability", {
         params: {
           start_date,
           end_date
@@ -173,7 +231,7 @@ const StationAvailability = () => {
         
         if (apiResponse.success) {
           // Process data untuk menghitung statistik per stasiun
-          const processedStations = processStationData(apiResponse);
+          const processedStations = processStationData(apiResponse, selectedMonth);
           
           // Konversi ke format Station untuk tabel
           const stations = convertToStationFormat(processedStations);
@@ -182,8 +240,11 @@ const StationAvailability = () => {
 
           // Setup filter config
           const uniqueKode = Array.from(new Set(stations.map((s: Station) => s.kode))).sort();
+          const availabilityCategories = ['Rendah (< 50%)', 'Sedang (50% - 90%)', 'Tinggi (90% - 100%)', 'No Data'];
+          
           setFilterConfig({
             kode: { label: "Kode Stasiun", type: "multi", options: uniqueKode },
+            availabilityCategory: { label: "Kategori Availability", type: "multi", options: availabilityCategories },
           });
           
           // Set API info untuk display
@@ -191,12 +252,6 @@ const StationAvailability = () => {
             cached: apiResponse.cached,
             totalStations: apiResponse.meta.stationCount,
             dateRange: `${apiResponse.meta.dateRange.start_date} to ${apiResponse.meta.dateRange.end_date}`
-          });
-          
-          // Log hasil untuk debugging
-          console.log("📊 Station Availability Summary:");
-          processedStations.forEach((station: ProcessedStation) => {
-            console.log(`${station.kode}: ${station.monthlyAverage}% (${station.availableDays}/${station.totalDays} days)`);
           });
         } else {
           console.error("API Error:", apiResponse.message);
@@ -208,150 +263,190 @@ const StationAvailability = () => {
         setData([]);
       })
       .finally(() => setLoading(false));
-  }, [selectedYear]);
+  }, [selectedMonth]);
 
   const filteredData = useMemo(() => {
     return data.filter((item) => {
       if (filters.kode.length > 0 && !filters.kode.includes(item.kode)) return false;
+      
+      // Filter berdasarkan kategori availability
+      if (filters.availabilityCategory.length > 0) {
+        const category = getAvailabilityCategory(item);
+        if (!filters.availabilityCategory.includes(category)) return false;
+      }
+      
       return true;
     });
   }, [filters, data]);
 
-  const columns: ColumnDef<Station>[] = [
-    { 
-      header: "ID", 
-      accessorKey: "id", 
-      enableSorting: true,
-      size: 80,
-    },
-    { 
-      header: "Kode Stasiun", 
-      accessorKey: "kode", 
-      enableSorting: true,
-      size: 150,
-    },
-    {
-      header: "Rata-rata Availability (%)",
-      accessorKey: "monthlyAverage",
-      enableSorting: true,
-      size: 180,
-      cell: ({ getValue }) => {
-        const value = getValue() as number | null;
-        if (value === null || value === undefined) return "-";
-        
-        // Format dengan 2 decimal dan tambahkan warna berdasarkan nilai
-        const formatted = value.toFixed(2);
-        let colorClass = "";
-        
-        if (value >= 95) colorClass = "text-green-600 font-semibold";
-        else if (value >= 80) colorClass = "text-yellow-600 font-semibold";
-        else colorClass = "text-red-600 font-semibold";
-        
-        return <span className={colorClass}>{formatted}%</span>;
-      },
-    },
-    {
-      header: "Total Hari",
-      accessorKey: "totalDays",
-      enableSorting: true,
-      size: 100,
-    },
-    {
-      header: "Hari Tersedia",
-      accessorKey: "availableDays",
-      enableSorting: true,
-      size: 120,
-      cell: ({ getValue }) => {
-        const value = getValue() as number;
-        return <span className="text-green-600 font-semibold">{value}</span>;
-      },
-    },
-    {
-      header: "Hari Hilang",
-      accessorKey: "missingDays",
-      enableSorting: true,
-      size: 120,
-      cell: ({ getValue }) => {
-        const value = getValue() as number;
-        const colorClass = value > 0 ? "text-red-600" : "text-gray-600";
-        return <span className={`${colorClass} font-semibold`}>{value}</span>;
-      },
-    },
-    {
-      header: "Status",
-      accessorKey: "status",
-      enableSorting: true,
-      size: 100,
-      cell: ({ getValue }) => {
-        const status = getValue() as 'Good' | 'Poor' | 'No Data';
-        let colorClass = "";
-        let icon = "";
-        
-        switch (status) {
-          case 'Good':
-            colorClass = "bg-green-100 text-green-800";
-            icon = "✅";
-            break;
-          case 'Poor':
-            colorClass = "bg-yellow-100 text-yellow-800";
-            icon = "⚠️";
-            break;
-          case 'No Data':
-            colorClass = "bg-red-100 text-red-800";
-            icon = "❌";
-            break;
-        }
-        
-        return (
-          <span className={`${colorClass} px-2 py-1 rounded-full text-xs font-semibold`}>
-            {icon} {status}
-          </span>
-        );
-      },
-    },
-  ];
+  // Helper function untuk generate kolom dinamis berdasarkan range bulan
+  const generateColumns = (): ColumnDef<Station>[] => {
+    const monthNames = [
+      "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+      "Jul", "Agu", "Sep", "Okt", "Nov", "Des"
+    ];
+
+    const columns: ColumnDef<Station>[] = [
+      { 
+        header: "Kode Stasiun", 
+        accessorKey: "kode", 
+        enableSorting: true,
+      }
+    ];
+
+    // Generate kolom untuk setiap bulan dalam range
+    const currentDate = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
+    const endDate = new Date(selectedMonth.endYear, selectedMonth.endMonth, 1);
+    
+    while (currentDate <= endDate) {
+      const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+      const monthLabel = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+      
+      columns.push({
+        header: monthLabel,
+        accessorKey: `monthlyData.${monthKey}`,
+        enableSorting: true,
+        cell: ({ row }) => {
+          const station = row.original;
+          const value = station.monthlyData[monthKey];
+          if (value === null || value === undefined) return "-";
+          
+          // Format dengan 2 decimal dan tambahkan warna berdasarkan nilai
+          const formatted = value.toFixed(2);
+          let colorClass = "";
+          
+          if (value >= 95) colorClass = "text-green-600 font-semibold";
+          else if (value >= 80) colorClass = "text-yellow-600 font-semibold";
+          else colorClass = "text-red-600 font-semibold";
+          
+          return <span className={colorClass}>{formatted}%</span>;
+        },
+      });
+      
+      // Next month
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+
+    return columns;
+  };
+
+  const columns = generateColumns();
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <MainLayout>
         <div className="bg-white p-4 rounded-xl shadow mb-6">
-          <h1 className="bg-gray-100 rounded-2xl text-center text-4xl font-bold my-4 mx-48 py-2 border-2">
-            Stasiun Availability
+          <h1 className="bg-gray-100 rounded-2xl text-center text-3xl font-bold my-3 mx-32 py-2 border-2">
+            Stasiun Availability - {getMonthRangeText()}
           </h1>
 
-          <div className="flex gap-4 items-center flex-wrap mb-4">
-            <YearPicker value={selectedYear} onChange={setSelectedYear} />
-          </div>
-          
-          {/* API Info Display */}
-          {apiInfo && (
-            <div className="bg-blue-50 p-3 rounded-lg mb-4 text-sm">
-              <div className="flex gap-4 items-center flex-wrap">
-                <span className="font-medium">Data Status:</span>
-                <span className={`px-2 py-1 rounded ${apiInfo.cached ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
-                  {apiInfo.cached ? '📋 From Cache' : '🌐 Fresh Data'}
-                </span>
-                <span>📊 {apiInfo.totalStations} Stations</span>
-                <span>📅 {apiInfo.dateRange}</span>
+          {/* Compact Filter Section */}
+          <div className="bg-gray-50 p-3 rounded-lg mb-4">
+            <div className="flex gap-6 items-center justify-between flex-wrap">
+              {/* Month Range Picker - More Compact */}
+              <div className="flex gap-3 items-center flex-wrap">
+                <div className="flex gap-1 items-center">
+                  <label className="text-sm font-medium">Dari:</label>
+                  <select
+                    value={`${selectedMonth.startYear}-${selectedMonth.startMonth}`}
+                    onChange={(e) => {
+                      const [year, month] = e.target.value.split('-').map(Number);
+                      setSelectedMonth({ ...selectedMonth, startYear: year, startMonth: month });
+                    }}
+                    className="border px-2 py-1 rounded text-sm"
+                  >
+                    {(() => {
+                      const currentDate = new Date();
+                      const currentYear = currentDate.getFullYear();
+                      const currentMonth = currentDate.getMonth();
+                      const months = [];
+                      const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+                      
+                      for (let year = currentYear; year >= currentYear - 1; year--) {
+                        const maxMonth = year === currentYear ? currentMonth - 1 : 11;
+                        for (let month = maxMonth; month >= 0; month--) {
+                          months.push({ year, month });
+                        }
+                      }
+                      
+                      return months.map(({ year, month }) => (
+                        <option key={`start-${year}-${month}`} value={`${year}-${month}`}>
+                          {monthNames[month]} {year}
+                        </option>
+                      ));
+                    })()}
+                  </select>
+                </div>
+                
+                <div className="flex gap-1 items-center">
+                  <label className="text-sm font-medium">Sampai:</label>
+                  <select
+                    value={`${selectedMonth.endYear}-${selectedMonth.endMonth}`}
+                    onChange={(e) => {
+                      const [year, month] = e.target.value.split('-').map(Number);
+                      setSelectedMonth({ ...selectedMonth, endYear: year, endMonth: month });
+                    }}
+                    className="border px-2 py-1 rounded text-sm"
+                  >
+                    {(() => {
+                      const currentDate = new Date();
+                      const currentYear = currentDate.getFullYear();
+                      const currentMonth = currentDate.getMonth();
+                      const months = [];
+                      const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+                      
+                      for (let year = currentYear; year >= currentYear - 1; year--) {
+                        const maxMonth = year === currentYear ? currentMonth - 1 : 11;
+                        for (let month = maxMonth; month >= 0; month--) {
+                          months.push({ year, month });
+                        }
+                      }
+                      
+                      return months.map(({ year, month }) => (
+                        <option key={`end-${year}-${month}`} value={`${year}-${month}`}>
+                          {monthNames[month]} {year}
+                        </option>
+                      ));
+                    })()}
+                  </select>
+                </div>
               </div>
+
+              {/* API Info - Compact */}
+              {apiInfo && (
+                <div className="flex gap-3 items-center flex-wrap text-xs">
+                  <span className={`px-2 py-1 rounded ${apiInfo.cached ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                    {apiInfo.cached ? '📋 Cache' : '🌐 Fresh'}
+                  </span>
+                  <span className="text-gray-600">📊 {apiInfo.totalStations} Stations</span>
+                  <span className="text-gray-600">📅 {apiInfo.dateRange}</span>
+                </div>
+              )}
             </div>
-          )}
-          
-          {Object.keys(filterConfig).length > 0 && (
-            <TableFilters
-              filters={filters}
-              setFilters={setFilters}
-              filterConfig={filterConfig}
-              closeOnClickOutside={true}
-            />
-          )}
+            
+            {/* Table Filters - Compact */}
+            {Object.keys(filterConfig).length > 0 && (
+              <div className="mt-2 pt-2 border-t border-gray-200">
+                <TableFilters
+                  filters={filters}
+                  setFilters={setFilters}
+                  filterConfig={filterConfig}
+                  closeOnClickOutside={true}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl shadow">
+        <div className="bg-white p-2 rounded-xl shadow">
           {loading ? (
-            <p className="text-center text-gray-500">Loading data...</p>
+            <p className="text-center text-gray-500 text-sm py-4">Loading data...</p>
           ) : (
-            <DataTable columns={columns} data={filteredData} />
+            <div className="overflow-x-auto text-xs">
+              <div className="min-w-full">
+                <DataTable columns={columns} data={filteredData} />
+              </div>
+            </div>
           )}
         </div>
       </MainLayout>
