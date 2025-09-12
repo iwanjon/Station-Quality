@@ -75,4 +75,31 @@ export async function getData() {
   return response.data;
 }
 
+export async function fetchQCSummary(date) {
+  try {
+    const url = `${API_BASE_URL}/qc/data/summary/${date}`;
+    console.log("🔎 Fetching QC Summary from:", url);
+
+    const response = await axios.get(url, {
+      headers: {
+        Authorization: `Bearer ${API_KEY}`,
+        Accept: "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (err) {
+    if (err.response) {
+      console.error("❌ API Error:", err.response.status, err.response.data);
+    } else if (err.request) {
+      console.error("❌ No response from API:", err.request);
+    } else {
+      console.error("❌ Request setup error:", err.message);
+    }
+    throw err;
+  }
+}
+
+
+
 // module.exports = { getData };

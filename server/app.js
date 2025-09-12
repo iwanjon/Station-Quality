@@ -74,7 +74,8 @@ app.get('/api/stasiun', async (req, res) => {
 app.use('/api/availability', availabilityRoutes);
 // app.use('/api/stasiun', stasiunRoutes);
 
-app.use("/api/qc", signalRoutes);
+// app.use("/api/qc", signalRoutes);
+app.use("/api/signal", signalRoutes);
 app.use('/api', latencyRoutes);
 
 export default app;

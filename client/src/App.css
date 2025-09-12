@@ -1,7 +1,1 @@
-/* fade-in tooltip only when sidebar is collapsed */
-.tooltip {
-  pointer-events: none;
-  transition: opacity 0.2s;
-  white-space: nowrap;
-  z-index: 10;
-}
+

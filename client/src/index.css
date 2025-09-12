@@ -1,6 +1,23 @@
-@import "tailwindcss";@import "leaflet/dist/leaflet.css";
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
 
-/* Pastikan elemen map di bawah sidebar */
+@import "tailwindcss";
+/* @import "leaflet/dist/leaflet.css"; */
+
+/* @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap'); */
+
+body {
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* fade-in tooltip only when sidebar is collapsed */
+.tooltip {
+  pointer-events: none;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+/* CSS khusus kamu di bawah */
 .leaflet-container {
   position: relative;
   z-index: 0 !important;
@@ -13,3 +30,4 @@
 .leaflet-pane {
   z-index: 0 !important;
 }
+

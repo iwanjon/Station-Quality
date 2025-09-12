@@ -1,7 +1,7 @@
 // // routes/qc.routes.js
 import { Router } from 'express';
 import { cached } from '../utils/cacheHelper.js'; 
-import { fetchQCDetail } from '../services/externalApi.js'; 
+import { fetchQCDetail, fetchQCSummary  } from '../services/externalApi.js'; 
 import dayjs from "dayjs";
 
 const router = Router();
@@ -64,6 +64,22 @@ router.get("/data/detail/:stationId/:date", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch QC detail" });
   }
 });
+
+router.get("/summary/:date", async (req, res) => {
+  const { date } = req.params; // ✅ hanya ambil date
+  const cacheKey = `qc-summary:${date}`;
+
+  try {
+    const data = await cached(cacheKey, 60 * 60, () =>
+      fetchQCSummary(date) // ✅ kirim cuma date
+    );
+    res.json(data);
+  } catch (err) {
+    console.error("Error in /summary:", err);
+    res.status(500).json({ error: "Failed to fetch QC summary" });
+  }
+});
+
 
 export default router;
 
