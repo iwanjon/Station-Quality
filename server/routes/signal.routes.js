@@ -20,7 +20,7 @@ router.get("/data/signal/:date/:code/:channel", async (req, res) => {
       }
     );
 
-    // Cek content-type (misalnya image/png atau image/jpeg)
+    // Cek content-type (image/png atau image/jpeg)
     const contentType = response.headers["content-type"] || "image/png";
 
     res.set("Content-Type", contentType);
@@ -29,14 +29,25 @@ router.get("/data/signal/:date/:code/:channel", async (req, res) => {
     console.error("Error fetching signal image:", err.message);
 
     if (err.response) {
-      // kalau API eksternal kasih error
-      return res
-        .status(err.response.status)
-        .json(err.response.data || { error: "Failed to fetch signal image" });
+      try {
+        // 1. Konversi ArrayBuffer error ke string
+        const errorString = Buffer.from(err.response.data).toString('utf8');
+        // 2. Parse string menjadi objek JSON
+        const errorJson = JSON.parse(errorString);
+
+        // 3. Kirim status dan data JSON yang sudah diparsing
+        return res.status(err.response.status).json(errorJson);
+
+      } catch (parseError) {
+        // Fallback jika respons error bukan JSON
+        return res.status(err.response.status).send(err.response.data);
+      }
     }
 
+    // Error lain (misal: network error)
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 export default router;

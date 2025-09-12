@@ -5,8 +5,10 @@ import axiosServer from "../utilities/AxiosServer";
 import "keen-slider/keen-slider.min.css";
 import { useKeenSlider } from "keen-slider/react";
 import ChartSlide from "../components/ChartSlide";
-import LazyChartSection from "../components/LazyChartSection";
-import dayjs from "dayjs";
+// import LazyChartSection from "../components/LazyChartSection";f
+// import dayjs from "dayjs";
+import LazyLatencyChart from "../components/LazyLatencyChart";
+import ChartSection from '../components/ChartSection'
 
 type QCData = {
   code?: string;
@@ -35,88 +37,92 @@ type FormattedLatencyData = {
 const CHANNELS = ["SHE", "SHN", "SHZ"];
 
 // komponen arrow untuk slider  
-const Arrow = ({ dir = "left" }: { dir?: "left" | "right" }) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-    {dir === "left" ? (
-      <path
-        d="M15 18L9 12L15 6"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    ) : (
-      <path
-        d="M9 6L15 12L9 18"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    )}
-  </svg>
-);
+// const Arrow = ({ dir = "left" }: { dir?: "left" | "right" }) => (
+//   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+//     {dir === "left" ? (
+//       <path
+//         d="M15 18L9 12L15 6"
+//         stroke="currentColor"
+//         strokeWidth="2"
+//         strokeLinecap="round"
+//         strokeLinejoin="round"
+//       />
+//     ) : (
+//       <path
+//         d="M9 6L15 12L9 18"
+//         stroke="currentColor"
+//         strokeWidth="2"
+//         strokeLinecap="round"
+//         strokeLinejoin="round"
+//       />
+//     )}
+//   </svg>
+// );
 
-// component wrapper section chart
-const ChartSection = ({
-  title,
-  sliderRef,
-  sliderInstance,
-  children,
-}: {
-  title: string;
-  sliderRef: (node: HTMLDivElement | null) => void;
-  sliderInstance: any;
-  children: React.ReactNode;
-}) => {
-  const arrowStyle: React.CSSProperties = {
-    position: "absolute",
-    top: "50%",
-    transform: "translateY(-50%)",
-    zIndex: 40,
-    background: "transparent",
-    border: "none",
-    padding: 8,
-    cursor: "pointer",
-    color: "#94a3b8", // gray-400
-  };
+// // component wrapper section chart
+// const ChartSection = ({
+//   title,
+//   sliderRef,
+//   sliderInstance,
+//   children,
+//   }: {
+//   title: string;
+//   sliderRef: (node: HTMLDivElement | null) => void;
+//   sliderInstance: any;
+//   children: React.ReactNode;
+//   }) => {
+//   const arrowStyle: React.CSSProperties = {
+//     position: "absolute",
+//     top: "50%",
+//     transform: "translateY(-50%)",
+//     zIndex: 40,
+//     background: "transparent",
+//     border: "none",
+//     padding: 8,
+//     cursor: "pointer",
+//     color: "#94a3b8", // gray-400
+//   };
 
-  return (
-    <section className="relative">
-      <h2 className="text-lg font-semibold text-gray-700 mb-3">{title}</h2>
+//   return (
+//     <section className="relative">
+//       <h2 className="text-lg font-semibold text-gray-700 mb-3">{title}</h2>
 
-      {/* Panah navigasi */}
-      <button
-        aria-label="Prev"
-        style={{ ...arrowStyle, left: 12 }}
-        onClick={() => sliderInstance.current?.prev()}
-      >
-        <Arrow dir="left" />
-      </button>
-      <button
-        aria-label="Next"
-        style={{ ...arrowStyle, right: 12 }}
-        onClick={() => sliderInstance.current?.next()}
-      >
-        <Arrow dir="right" />
-      </button>
+//       {/* Panah navigasi */}
+//       <button
+//         aria-label="Prev"
+//         style={{ ...arrowStyle, left: 12 }}
+//         onClick={() => sliderInstance.current?.prev()}
+//       >
+//         <Arrow dir="left" />
+//       </button>
+//       <button
+//         aria-label="Next"
+//         style={{ ...arrowStyle, right: 12 }}
+//         onClick={() => sliderInstance.current?.next()}
+//       >
+//         <Arrow dir="right" />
+//       </button>
 
-      <div
-        ref={sliderRef}
-        className="keen-slider px-3"
-        style={{ touchAction: "pan-y", cursor: "grab", userSelect: "none" }}
-      >
-        {children}
-      </div>
-    </section>
-  );
-};
+//       <div
+//         ref={sliderRef}
+//         className="keen-slider px-3"
+//         style={{ touchAction: "pan-y", cursor: "grab", userSelect: "none" }}
+//       >
+//         {children}
+//       </div>
+//     </section>
+//   );
+// };
 
 // mainpage component
 const StationDetail = () => {
   const { stationCode } = useParams<{ stationCode: string }>();
   const [qcData, setQcData] = useState<QCData[]>([]);
-  const [latencyData, setLatencyData] = useState<Record<string, FormattedLatencyData[]>>({});
+  // const [latencyData, setLatencyData] = useState<Record<string, FormattedLatencyData[]>>({});
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []); 
 
   useEffect(() => {
     const fetchData = async () => {
@@ -149,39 +155,38 @@ const StationDetail = () => {
   }, [stationCode]);
 
   // useEffect untuk fetch data latensi
-  useEffect(() => {
-    const fetchLatencyData = async () => {
-      if (!stationCode) return;
+  // useEffect(() => {
+  //   const fetchLatencyData = async () => {
+  //     if (!stationCode) return;
 
-      try {
-        const requests = CHANNELS.map(channel =>
-          axiosServer.get(`/api/metadata/latency/${stationCode}/${channel}`)
-        );
-        const responses = await Promise.all(requests);
+  //     try {
+  //       const requests = CHANNELS.map(channel =>
+  //         axiosServer.get(`/api/metadata/latency/${stationCode}/${channel}`)
+  //       );
+  //       const responses = await Promise.all(requests);
         
-        const allLatencyData: Record<string, FormattedLatencyData[]> = {};
+  //       const allLatencyData: Record<string, FormattedLatencyData[]> = {};
 
-        responses.forEach((response, index) => {
-          const channel = CHANNELS[index];
-          const rawData = response.data;
+  //       responses.forEach((response, index) => {
+  //         const channel = CHANNELS[index];
+  //         const rawData = response.data;
           
-          // Transformasi data: dari object ke array of objects
-          const formattedData = Object.entries(rawData).map(([timestamp, value]) => ({
-            date: dayjs(timestamp).format('YYYY-MM-DD HH:mm'), // Format agar mudah dibaca di grafik
-            latency: value as number,
-          }));
+  //         const formattedData = Object.entries(rawData).map(([timestamp, value]) => ({
+  //           date: dayjs(timestamp).format('YYYY-MM-DD HH:mm'), 
+  //           latency: value as number,
+  //         }));
           
-          allLatencyData[channel] = formattedData;
-        });
+  //         allLatencyData[channel] = formattedData;
+  //       });
         
-        setLatencyData(allLatencyData);
+  //       setLatencyData(allLatencyData);
 
-      } catch (err) {
-        console.error("Error fetching latency data:", err);
-      }
-    };
-    fetchLatencyData();
-  }, [stationCode]);
+  //     } catch (err) {
+  //       console.error("Error fetching latency data:", err);
+  //     }
+  //   };
+  //   fetchLatencyData();
+  // }, [stationCode]);
 
   const groupedByChannel = CHANNELS.reduce<Record<string, QCData[]>>(
     (acc, ch) => {
@@ -210,7 +215,7 @@ const StationDetail = () => {
     slides: { perView: 2, spacing: 8 },
   });
 
-  const [sliderRefLatency, sliderLatency] = useKeenSlider<HTMLDivElement>({ mode: "snap", slides: { perView: 2, spacing: 8 } });
+  // const [sliderRefLatency, sliderLatency] = useKeenSlider<HTMLDivElement>({ mode: "snap", slides: { perView: 2, spacing: 8 } });
 
   // const [sliderRefDead, sliderDead] = useKeenSlider<HTMLDivElement>({
   //   mode: "snap",
@@ -267,7 +272,7 @@ const StationDetail = () => {
       </ChartSection>
       
       {/* latensi */}
-      <ChartSection title="Latency per Channel" sliderRef={sliderRefLatency} sliderInstance={sliderLatency}>
+      {/* <ChartSection title="Latency per Channel" sliderRef={sliderRefLatency} sliderInstance={sliderLatency}>
         {CHANNELS.map((ch, idx) => (
           <div key={ch} className={slideClass}>
             <div className="px-2 w-full">
@@ -280,7 +285,8 @@ const StationDetail = () => {
             </div>
           </div>
         ))}
-      </ChartSection>
+      </ChartSection> */}
+      <LazyLatencyChart stationCode={stationCode} />
 
       {/* Spikes */}
       <ChartSection title="Spikes" sliderRef={sliderRefGap} sliderInstance={sliderGap}>

@@ -4,6 +4,9 @@ import axiosServer from "../utilities/AxiosServer";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import marker2x from "leaflet/dist/images/marker-icon-2x.png";
+import marker from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import DataTable from "../components/DataTable";
 
 // Tipe data station
@@ -31,9 +34,14 @@ interface Stasiun {
   updated_at: string;
 }
 
-const stationIcon = new L.Icon({
-  iconUrl: '/broadcast-tower.png',
-  iconSize: [10, 10],
+// Fix Leaflet default markers
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: marker2x,
+  iconUrl: marker,
+  shadowUrl: markerShadow,
 });
 
 const StationMap = () => {
@@ -81,22 +89,30 @@ const StationMap = () => {
     );
   }) : [];
 
-  // Ambil nilai unik untuk dropdown filter
-  const jaringanOptions = data && Array.isArray(data) ? Array.from(
-    new Set(data.map((station) => station.jaringan))
-  ).filter((v) => v !== null && v !== undefined) : [];
+  // Fungsi untuk mendapatkan opsi dropdown yang tersedia berdasarkan filter yang sudah dipilih
+  const getAvailableOptions = () => {
+    // Data yang sudah difilter sebagian (tanpa field yang sedang diupdate)
+    const getFilteredDataExcept = (excludeField: string) => {
+      return data && Array.isArray(data) ? data.filter((station) => {
+        return (
+          (excludeField === 'jaringan' || filterJaringan === "" || String(station.jaringan) === filterJaringan) &&
+          (excludeField === 'provinsi' || filterProvinsi === "" || String(station.provinsi) === filterProvinsi) &&
+          (excludeField === 'upt' || filterUpt === "" || String(station.upt_penanggung_jawab) === filterUpt) &&
+          (excludeField === 'tahun' || filterTahun === "" || String(station.tahun_instalasi) === filterTahun) &&
+          (excludeField === 'search' || searchKode === "" || station.kode_stasiun.toLowerCase().includes(searchKode.toLowerCase()))
+        );
+      }) : [];
+    };
 
-  const provinsiOptions = data && Array.isArray(data) ? Array.from(
-    new Set(data.map((station) => station.provinsi))
-  ).filter((v) => v !== null && v !== undefined) : [];
+    return {
+      jaringan: Array.from(new Set(getFilteredDataExcept('jaringan').map(s => s.jaringan))).filter(v => v !== null && v !== undefined).sort(),
+      provinsi: Array.from(new Set(getFilteredDataExcept('provinsi').map(s => s.provinsi))).filter(v => v !== null && v !== undefined).sort(),
+      upt: Array.from(new Set(getFilteredDataExcept('upt').map(s => s.upt_penanggung_jawab))).filter(v => v !== null && v !== undefined).sort(),
+      tahun: Array.from(new Set(getFilteredDataExcept('tahun').map(s => s.tahun_instalasi))).filter(v => v !== null && v !== undefined).sort()
+    };
+  };
 
-  const uptOptions = data && Array.isArray(data) ? Array.from(
-    new Set(data.map((station) => station.upt_penanggung_jawab))
-  ).filter((v) => v !== null && v !== undefined) : [];
-
-  const tahunOptions = data && Array.isArray(data) ? Array.from(
-    new Set(data.map((station) => station.tahun_instalasi))
-  ).filter((v) => v !== null && v !== undefined) : [];
+  const availableOptions = getAvailableOptions();
 
   
 
@@ -182,7 +198,7 @@ const StationMap = () => {
               onChange={(e) => setFilterJaringan(e.target.value)}
             >
               <option value="">Semua</option>
-              {jaringanOptions.map((jaringan) => (
+              {availableOptions.jaringan.map((jaringan: string) => (
                 <option key={jaringan} value={jaringan}>
                   {jaringan}
                 </option>
@@ -199,7 +215,7 @@ const StationMap = () => {
               onChange={(e) => setFilterProvinsi(e.target.value)}
             >
               <option value="">Semua</option>
-              {provinsiOptions.map((provinsi) => (
+              {availableOptions.provinsi.map((provinsi: string) => (
                 <option key={provinsi} value={provinsi}>
                   {provinsi}
                 </option>
@@ -216,7 +232,7 @@ const StationMap = () => {
               onChange={(e) => setFilterUpt(e.target.value)}
             >
               <option value="">Semua</option>
-              {uptOptions.map((upt) => (
+              {availableOptions.upt.map((upt: string) => (
                 <option key={upt} value={upt}>
                   {upt}
                 </option>
@@ -233,7 +249,7 @@ const StationMap = () => {
               onChange={(e) => setFilterTahun(e.target.value)}
             >
               <option value="">Semua</option>
-              {tahunOptions.map((tahun) => (
+              {availableOptions.tahun.map((tahun: number) => (
                 <option key={tahun} value={tahun}>
                   {tahun}
                 </option>
@@ -263,7 +279,6 @@ const StationMap = () => {
                   <Marker
                     key={station.stasiun_id}
                     position={[station.lintang, station.bujur]}
-                    icon={stationIcon}
                   >
                     <Popup>
                       <div>
