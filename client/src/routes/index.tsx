@@ -16,9 +16,9 @@ const Router = () => {
       <Route path="/station-quality" element={<StationQuality />} />
       <Route path="/station-availability" element={<StationAvailability />} />
       <Route path="/station-map" element={<StationMap />} />
+      <Route path="/station/:stationCode" element={<StationDetail />} />
       <Route path="/station-performance" element={<StationPerformance />} />
-      <Route path="/about" element={<About />} />
-      <Route path="/station/:stationCode" element={<StationDetail />} /> 
+      <Route path="/about" element={<About />} /> 
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
