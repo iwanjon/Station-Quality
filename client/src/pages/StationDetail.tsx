@@ -2,269 +2,228 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axiosServer from "../utilities/AxiosServer";
-import "keen-slider/keen-slider.min.css";
-import { useKeenSlider } from "keen-slider/react";
-import ChartSlide from "../components/ChartSlide";
-// import LazyChartSection from "../components/LazyChartSection";f
-// import dayjs from "dayjs";
-import LazyLatencyChart from "../components/LazyLatencyChart";
-import ChartSection from '../components/ChartSection'
+import MainLayout from "../layouts/MainLayout";
 
-type QCData = {
-  code?: string;
-  date: string;
-  channel: string;
-  rms: number | string;
-  amplitude_ratio: number | string;
-  num_gap?: number;
-  num_overlap?: number;
-  num_spikes?: number;
-  availability?: number;
-  perc_above_nhnm?: number;
-  perc_below_nlnm?: number;
-  linear_dead_channel?: number;
-  gsn_dead_channel?: number;
-  sp_percentage?: number;
-  bw_percentage?: number;
-  lp_percentage?: number;
-};
-
-type FormattedLatencyData = {
-  date: string; // Ini akan menjadi timestamp
-  latency: number;
+interface Stasiun {
+  stasiun_id: number;
+  net: string;
+  kode_stasiun: string;
+  lintang: number;
+  bujur: number;
+  elevasi: number;
+  lokasi: string;
+  provinsi: string;
+  upt_penanggung_jawab: string;
+  status: string;
+  tahun_instalasi: number;
+  jaringan: string;
+  prioritas: string;
+  keterangan: string | null;
+  accelerometer: string;
+  digitizer_komunikasi: string;
+  tipe_shelter: string | null;
+  lokasi_shelter: string;
+  penjaga_shelter: string;
+  penggantian_terakhir_alat: string | null;
+  updated_at: string;
 }
 
-const CHANNELS = ["SHE", "SHN", "SHZ"];
-
-// mainpage component
 const StationDetail = () => {
-  const { stationCode } = useParams<{ stationCode: string }>();
-  const [qcData, setQcData] = useState<QCData[]>([]);
-  // const [latencyData, setLatencyData] = useState<Record<string, FormattedLatencyData[]>>({});
+  const {stationCode} = useParams<{ stationCode?: string;}>();
+  const [stationInfo, setStationInfo] = useState<Stasiun | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  console.log("StationDetail params:", { stationCode});
 
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, []); 
+  }, []);
 
+  // Fetch station info
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchStationInfo = async () => {
       try {
-        const res = await axiosServer.get(
-          `/api/qc/data/detail/7days/${stationCode}`
-        );
-        const normalized: QCData[] = (res.data || []).map((d: any) => ({
-          ...d,
-          rms: Number(d.rms ?? 0),
-          amplitude_ratio: Number(d.amplitude_ratio ?? 0),
-          num_gap: Number(d.num_gap ?? 0),
-          num_overlap: Number(d.num_overlap ?? 0),
-          num_spikes: Number(d.num_spikes ?? 0),
-          availability: Number(d.availability ?? 0),
-          perc_above_nhnm: Number(d.perc_above_nhnm ?? 0),
-          perc_below_nlnm: Number(d.perc_below_nlnm ?? 0),
-          linear_dead_channel: Number(d.linear_dead_channel ?? 0),
-          gsn_dead_channel: Number(d.gsn_dead_channel ?? 0),
-          sp_percentage: Number(d.sp_percentage ?? 0),
-          bw_percentage: Number(d.bw_percentage ?? 0),
-          lp_percentage: Number(d.lp_percentage ?? 0),
-        }));
-        setQcData(normalized);
+        setLoading(true);
+        setError(null);
+
+        let stationData: Stasiun;
+
+        if (stationCode) {
+          // Fetch by ID
+          const res = await axiosServer.get(`/api/stasiun/${stationCode}`);
+          stationData = res.data;
+        } else {
+          throw new Error('No station ID or code provided');
+        }
+        setStationInfo(stationData);
       } catch (err) {
-        console.error("Error fetching QC 7days:", err);
+        setError(err instanceof Error ? err.message : 'Failed to load station data');
+      } finally {
+        setLoading(false);
       }
     };
-    if (stationCode) fetchData();
+
+    fetchStationInfo();
   }, [stationCode]);
 
-  const groupedByChannel = CHANNELS.reduce<Record<string, QCData[]>>(
-    (acc, ch) => {
-      acc[ch] = qcData.filter((d) => d.channel === ch);
-      return acc;
-    },
-    {}
-  );
+  console.log("StationDetail state:", { stationInfo, loading, error });
 
-  // sliders
-  const [sliderRefRMS, sliderRMS] = useKeenSlider<HTMLDivElement>({
-    mode: "snap",
-    slides: { perView: 2, spacing: 8 },
-  });
-  const [sliderRefAmp, sliderAmp] = useKeenSlider<HTMLDivElement>({
-    mode: "snap",
-    slides: { perView: 2, spacing: 8 },
-  });
-  const [sliderRefGap, sliderGap] = useKeenSlider<HTMLDivElement>({
-    mode: "snap",
-    slides: { perView: 2, spacing: 8 },
-  });
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p className="mt-2 text-gray-600">Loading station data...</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
-  const [sliderRefNoise, sliderNoise] = useKeenSlider<HTMLDivElement>({
-    mode: "snap",
-    slides: { perView: 2, spacing: 8 },
-  });
+  if (error) {
+    return (
+      <MainLayout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-red-600 text-lg font-semibold">Error</div>
+            <p className="mt-2 text-gray-600">{error}</p>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
-  // const [sliderRefLatency, sliderLatency] = useKeenSlider<HTMLDivElement>({ mode: "snap", slides: { perView: 2, spacing: 8 } });
-
-  // const [sliderRefDead, sliderDead] = useKeenSlider<HTMLDivElement>({
-  //   mode: "snap",
-  //   slides: { perView: 2, spacing: 8 },
-  // });
-
-  const [sliderRefPerc, sliderPerc] = useKeenSlider<HTMLDivElement>({
-    mode: "snap",
-    slides: { perView: 2, spacing: 8 },
-  });
-
-  const slideClass =
-    "keen-slider__slide flex-shrink-0 min-w-[0px] md:min-w-[0px] lg:min-w-[0px]";
+  if (!stationInfo) {
+    return (
+      <MainLayout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-gray-600 text-lg">Station not found</div>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
-    <div className="p-6 space-y-8">
-      <h1 className="text-center text-2xl font-bold">
-        Detail Stasiun {stationCode}
-      </h1>
+    <MainLayout>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-4xl mx-auto p-6">
+          {/* Header */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">
+              {stationInfo.kode_stasiun}
+            </h1>
+            <p className="text-lg text-gray-600">
+              {stationInfo.lokasi}, {stationInfo.provinsi}
+            </p>
+          </div>
 
-      {/* RMS */}
-      <ChartSection title="RMS per Channel" sliderRef={sliderRefRMS} sliderInstance={sliderRMS}>
-        {CHANNELS.map((ch) => (
-          <div key={ch} className={slideClass}>
-            {/* FIX: Tambahkan kembali div ini untuk memberikan jarak antar grafik */}
-            <div className="px-2 w-full">
-              <ChartSlide
-                channel={ch}
-                titlePrefix="RMS"
-                data={groupedByChannel[ch]}
-                lines={[{ dataKey: "rms", stroke: "#6366f1" }]}
-              />
-            </div>
-          </div>
-        ))}
-      </ChartSection>
-
-      {/* Amplitude */}
-      <ChartSection title="Amplitude Ratio per Channel" sliderRef={sliderRefAmp} sliderInstance={sliderAmp}>
-        {CHANNELS.map((ch, idx) => (
-          <div key={ch} className={slideClass}>
-            {/* FIX: Tambahkan kembali div ini untuk memberikan jarak antar grafik */}
-            <div className="px-2 w-full">
-              <ChartSlide
-                channel={ch}
-                titlePrefix="Amplitude Ratio"
-                data={groupedByChannel[ch]}
-                lines={[{ dataKey: "amplitude_ratio", stroke: ["#10b981", "#3b82f6", "#f59e0b"][idx] }]}
-                height={260}
-              />
-            </div>
-          </div>
-        ))}
-      </ChartSection>
-      
-      {/* latensi */}
-      {/* <ChartSection title="Latency per Channel" sliderRef={sliderRefLatency} sliderInstance={sliderLatency}>
-        {CHANNELS.map((ch, idx) => (
-          <div key={ch} className={slideClass}>
-            <div className="px-2 w-full">
-              <ChartSlide
-                channel={ch}
-                titlePrefix="Latency"
-                data={latencyData[ch] || []} // Ambil data dari state latency
-                lines={[{ dataKey: "latency", stroke: ["#8b5cf6", "#ec4899", "#f97316"][idx] }]}
-              />
-            </div>
-          </div>
-        ))}
-      </ChartSection> */}
-      <LazyLatencyChart stationCode={stationCode} />
-
-      {/* Spikes */}
-      <ChartSection title="Spikes" sliderRef={sliderRefGap} sliderInstance={sliderGap}>
-        {CHANNELS.map((ch) => (
-          <div key={ch} className={slideClass}>
-            {/* FIX: Tambahkan kembali div ini untuk memberikan jarak antar grafik */}
-            <div className="px-2 w-full">
-              <ChartSlide
-                  channel={ch}
-                  titlePrefix="Spikes"
-                  data={groupedByChannel[ch]}
-                  lines={[{ dataKey: 'num_spikes', stroke: '#10b981' }]}
-              />
-            </div>
-          </div>
-        ))}
-      </ChartSection>
-
-      {/* Noise */}
-      <ChartSection title="Noise" sliderRef={sliderRefNoise} sliderInstance={sliderNoise}>
-        {CHANNELS.map((ch) => (
-          <div key={ch} className={slideClass}>
-            {/* FIX: Tambahkan kembali div ini untuk memberikan jarak antar grafik */}
-            <div className="px-2 w-full">
-              <ChartSlide
-                  channel={ch}
-                  titlePrefix="Noise"
-                  data={groupedByChannel[ch]}
-                  lines={[
-                    { dataKey: 'perc_above_nhnm', stroke: '#f59e0b' },
-                    { dataKey: 'perc_below_nlnm', stroke: '#3b82f6' },
-                  ]}
-                  yAxisProps={{ domain: [0, 10] }}
-              />
-            </div>
-          </div>
-        ))}
-      </ChartSection>
-      
-      {/* SP / BW / LP */}
-      <ChartSection title="SP / BW / LP Percentage" sliderRef={sliderRefPerc} sliderInstance={sliderPerc}>
-        {CHANNELS.map((ch) => (
-          <div key={ch} className={slideClass}>
-            {/* FIX: Tambahkan kembali div ini untuk memberikan jarak antar grafik */}
-            <div className="px-2 w-full">
-              <ChartSlide
-                channel={ch}
-                titlePrefix="SP / BW / LP"
-                data={groupedByChannel[ch]}
-                lines={[
-                  { dataKey: 'sp_percentage', stroke: '#6366f1' },
-                  { dataKey: 'bw_percentage', stroke: '#10b981' },
-                  { dataKey: 'lp_percentage', stroke: '#f59e0b' },
-                ]}
-                yAxisProps={{ domain: [50, 120] }}
-              />
-            </div>
-          </div>
-        ))}
-      </ChartSection>
-
-     {/* Dead Channel
-      <ChartSection title="Dead Channel" sliderRef={sliderRefDead} sliderInstance={sliderDead}>
-        {CHANNELS.map((ch) => (
-          <div key={ch} className={slideClass}>
-            <CardContainer>
-              <h3 className="text-base font-medium mb-2">Dead Channel - {ch}</h3>
-              <div style={{ width: "100%", height: 240 }}>
-                <ResponsiveContainer>
-                  <LineChart data={groupedByChannel[ch]}>
-                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="5 5" />
-                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                    <YAxis domain={["auto", "auto"]} tick={{ fontSize: 12 }} />
-                    <Tooltip />
-                    <Line dataKey="linear_dead_channel" stroke="#ef4444" dot={false} />
-                    <Line dataKey="gsn_dead_channel" stroke="#10b981" dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
+          {/* Basic Information */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Informasi Dasar</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <span className="font-medium text-gray-700">Network:</span>
+                <p className="text-gray-600">{stationInfo.net}</p>
               </div>
-            </CardContainer>
+              <div>
+                <span className="font-medium text-gray-700">Status:</span>
+                <p className="text-gray-600">{stationInfo.status}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Prioritas:</span>
+                <p className="text-gray-600">{stationInfo.prioritas}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">UPT Penanggung Jawab:</span>
+                <p className="text-gray-600">{stationInfo.upt_penanggung_jawab}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Tahun Instalasi:</span>
+                <p className="text-gray-600">{stationInfo.tahun_instalasi}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Jaringan:</span>
+                <p className="text-gray-600">{stationInfo.jaringan}</p>
+              </div>
+            </div>
           </div>
-        ))}
-      </ChartSection> */}
-    </div>
+
+          {/* Location Information */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Informasi Lokasi</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <span className="font-medium text-gray-700">Koordinat:</span>
+                <p className="text-gray-600">
+                  {stationInfo.lintang}° N, {stationInfo.bujur}° E
+                </p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Elevasi:</span>
+                <p className="text-gray-600">{stationInfo.elevasi} m</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Lokasi Shelter:</span>
+                <p className="text-gray-600">{stationInfo.lokasi_shelter}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Tipe Shelter:</span>
+                <p className="text-gray-600">{stationInfo.tipe_shelter || 'Tidak tersedia'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Equipment Information */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Informasi Peralatan</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <span className="font-medium text-gray-700">Accelerometer:</span>
+                <p className="text-gray-600">{stationInfo.accelerometer}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Digitizer Komunikasi:</span>
+                <p className="text-gray-600">{stationInfo.digitizer_komunikasi}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Penjaga Shelter:</span>
+                <p className="text-gray-600">{stationInfo.penjaga_shelter}</p>
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Penggantian Terakhir Alat:</span>
+                <p className="text-gray-600">
+                  {stationInfo.penggantian_terakhir_alat || 'Tidak tersedia'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Information */}
+          {stationInfo.keterangan && (
+            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Keterangan Tambahan</h2>
+              <p className="text-gray-600">{stationInfo.keterangan}</p>
+            </div>
+          )}
+
+          {/* Last Updated */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="text-sm text-gray-500">
+              <span className="font-medium">Terakhir diperbarui:</span>
+              <p>{new Date(stationInfo.updated_at).toLocaleString('id-ID')}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </MainLayout>
   );
 };
 
 export default StationDetail;
-
-// // src/pages/StationDetail.tsx
 
 // import { useEffect, useState } from "react";
 // import { useParams } from "react-router-dom";
