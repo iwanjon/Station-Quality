@@ -13,7 +13,8 @@ router.get("/data/detail/7days/:stationId", async (req, res) => {
   const results = [];
 
   try {
-    for (let i = 0; i < 7; i++) {
+    // [DIUBAH] Loop sekarang dari 1 sampai 7 untuk mengambil data dari kemarin
+    for (let i = 1; i <= 7; i++) {
       const date = today.subtract(i, "day").format("YYYY-MM-DD");
       const cacheKey = `qc:${stationId}:${date}`;
 
@@ -27,22 +28,19 @@ router.get("/data/detail/7days/:stationId", async (req, res) => {
             results.push({ date, ...item });
           });
         }
-
-        // if (data && data.length > 0) {
-        //   results.push({ date, ...data[0] });
-        // }
       } catch (err) {
-        // kalau external API balikin 404, lewati aja hari itu
         if (err.response && err.response.status === 404) {
           console.warn(`⚠️ Data not found for ${stationId} at ${date}`);
           continue;
         }
-        throw err; // selain 404, lempar error beneran
+        throw err;
       }
     }
 
+    // Mengurutkan hasil dari tanggal terlama ke terbaru
     results.sort((a, b) => new Date(a.date) - new Date(b.date));
     res.json(results);
+    
   } catch (err) {
     console.error("Error in /data/detail/7days:", err);
     res.status(500).json({ error: "Failed to fetch 7 days QC detail" });

@@ -36,84 +36,6 @@ type FormattedLatencyData = {
 
 const CHANNELS = ["SHE", "SHN", "SHZ"];
 
-// komponen arrow untuk slider  
-// const Arrow = ({ dir = "left" }: { dir?: "left" | "right" }) => (
-//   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-//     {dir === "left" ? (
-//       <path
-//         d="M15 18L9 12L15 6"
-//         stroke="currentColor"
-//         strokeWidth="2"
-//         strokeLinecap="round"
-//         strokeLinejoin="round"
-//       />
-//     ) : (
-//       <path
-//         d="M9 6L15 12L9 18"
-//         stroke="currentColor"
-//         strokeWidth="2"
-//         strokeLinecap="round"
-//         strokeLinejoin="round"
-//       />
-//     )}
-//   </svg>
-// );
-
-// // component wrapper section chart
-// const ChartSection = ({
-//   title,
-//   sliderRef,
-//   sliderInstance,
-//   children,
-//   }: {
-//   title: string;
-//   sliderRef: (node: HTMLDivElement | null) => void;
-//   sliderInstance: any;
-//   children: React.ReactNode;
-//   }) => {
-//   const arrowStyle: React.CSSProperties = {
-//     position: "absolute",
-//     top: "50%",
-//     transform: "translateY(-50%)",
-//     zIndex: 40,
-//     background: "transparent",
-//     border: "none",
-//     padding: 8,
-//     cursor: "pointer",
-//     color: "#94a3b8", // gray-400
-//   };
-
-//   return (
-//     <section className="relative">
-//       <h2 className="text-lg font-semibold text-gray-700 mb-3">{title}</h2>
-
-//       {/* Panah navigasi */}
-//       <button
-//         aria-label="Prev"
-//         style={{ ...arrowStyle, left: 12 }}
-//         onClick={() => sliderInstance.current?.prev()}
-//       >
-//         <Arrow dir="left" />
-//       </button>
-//       <button
-//         aria-label="Next"
-//         style={{ ...arrowStyle, right: 12 }}
-//         onClick={() => sliderInstance.current?.next()}
-//       >
-//         <Arrow dir="right" />
-//       </button>
-
-//       <div
-//         ref={sliderRef}
-//         className="keen-slider px-3"
-//         style={{ touchAction: "pan-y", cursor: "grab", userSelect: "none" }}
-//       >
-//         {children}
-//       </div>
-//     </section>
-//   );
-// };
-
 // mainpage component
 const StationDetail = () => {
   const { stationCode } = useParams<{ stationCode: string }>();
@@ -153,40 +75,6 @@ const StationDetail = () => {
     };
     if (stationCode) fetchData();
   }, [stationCode]);
-
-  // useEffect untuk fetch data latensi
-  // useEffect(() => {
-  //   const fetchLatencyData = async () => {
-  //     if (!stationCode) return;
-
-  //     try {
-  //       const requests = CHANNELS.map(channel =>
-  //         axiosServer.get(`/api/metadata/latency/${stationCode}/${channel}`)
-  //       );
-  //       const responses = await Promise.all(requests);
-        
-  //       const allLatencyData: Record<string, FormattedLatencyData[]> = {};
-
-  //       responses.forEach((response, index) => {
-  //         const channel = CHANNELS[index];
-  //         const rawData = response.data;
-          
-  //         const formattedData = Object.entries(rawData).map(([timestamp, value]) => ({
-  //           date: dayjs(timestamp).format('YYYY-MM-DD HH:mm'), 
-  //           latency: value as number,
-  //         }));
-          
-  //         allLatencyData[channel] = formattedData;
-  //       });
-        
-  //       setLatencyData(allLatencyData);
-
-  //     } catch (err) {
-  //       console.error("Error fetching latency data:", err);
-  //     }
-  //   };
-  //   fetchLatencyData();
-  // }, [stationCode]);
 
   const groupedByChannel = CHANNELS.reduce<Record<string, QCData[]>>(
     (acc, ch) => {
@@ -375,3 +263,193 @@ const StationDetail = () => {
 };
 
 export default StationDetail;
+
+// // src/pages/StationDetail.tsx
+
+// import { useEffect, useState } from "react";
+// import { useParams } from "react-router-dom";
+// import axiosServer from "../utilities/AxiosServer";
+// import ChartSlide from "../components/ChartSlide";
+// import LazyLatencyChart from "../components/LazyLatencyChart";
+
+// // [DIHAPUS] Semua import yang berhubungan dengan slider tidak lagi diperlukan
+// // import "keen-slider/keen-slider.min.css";
+// // import { useKeenSlider } from "keen-slider/react";
+// // import ChartSection from '../components/ChartSection';
+
+// type QCData = {
+//   // ... (definisi tipe data tidak berubah)
+//   code?: string;
+//   date: string;
+//   channel: string;
+//   rms: number | string;
+//   amplitude_ratio: number | string;
+//   num_gap?: number;
+//   num_overlap?: number;
+//   num_spikes?: number;
+//   availability?: number;
+//   perc_above_nhnm?: number;
+//   perc_below_nlnm?: number;
+//   linear_dead_channel?: number;
+//   gsn_dead_channel?: number;
+//   sp_percentage?: number;
+//   bw_percentage?: number;
+//   lp_percentage?: number;
+// };
+
+// const CHANNELS = ["SHE", "SHN", "SHZ"];
+
+// const StationDetail = () => {
+//   const { stationCode } = useParams<{ stationCode: string }>();
+//   const [qcData, setQcData] = useState<QCData[]>([]);
+
+//   // ... (logika useEffect untuk fetch data tidak berubah)
+//   useEffect(() => {
+//     window.scrollTo(0, 0);
+//   }, []); 
+
+//   useEffect(() => {
+//     const fetchData = async () => {
+//       try {
+//         const res = await axiosServer.get(`/api/qc/data/detail/7days/${stationCode}`);
+//         const normalized: QCData[] = (res.data || []).map((d: any) => ({
+//           ...d,
+//           rms: Number(d.rms ?? 0),
+//           amplitude_ratio: Number(d.amplitude_ratio ?? 0),
+//           num_gap: Number(d.num_gap ?? 0),
+//           num_overlap: Number(d.num_overlap ?? 0),
+//           num_spikes: Number(d.num_spikes ?? 0),
+//           availability: Number(d.availability ?? 0),
+//           perc_above_nhnm: Number(d.perc_above_nhnm ?? 0),
+//           perc_below_nlnm: Number(d.perc_below_nlnm ?? 0),
+//           linear_dead_channel: Number(d.linear_dead_channel ?? 0),
+//           gsn_dead_channel: Number(d.gsn_dead_channel ?? 0),
+//           sp_percentage: Number(d.sp_percentage ?? 0),
+//           bw_percentage: Number(d.bw_percentage ?? 0),
+//           lp_percentage: Number(d.lp_percentage ?? 0),
+//         }));
+//         setQcData(normalized);
+//       } catch (err) {
+//         console.error("Error fetching QC 7days:", err);
+//       }
+//     };
+//     if (stationCode) fetchData();
+//   }, [stationCode]);
+
+//   const groupedByChannel = CHANNELS.reduce<Record<string, QCData[]>>(
+//     (acc, ch) => {
+//       acc[ch] = qcData.filter((d) => d.channel === ch);
+//       return acc;
+//     },
+//     {}
+//   );
+
+//   // [DIHAPUS] Semua state dan hook untuk slider dihapus
+//   // const [sliderRefRMS, sliderRMS] = useKeenSlider(...);
+//   // ...dan seterusnya untuk slider lain...
+//   // const slideClass = ...;
+
+//   // [DITAMBAHKAN] Komponen pembungkus untuk setiap seksi grafik
+//   const ChartGridSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
+//     <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-md">
+//       <h2 className="text-xl font-bold mb-4 text-gray-800">{title}</h2>
+//       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+//         {children}
+//       </div>
+//     </div>
+//   );
+
+//   return (
+//     <div className="p-4 sm:p-6 space-y-8 bg-gray-50 min-h-screen">
+//       <h1 className="text-center text-3xl font-bold text-gray-900">
+//         Detail Stasiun {stationCode}
+//       </h1>
+
+//       {/* RMS */}
+//       <ChartGridSection title="RMS per Channel">
+//         {CHANNELS.map((ch) => (
+//           <div key={ch}>
+//             <ChartSlide
+//               channel={ch}
+//               titlePrefix="RMS"
+//               data={groupedByChannel[ch]}
+//               lines={[{ dataKey: "rms", stroke: "#6366f1" }]}
+//             />
+//           </div>
+//         ))}
+//       </ChartGridSection>
+
+//       {/* Amplitude */}
+//       <ChartGridSection title="Amplitude Ratio per Channel">
+//         {CHANNELS.map((ch, idx) => (
+//           <div key={ch}>
+//             <ChartSlide
+//               channel={ch}
+//               titlePrefix="Amplitude Ratio"
+//               data={groupedByChannel[ch]}
+//               lines={[{ dataKey: "amplitude_ratio", stroke: ["#10b981", "#3b82f6", "#f59e0b"][idx] }]}
+//             />
+//           </div>
+//         ))}
+//       </ChartGridSection>
+      
+//       {/* Latency Chart (tidak diubah) */}
+//       <LazyLatencyChart stationCode={stationCode} />
+
+//       {/* Spikes */}
+//       <ChartGridSection title="Spikes">
+//         {CHANNELS.map((ch) => (
+//           <div key={ch}>
+//             <ChartSlide
+//               channel={ch}
+//               titlePrefix="Spikes"
+//               data={groupedByChannel[ch]}
+//               lines={[{ dataKey: 'num_spikes', stroke: '#10b981' }]}
+//             />
+//           </div>
+//         ))}
+//       </ChartGridSection>
+
+//       {/* Noise */}
+//       <ChartGridSection title="Noise">
+//         {CHANNELS.map((ch) => (
+//           <div key={ch}>
+//             <ChartSlide
+//               channel={ch}
+//               titlePrefix="Noise"
+//               data={groupedByChannel[ch]}
+//               lines={[
+//                 { dataKey: 'perc_above_nhnm', stroke: '#f59e0b', name: '% Above NHNM' },
+//                 { dataKey: 'perc_below_nlnm', stroke: '#3b82f6', name: '% Below NLNM' },
+//               ]}
+//               yAxisProps={{ domain: [0, 100] }} // Mungkin disesuaikan ke 100%
+//             />
+//           </div>
+//         ))}
+//       </ChartGridSection>
+      
+//       {/* SP / BW / LP */}
+//       <ChartGridSection title="SP / BW / LP Percentage">
+//         {CHANNELS.map((ch) => (
+//           <div key={ch}>
+//             <ChartSlide
+//               channel={ch}
+//               titlePrefix="SP / BW / LP"
+//               data={groupedByChannel[ch]}
+//               lines={[
+//                 { dataKey: 'sp_percentage', stroke: '#6366f1', name: 'SP %' },
+//                 { dataKey: 'bw_percentage', stroke: '#10b981', name: 'BW %' },
+//                 { dataKey: 'lp_percentage', stroke: '#f59e0b', name: 'LP %' },
+//               ]}
+//               yAxisProps={{ domain: [50, 120] }}
+//             />
+//           </div>
+//         ))}
+//       </ChartGridSection>
+
+//       {/* ... sisa kode lainnya ... */}
+//     </div>
+//   );
+// };
+
+// export default StationDetail;
