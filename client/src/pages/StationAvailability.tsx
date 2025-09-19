@@ -5,6 +5,7 @@ import type { FilterConfig } from "../components/TableFilters";
 import DataTable from "../components/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import axiosInstance from "../utilities/AxiosServer";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 interface StationData {
   timestamp: string;
@@ -31,26 +32,47 @@ interface APIResponse {
 interface ProcessedStation {
   id: number;
   kode: string;
-  dailyData: StationData[]; // Raw daily data dari API
-  monthlyData: Record<string, number | null>; // Data per bulan: { "2025-07": 85.5, "2025-08": 92.3 }
+  dailyData: StationData[];
+  monthlyData: Record<string, number | null>;
   totalDays: number;
   availableDays: number;
   missingDays: number;
 }
 
-// Legacy interface untuk kompatibilitas dengan komponen yang ada
 interface Station {
   id: number;
   kode: string;
-  monthlyData: Record<string, number | null>; // Data per bulan
+  monthlyData: Record<string, number | null>;
   totalDays: number;
   availableDays: number;
   missingDays: number;
   status: 'Good' | 'Poor' | 'No Data';
 }
 
+interface DateRange {
+  startYear: number;
+  startMonth: number;
+  endYear: number;
+  endMonth: number;
+}
+
+interface ChartDataPoint {
+  month: string;
+  '> 97%': number;
+  '90-97%': number;
+  '0-90%': number;
+  '0%': number;
+  counts: Record<string, number>;
+}
+
+interface ApiInfo {
+  cached: boolean;
+  totalStations: number;
+  dateRange: string;
+}
+
 // Function untuk memproses response API dan menghitung statistik per stasiun
-function processStationData(apiResponse: APIResponse, selectedRange: { startYear: number; startMonth: number; endYear: number; endMonth: number }): ProcessedStation[] {
+function processStationData(apiResponse: APIResponse, selectedRange: DateRange): ProcessedStation[] {
   const stations: ProcessedStation[] = [];
   let id = 1;
 
@@ -158,12 +180,8 @@ function getAvailabilityCategory(station: Station): string {
 const StationAvailability = () => {
   const [data, setData] = useState<Station[]>([]);
   const [loading, setLoading] = useState(true);
-  const [apiInfo, setApiInfo] = useState<{
-    cached: boolean;
-    totalStations: number;
-    dateRange: string;
-  } | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState<{ startYear: number; startMonth: number; endYear: number; endMonth: number }>(() => {
+  const [apiInfo, setApiInfo] = useState<ApiInfo | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<DateRange>(() => {
     const today = new Date();
     let endYear = today.getFullYear();
     let endMonth = today.getMonth() - 1; // Bulan lalu (0-based)
@@ -190,6 +208,7 @@ const StationAvailability = () => {
     kode: [],
     availabilityCategory: [],
   });
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
 
   // Helper function untuk format range bulan
   const getMonthRangeText = () => {
@@ -237,6 +256,70 @@ const StationAvailability = () => {
           const stations = convertToStationFormat(processedStations);
           
           setData(stations);
+
+          // Hitung data chart: distribusi stasiun per rentang availability per bulan
+          const chartDataTemp: ChartDataPoint[] = [];
+          const monthNames = [
+            "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+            "Jul", "Agu", "Sep", "Okt", "Nov", "Des"
+          ];
+          
+          // Generate all months in the selected range
+          const currentDate = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
+          const endDate = new Date(selectedMonth.endYear, selectedMonth.endMonth, 1);
+          
+          while (currentDate <= endDate) {
+            const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+            const monthLabel = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+            
+            // Hitung distribusi stasiun berdasarkan rentang availability untuk bulan ini
+            const distribution = {
+              '> 97%': 0,
+              '90-97%': 0,
+              '0-90%': 0,
+              '0%': 0
+            };
+            
+            stations.forEach(station => {
+              const value = station.monthlyData[monthKey];
+              if (value !== null && value !== undefined) {
+                if (value > 97) {
+                  distribution['> 97%']++;
+                } else if (value >= 90 && value <= 97) {
+                  distribution['90-97%']++;
+                } else if (value > 0 && value < 90) {
+                  distribution['0-90%']++;
+                } else {
+                  distribution['0%']++;
+                }
+              } else {
+                // Jika tidak ada data, hitung sebagai 0%
+                distribution['0%']++;
+              }
+            });
+            
+            // Hitung total stasiun dan konversi ke persentase
+            const totalStations = distribution['> 97%'] + distribution['90-97%'] + distribution['0-90%'] + distribution['0%'];
+            
+            chartDataTemp.push({
+              month: monthLabel,
+              '> 97%': totalStations > 0 ? Math.round((distribution['> 97%'] / totalStations) * 100 * 10) / 10 : 0,
+              '90-97%': totalStations > 0 ? Math.round((distribution['90-97%'] / totalStations) * 100 * 10) / 10 : 0,
+              '0-90%': totalStations > 0 ? Math.round((distribution['0-90%'] / totalStations) * 100 * 10) / 10 : 0,
+              '0%': totalStations > 0 ? Math.round((distribution['0%'] / totalStations) * 100 * 10) / 10 : 0,
+              counts: {
+                '> 97%': distribution['> 97%'],
+                '90-97%': distribution['90-97%'],
+                '0-90%': distribution['0-90%'],
+                '0%': distribution['0%']
+              }
+            });
+            
+            // Next month
+            currentDate.setMonth(currentDate.getMonth() + 1);
+          }
+          
+          setChartData(chartDataTemp);
 
           // Setup filter config
           const uniqueKode = Array.from(new Set(stations.map((s: Station) => s.kode))).sort();
@@ -339,6 +422,70 @@ const StationAvailability = () => {
           <h1 className="bg-gray-100 rounded-2xl text-center text-3xl font-bold my-3 mx-32 py-2 border-2">
             Stasiun Availability - {getMonthRangeText()}
           </h1>
+
+          {/* Chart Section */}
+          {loading ? (
+            <div className="bg-white p-4 rounded-lg shadow mb-4">
+              <h2 className="text-lg font-semibold text-gray-700 mb-3">Distribusi Persentase Stasiun per Bulan berdasarkan Availability</h2>
+              <div className="h-64 flex items-center justify-center">
+                <p className="text-center text-gray-500 text-sm">Loading chart data...</p>
+              </div>
+            </div>
+          ) : chartData.length > 0 ? (
+            <div className="bg-white p-4 rounded-lg shadow mb-4">
+              <h2 className="text-lg font-semibold text-gray-700 mb-3">Distribusi Persentase Stasiun per Bulan berdasarkan Availability</h2>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 40 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="month" 
+                      angle={-45} 
+                      textAnchor="end" 
+                      height={60}
+                      interval={0}
+                      fontSize={11}
+                    />
+                    <YAxis 
+                      domain={[0, 100]} 
+                      ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
+                      label={{ value: 'Persentase (%)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: '12px' } }} 
+                      fontSize={11}
+                    />
+                    <Tooltip 
+                      formatter={(_, name, item) => {
+                        const count = item.payload.counts[name];
+                        return [`${count} stasiun`, name];
+                      }}
+                      labelStyle={{ color: '#000' }}
+                    />
+                    <Bar dataKey="> 97%" stackId="a" fill="#16a34a" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="90-97%" stackId="a" fill="#eab308" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="0-90%" stackId="a" fill="#ea580c" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="0%" stackId="a" fill="#dc2626" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-center gap-6 mt-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-green-600 rounded"></div>
+                  <span>&gt; 97%</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+                  <span>90-97%</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-orange-600 rounded"></div>
+                  <span>0-90%</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-red-600 rounded"></div>
+                  <span>0%</span>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           {/* Compact Filter Section */}
           <div className="bg-gray-50 p-3 rounded-lg mb-4">
