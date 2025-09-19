@@ -23,6 +23,23 @@ interface QCSummary {
   };
 }
 
+// [BARU] Interface untuk data stasiun dari database
+interface Stasiun {
+  stasiun_id: number;
+  kode_stasiun: string;
+  status: string; // Kolom kunci: 'aktif' atau 'NONaktif'
+  // Anda bisa tambahkan properti lain jika dibutuhkan
+}
+
+interface QCDetail {
+    id: string;
+    code: string;
+    date: string;
+    channel: string;
+    availability: string; // Kunci untuk menentukan status ON/OFF
+    // Properti lainnya bisa ditambahkan jika perlu
+}
+
 // [TETAP] Fungsi untuk ikon segitiga di peta
 // [DIPERBARUI] Fungsi ikon segitiga sesuai kode Anda
 const triangleIcon = (color: string) =>
@@ -146,16 +163,6 @@ const InfoCard = ({ title, children }: { title: string, children?: React.ReactNo
     </div>
 );
 
-// Mapping warna konsisten untuk legend dan triangle
-// const getColorBySiteQuality = (result: string, site_quality: string | null): string => {
-//   if (result === 'Mati') return "#374151"; // bg-gray-700
-//   if (!site_quality || site_quality === "Null") return "#979797"; 
-//   if (site_quality === "Very Good") return "#14b8a6"; // bg-teal-500
-//   if (site_quality === "Good") return "#facc15"; // bg-yellow-400
-//   if (site_quality === "Fair") return "#fb923c"; // bg-orange-400
-//   if (site_quality === "Poor") return "#ef4444"; // bg-red-500
-//   return "#818cf8";
-// };
 
 // Mapping warna dan label triangle berdasarkan result
 const getColorByResult = (result: string): string => {
@@ -182,9 +189,120 @@ const getStatusTextEn = (result: string): string => {
 
 const Dashboard = () => {
   const [qcData, setQcData] = useState<QCSummary[]>([]);
-  // State lain yang mungkin dibutuhkan nanti
-  // const [loadingQC, setLoadingQC] = useState(true);
+  const [stations, setStations] = useState<Stasiun[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [onOffCounts, setOnOffCounts] = useState({ on: 0, off: 0 });
+  const [isLoadingOnOff, setIsLoadingOnOff] = useState(true);
 
+    // [DIUBAH] Menggabungkan pengambilan data awal (summary dan stasiun)
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      setLoading(true);
+      try {
+        const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
+
+        const [qcResponse, stationsResponse] = await Promise.all([
+          axiosServer.get<QCSummary[]>(`/api/qc/summary/${yesterday}`),
+          axiosServer.get<Stasiun[]>("/api/stasiun"),
+        ]);
+
+        setQcData(qcResponse.data);
+        setStations(stationsResponse.data);
+      } catch (error) {
+        console.error("Gagal memuat data dashboard awal:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInitialData();
+  }, []); // Dependency kosong, hanya berjalan sekali saat komponen dimuat
+
+  // Ini akan berjalan setelah qcData terisi
+  useEffect(() => {
+    if (qcData.length === 0) return;
+
+    const fetchDetailsAndCountOnOff = async () => {
+      setIsLoadingOnOff(true);
+      const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
+
+      // Buat array of promises untuk mengambil data detail semua stasiun
+      const promises = qcData.map(station =>
+        axiosServer.get<QCDetail[]>(`/api/qc/data/detail/${station.code}/${yesterday}`)
+      );
+
+      try {
+        const results = await Promise.all(promises);
+        
+        let onCount = 0;
+        let offCount = 0;
+
+        results.forEach(response => {
+          const stationDetails = response.data;
+          
+          // Cek jika data detail ada dan merupakan array
+          if (Array.isArray(stationDetails) && stationDetails.length > 0) {
+            // Stasiun dianggap OFF jika SEMUA channelnya punya availability 0.
+            const isOff = stationDetails.every(
+              channel => parseFloat(channel.availability) === 0
+            );
+
+            if (isOff) {
+              offCount++;
+            } else {
+              onCount++;
+            }
+          } else {
+            // Jika tidak ada data detail, anggap OFF atau sesuai logika bisnis
+            offCount++;
+          }
+        });
+        
+        setOnOffCounts({ on: onCount, off: offCount });
+
+      } catch (error) {
+        console.error("Gagal mengambil data detail untuk status ON/OFF:", error);
+        // Jika gagal, set ke nol agar tidak menampilkan angka yang salah
+        setOnOffCounts({ on: 0, off: 0 });
+      } finally {
+        setIsLoadingOnOff(false);
+      }
+    };
+
+    fetchDetailsAndCountOnOff();
+  }, [qcData]); // Dependency: Jalankan hook ini setiap kali qcData berubah
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
+
+        const [qcResponse, stationsResponse] = await Promise.all([
+          axiosServer.get<QCSummary[]>(`/api/qc/summary/${yesterday}`),
+          axiosServer.get<Stasiun[]>("/api/stasiun"), // Ambil data stasiun
+        ]);
+
+        setQcData(qcResponse.data);
+        setStations(stationsResponse.data); // Simpan data stasiun ke state
+      } catch (error) {
+        console.error("Gagal memuat data dashboard:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []); // Dependency array kosong agar hanya berjalan sekali
+
+  // [DIUBAH] Kalkulasi data tidak lagi hard-coded
+  const totalRegistered = stations.length;
+  const totalInactive = stations.filter(
+    (s) => s.status.toLowerCase() === "nonaktif"
+  ).length;
+  const totalOperational = stations.filter(
+    (s) => s.status.toLowerCase() === "aktif"
+  ).length;
+  
   useEffect(() => {
     // Ambil data QC summary untuk tanggal kemarin (bukan tanggal fix)
     const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
@@ -196,17 +314,17 @@ const Dashboard = () => {
   }, []);
 
   // [DISEMPURNAKAN] Kalkulasi data untuk panel status (angka-angka ini bisa di-hardcode dulu)
-  const totalRegistered = 553;
-  const totalInactive = 4;
-  const totalOperational = 549;
+  // const totalRegistered = 553;
+  // const totalInactive = 4;
+  // const totalOperational = 549;
   const totalOn = 516;
   const totalOff = 33;
   
-  // Kalkulasi ON breakdown (bisa di hardcode atau dari data real)
-  const goodCount = 300;
-  const fairCount = 150;
-  const badCount = 66;
-  const noDataCount = 33;
+  // Hitung jumlah stasiun berdasarkan result (menggunakan data yang sama dengan map)
+  const goodCount = qcData.filter(s => s.result === "Baik").length;
+  const fairCount = qcData.filter(s => s.result === "Cukup Baik").length;
+  const badCount = qcData.filter(s => s.result === "Buruk").length;
+  const noDataCount = qcData.filter(s => s.result === "No Data" || s.result === "Mati").length;
 
 
   return (
@@ -247,29 +365,33 @@ const Dashboard = () => {
         </div>
 
         {/* BAGIAN KANAN: PANEL STATUS */}
-        <div className="lg:w-1/3 w-full flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-200 rounded-lg p-4 text-center">
-                    <p className="text-sm font-semibold text-gray-600">REGISTERED</p>
-                    <p className="text-4xl font-bold"> {totalRegistered} </p>
-                </div>
-                <div className="bg-gray-200 rounded-lg p-4 text-center">
-                    <p className="text-sm font-semibold text-gray-600">INACTIVE</p>
-                    <p className="text-4xl font-bold"> {totalInactive} </p>
-                </div>
+       <div className="lg:w-1/3 w-full flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-gray-200 rounded-lg p-4 text-center">
+              <p className="text-sm font-semibold text-gray-600">REGISTERED</p>
+              {/* [DIUBAH] Menggunakan variabel dinamis */}
+              <p className="text-4xl font-bold"> {loading ? '...' : totalRegistered} </p>
             </div>
+            <div className="bg-gray-200 rounded-lg p-4 text-center">
+              <p className="text-sm font-semibold text-gray-600">INACTIVE</p>
+              {/* [DIUBAH] Menggunakan variabel dinamis */}
+              <p className="text-4xl font-bold"> {loading ? '...' : totalInactive} </p>
+            </div>
+          </div>
 
             <div className="bg-white rounded-lg p-4 text-center border-2 border-black shadow-lg">
                 <p className="text-sm font-semibold">OPERATIONAL</p>
-                <p className="text-5xl font-bold mb-2"> {totalOperational} </p>
+                <p className="text-5xl font-bold mb-2"> {loading ? '...' : totalOperational} </p>
                 <div className="grid grid-cols-2 gap-2">
                     <div className="bg-green-600 text-white rounded p-2">
                         <p className="text-xs font-bold">ON</p>
-                        <p className="text-2xl font-bold"> {totalOn} </p>
+                        {/* [DIUBAH] Menggunakan state dinamis dengan loading */}
+                        <p className="text-2xl font-bold"> {isLoadingOnOff ? '...' : onOffCounts.on} </p>
                     </div>
                     <div className="bg-black text-white rounded p-2">
                         <p className="text-xs font-bold">OFF</p>
-                        <p className="text-2xl font-bold"> {totalOff} </p>
+                        {/* [DIUBAH] Menggunakan state dinamis dengan loading */}
+                        <p className="text-2xl font-bold"> {isLoadingOnOff ? '...' : onOffCounts.off} </p>
                     </div>
                 </div>
             </div>
