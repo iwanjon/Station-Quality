@@ -9,7 +9,7 @@ type QCData = {
   code?: string;
   date: string;
   channel: string;
-  name: string;
+  name?: string;
   rms: number | string;
   amplitude_ratio: number | string;
   num_gap?: number;
@@ -23,26 +23,27 @@ type QCData = {
   sp_percentage?: number;
   bw_percentage?: number;
   lp_percentage?: number;
-  
 };
 
 const CHANNELS = ["E", "N", "Z"];
 
 const StationDetail = () => {
   const { stationCode } = useParams<{ stationCode: string }>();
+  
   const [qcData, setQcData] = useState<QCData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []); 
 
+  // Mengembalikan useEffect untuk mengambil data secara otomatis saat komponen dimuat
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
+    const fetchQcData = async () => {
+      setLoading(true);
+      setError(null);
       try {
         const res = await axiosServer.get(`/api/qc/data/detail/7days/${stationCode}`);
         const normalized: QCData[] = (res.data || []).map((d: any) => ({
@@ -64,21 +65,19 @@ const StationDetail = () => {
         setQcData(normalized);
       } catch (err) {
         console.error("Error fetching QC 7days:", err);
-        setError("Gagal memuat data timeseries untuk stasiun ini.");
+        setError("Gagal memuat data timeseries untuk stasiun ini.");
       } finally {
-        setLoading(false);
-      }
+        setLoading(false);
+      }
     };
-    if (stationCode) fetchData();
+
+    if (stationCode) {
+      fetchQcData();
+    }
   }, [stationCode]);
-  
-  // Tips Debugging: Cek isi qcData di konsol untuk memastikan data dan formatnya benar
-  // console.log("Data QC yang sudah dinormalisasi:", qcData);
 
   const groupedByChannel = CHANNELS.reduce<Record<string, QCData[]>>(
     (acc, ch) => {
-      // [PERBAIKAN KRUSIAL] Gunakan .toUpperCase() untuk mengatasi case-sensitivity
-      // Ini akan mengubah "she" -> "SHE" sebelum dicek dengan "E"
       acc[ch] = qcData.filter((d) => d.channel.toUpperCase().includes(ch));
       return acc;
     },
@@ -93,117 +92,83 @@ const StationDetail = () => {
       </div>
     </div>
   );
-  
+
   if (loading) {
     return (
-        <MainLayout>
-            <div className="flex justify-center items-center h-screen">
-                <p>Loading timeseries data...</p>
-            </div>
-        </MainLayout>
+      <MainLayout>
+        <div className="flex justify-center items-center h-screen">
+          <p>Memuat data detail stasiun...</p>
+        </div>
+      </MainLayout>
     );
   }
 
   if (error) {
-     return (
-        <MainLayout>
-            <div className="flex justify-center items-center h-screen text-red-500">
-                <p>{error}</p>
-            </div>
-        </MainLayout>
+    return (
+      <MainLayout>
+        <div className="flex justify-center items-center h-screen text-red-500">
+          <p>{error}</p>
+        </div>
+      </MainLayout>
     );
   }
 
   return (
-    <MainLayout>
+    <MainLayout>
       <div className="p-4 sm:p-6 space-y-8 bg-gray-50 min-h-screen">
         <h1 className="text-center text-3xl font-bold text-gray-900">
           Detail Stasiun {stationCode}
         </h1>
+        
+        {/* RMS */}
+        <ChartGridSection title="RMS per Channel">
+          {CHANNELS.map((ch) => (
+            <div key={`rms-${ch}`}>
+              <ChartSlide channel={ch} titlePrefix="RMS" data={groupedByChannel[ch]} lines={[{ dataKey: "rms", stroke: "#6366f1" }]} />
+            </div>
+          ))}
+        </ChartGridSection>
 
-        {/* RMS */}
-        <ChartGridSection title="RMS per Channel">
-          {CHANNELS.map((ch) => (
-            <div key={`rms-${ch}`}>
-              <ChartSlide
-                channel={ch}
-                titlePrefix="RMS"
-                data={groupedByChannel[ch]}
-                lines={[{ dataKey: "rms", stroke: "#6366f1" }]}
-              />
-            </div>
-          ))}
-        </ChartGridSection>
+        {/* Amplitude */}
+        <ChartGridSection title="Amplitude Ratio per Channel">
+          {CHANNELS.map((ch, idx) => (
+            <div key={`amp-${ch}`}>
+              <ChartSlide channel={ch} titlePrefix="Amplitude Ratio" data={groupedByChannel[ch]} lines={[{ dataKey: "amplitude_ratio", stroke: ["#10b981", "#3b82f6", "#f59e0b"][idx] }]} />
+            </div>
+          ))}
+        </ChartGridSection>
 
-        {/* Amplitude */}
-        <ChartGridSection title="Amplitude Ratio per Channel">
-          {CHANNELS.map((ch, idx) => (
-            <div key={`amp-${ch}`}>
-              <ChartSlide
-                channel={ch}
-                titlePrefix="Amplitude Ratio"
-                data={groupedByChannel[ch]}
-                lines={[{ dataKey: "amplitude_ratio", stroke: ["#10b981", "#3b82f6", "#f59e0b"][idx] }]}
-              />
-            </div>
-          ))}
-        </ChartGridSection>
-        
-        {/* Latency Chart (tidak diubah) */}
+        {/* Spikes */}
+        <ChartGridSection title="Spikes">
+          {CHANNELS.map((ch) => (
+            <div key={`spikes-${ch}`}>
+              <ChartSlide channel={ch} titlePrefix="Spikes" data={groupedByChannel[ch]} lines={[{ dataKey: 'num_spikes', stroke: '#ef4444' }]} />
+            </div>
+          ))}
+        </ChartGridSection>
+
+        {/* Noise */}
+        <ChartGridSection title="Noise">
+          {CHANNELS.map((ch) => (
+            <div key={`noise-${ch}`}>
+              <ChartSlide channel={ch} titlePrefix="Noise" data={groupedByChannel[ch]} lines={[{ dataKey: 'perc_above_nhnm', stroke: '#f59e0b'},{ dataKey: 'perc_below_nlnm', stroke: '#3b82f6'}]} yAxisProps={{ domain: [0, 100] }} />
+            </div>
+          ))}
+        </ChartGridSection>
+
+        {/* SP / BW / LP */}
+        <ChartGridSection title="SP / BW / LP Percentage">
+          {CHANNELS.map((ch) => (
+            <div key={`sbl-${ch}`}>
+              <ChartSlide channel={ch} titlePrefix="SP / BW / LP" data={groupedByChannel[ch]} lines={[{ dataKey: 'sp_percentage', stroke: '#6366f1'},{ dataKey: 'bw_percentage', stroke: '#10b81'},{ dataKey: 'lp_percentage', stroke: '#f59e0b'}]} yAxisProps={{ domain: [50, 120] }} />
+            </div>
+          ))}
+        </ChartGridSection>
+
+        {/* Latency Chart tetap lazy loading secara terpisah */}
         <LazyLatencyChart stationCode={stationCode} />
-
-        {/* Spikes */}
-        <ChartGridSection title="Spikes">
-          {CHANNELS.map((ch) => (
-            <div key={`spikes-${ch}`}>
-              <ChartSlide
-                channel={ch}
-                titlePrefix="Spikes"
-                data={groupedByChannel[ch]}
-                lines={[{ dataKey: 'num_spikes', stroke: '#ef4444' }]}
-              />
-            </div>
-          ))}
-        </ChartGridSection>
-
-        {/* Noise */}
-        <ChartGridSection title="Noise">
-          {CHANNELS.map((ch) => (
-            <div key={`noise-${ch}`}>
-              <ChartSlide
-                channel={ch}
-                titlePrefix="Noise"
-                data={groupedByChannel[ch]}
-                lines={[
-                  { dataKey: 'perc_above_nhnm', stroke: '#f59e0b'},
-                  { dataKey: 'perc_below_nlnm', stroke: '#3b82f6'},
-                ]}
-                yAxisProps={{ domain: [0, 100] }}
-              />
-            </div>
-          ))}
-        </ChartGridSection>
-        
-        {/* SP / BW / LP */}
-        <ChartGridSection title="SP / BW / LP Percentage">
-          {CHANNELS.map((ch) => (
-            <div key={`sbl-${ch}`}>
-              <ChartSlide
-                channel={ch}
-                titlePrefix="SP / BW / LP"
-                data={groupedByChannel[ch]}
-                lines={[
-                  { dataKey: 'sp_percentage', stroke: '#6366f1'},
-                  { dataKey: 'bw_percentage', stroke: '#10b981'},
-                  { dataKey: 'lp_percentage', stroke: '#f59e0b'},
-                ]}
-                yAxisProps={{ domain: [50, 120] }}
-              />
-            </div>
-          ))}
-        </ChartGridSection>
-      </div>
-    </MainLayout>
+      </div>
+    </MainLayout>
   );
 };
 
