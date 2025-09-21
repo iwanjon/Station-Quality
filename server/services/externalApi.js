@@ -100,6 +100,35 @@ export async function fetchQCSummary(date) {
   }
 }
 
+export async function fetchSLMONLastStatus() {
+  const cacheKey = 'slmon:laststatus';
+  // Cek cache Redis
+  const cachedData = await redisClient.get(cacheKey);
+  if (cachedData) {
+    console.log('📦 SLMON LastStatus dari cache');
+    return JSON.parse(cachedData);
+  }
 
+  // Request ke API eksternal
+  const url = 'http://202.90.198.40/sismon-slmon2/data/slmon.all.laststatus.json';
+  console.log('🌐 Request ke SLMON LastStatus:', url);
 
-// module.exports = { getData };
+  try {
+    const response = await axios.get(url, {
+      headers: { Accept: "application/json" },
+      timeout: 10000,
+    });
+    // Simpan ke Redis (TTL 60 detik)
+    await redisClient.setEx(cacheKey, 60, JSON.stringify(response.data));
+    return response.data;
+  } catch (err) {
+    if (err.response) {
+      console.error("❌ SLMON API Error:", err.response.status, err.response.data);
+    } else if (err.request) {
+      console.error("❌ No response from SLMON API:", err.request);
+    } else {
+      console.error("❌ SLMON Request setup error:", err.message);
+    }
+    throw err;
+  }
+}

@@ -1,14 +1,15 @@
 import { Router } from 'express';
-// import { getData } from '../services/externalApi';
-import { getData } from '../services/externalApi.js'; // Uncomment if using ES Modules
+import { fetchSLMONLastStatus } from '../services/externalApi.js';
 
 const router = Router();
-router.get('/data', async (req, res) => {
+
+// Endpoint baru untuk SLMON Last Status
+router.get('/slmon/laststatus', async (_req, res) => {
   try {
-    const data = await getData();
+    const data = await fetchSLMONLastStatus();
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: 'Terjadi kesalahan' });
+    res.status(500).json({ error: 'Gagal mengambil data SLMON Last Status' });
   }
 });
 

@@ -19,7 +19,7 @@ app.use(
   })
 );
 
-app.use('/api', dashboardRoutes);
+app.use('/api/dashboard', dashboardRoutes); 
 app.use('/api/qc', qcRoutes);
 app.use('/api/stasiun', stasiunRoutes);
 app.use('/api/availability', availabilityRoutes);

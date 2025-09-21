@@ -148,13 +148,13 @@ const StationDetail = () => {
         </ChartGridSection>
 
         {/* Noise */}
-        <ChartGridSection title="Noise">
+        {/* <ChartGridSection title="Noise">
           {CHANNELS.map((ch) => (
             <div key={`noise-${ch}`}>
               <ChartSlide channel={ch} titlePrefix="Noise" data={groupedByChannel[ch]} lines={[{ dataKey: 'perc_above_nhnm', stroke: '#f59e0b'},{ dataKey: 'perc_below_nlnm', stroke: '#3b82f6'}]} yAxisProps={{ domain: [0, 100] }} />
             </div>
           ))}
-        </ChartGridSection>
+        </ChartGridSection> */}
 
         {/* SP / BW / LP */}
         <ChartGridSection title="SP / BW / LP Percentage">
