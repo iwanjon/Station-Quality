@@ -6,9 +6,28 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import axiosServer from "../utilities/AxiosServer";
-import dayjs from "dayjs"; // Tambahkan import ini di bagian atas
+import dayjs from "dayjs";
 
-// [TETAP] Interface data tidak berubah
+// --- INTERFACES ---
+
+interface SlmonStatus {
+  type: "Feature";
+  properties: {
+    sta: string;
+    latency1?: string;
+    // ...properti lain dari SLMON
+  };
+  geometry: {
+    type: "Point";
+    coordinates: [string, string, number];
+  };
+}
+
+interface SlmonFeatureCollection {
+  type: "FeatureCollection";
+  features: SlmonStatus[];
+}
+
 interface QCSummary {
   date: string;
   code: string;
@@ -21,150 +40,31 @@ interface QCSummary {
     type: string;
     coordinates: [number, number, number];
   };
+  latencies?: number[]; 
 }
 
-// [TETAP] Fungsi untuk ikon segitiga di peta
-// [DIPERBARUI] Fungsi ikon segitiga sesuai kode Anda
+// [BARU] Interface untuk data detail yang kita butuhkan saja
+interface QCDetail {
+  availability: string;
+}
+
+
+// --- FUNGSI HELPER (TIDAK BERUBAH) ---
 const triangleIcon = (color: string) =>
   L.divIcon({
     className: "",
-    html: `
-      <div style="
-        width: 0; 
-        height: 0; 
-        border-left: 6px solid transparent; 
-        border-right: 6px solid transparent; 
-        border-bottom: 12px solid ${color};
-        position: relative;
-      ">
-        <div style="
-          position: absolute;
-          left: -7px; top: -1px;
-          width: 0; height: 0;
-          border-left: 7px solid transparent;
-          border-right: 7px solid transparent;
-          border-bottom: 14px solid #222; /* lineart lebih tebal */
-          z-index: -1;
-        "></div>
-      </div>
-    `,
+    html: `<div style="width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 12px solid ${color}; position: relative;"><div style="position: absolute; left: -7px; top: -1px; width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-bottom: 14px solid #222; z-index: -1;"></div></div>`,
     iconSize: [14, 14],
     iconAnchor: [7, 14],
   });
-  
-// [DIPERBARUI] Teks status disesuaikan dengan skema warna baru
-const getStatusText = (result: string, quality: number | null): string => {
-  if (result === 'Mati') return 'Mati';
-  if (quality === null) return 'No Data';
-  if (quality >= 80) return 'Sangat Baik';
-  if (quality >= 60) return 'Baik';
-  if (quality >= 40) return 'Cukup';
-  return 'Buruk';
-};
 
-// Ubah nama LatencyLegend menjadi MapLegend dan pindahkan ke kiri bawah
-const MapLegend = ({ qcData }: { qcData: QCSummary[] }) => {
-  // Hanya tampilkan label waktu, tanpa teks kualitas
-  const summary = [
-    {
-      label: "<10s",
-      color: "bg-teal-500",
-      textColor: "text-teal-600",
-      count: qcData.filter(s => s.site_quality === "Very Good" && s.result !== "Mati").length,
-    },
-    {
-      label: "<1m",
-      color: "bg-yellow-400",
-      textColor: "text-yellow-500",
-      count: qcData.filter(s => s.site_quality === "Good" && s.result !== "Mati").length,
-    },
-    {
-      label: "<3m",
-      color: "bg-orange-400",
-      textColor: "text-orange-500",
-      count: qcData.filter(s => s.site_quality === "Fair" && s.result !== "Mati").length,
-    },
-    {
-      label: "<30m",
-      color: "bg-red-500",
-      textColor: "text-red-600",
-      count: qcData.filter(s => s.site_quality === "Poor" && s.result !== "Mati").length,
-    },
-    {
-      label: "<1d",
-      color: "bg-gray-400",
-      textColor: "text-gray-500",
-      count: qcData.filter(s => (!s.site_quality || s.site_quality === "Null") && s.result !== "Mati").length,
-    },
-    {
-      label: ">1d",
-      color: "bg-gray-700",
-      textColor: "text-gray-800",
-      count: qcData.filter(s => s.result === "Mati").length,
-    },
-  ];
-
-  const total = summary.reduce((acc, cur) => acc + cur.count, 0);
-  const maxCount = Math.max(...summary.map(s => s.count), 1);
-
-  return (
-    <div className="absolute bottom-5 left-5 z-[1000] bg-white/50 p-4 rounded-xl shadow-lg w-64">
-      <div className="font-semibold text-gray-800 text-base mb-1">Summary Status</div>
-      <div className="mb-3 text-sm">
-        <span className="font-bold">Total:</span> {total}
-      </div>
-      <div className="flex flex-col gap-2.5">
-        {summary.map((item) => (
-          <div key={item.label} className="grid grid-cols-[3rem_1fr_2rem] items-center gap-x-2">
-            <span className="text-xs text-gray-600 font-medium">{item.label}</span>
-            <div
-              className={`${item.color} h-3.5 rounded-sm`}
-              style={{
-                width: `${(item.count / maxCount) * 100}%`,
-                minWidth: item.count > 0 ? '4px' : '0',
-                transition: "width 0.3s ease-in-out",
-              }}
-            ></div>
-            <span className={`text-sm font-bold justify-self-start ${item.textColor}`}>
-              {item.count}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// [BARU] Komponen Kartu untuk panel bawah (sebagai placeholder)
-const InfoCard = ({ title, children }: { title: string, children?: React.ReactNode }) => (
-    <div className="bg-white rounded-xl shadow p-4 min-h-[300px] flex flex-col">
-        <h2 className="text-lg font-bold border-b pb-2 mb-4">{title}</h2>
-        <div className="flex-grow flex items-center justify-center text-gray-400">
-           {children ? children : <p>Konten untuk {title} akan ditampilkan di sini.</p>}
-        </div>
-        <a href="#" className="text-sm text-blue-600 hover:underline mt-auto text-right">Details...</a>
-    </div>
-);
-
-// Mapping warna konsisten untuk legend dan triangle
-// const getColorBySiteQuality = (result: string, site_quality: string | null): string => {
-//   if (result === 'Mati') return "#374151"; // bg-gray-700
-//   if (!site_quality || site_quality === "Null") return "#979797"; 
-//   if (site_quality === "Very Good") return "#14b8a6"; // bg-teal-500
-//   if (site_quality === "Good") return "#facc15"; // bg-yellow-400
-//   if (site_quality === "Fair") return "#fb923c"; // bg-orange-400
-//   if (site_quality === "Poor") return "#ef4444"; // bg-red-500
-//   return "#818cf8";
-// };
-
-// Mapping warna dan label triangle berdasarkan result
 const getColorByResult = (result: string): string => {
   switch (result) {
-    case "Baik": return "#14b8a6"; // Good - teal
-    case "Cukup Baik": return "#fb923c"; // Fair - orange
-    case "Buruk": return "#ef4444"; // Bad - red
-    case "No Data": return "#818cf8"; // Mati/No Data - indigo
-    case "Mati": return "#374151"; // Mati/Off - gray
+    case "Baik": return "#14b8a6";
+    case "Cukup Baik": return "#fb923c";
+    case "Buruk": return "#ef4444";
+    case "No Data": return "#818cf8";
+    case "Mati": return "#374151";
     default: return "#979797";
   }
 };
@@ -180,69 +80,210 @@ const getStatusTextEn = (result: string): string => {
   }
 };
 
-const Dashboard = () => {
-  const [qcData, setQcData] = useState<QCSummary[]>([]);
-  // State lain yang mungkin dibutuhkan nanti
-  // const [loadingQC, setLoadingQC] = useState(true);
+const parseLatencyToSeconds = (latencyString?: string | null): number | null => {
+  if (!latencyString) return null;
+  const value = parseFloat(latencyString);
+  if (isNaN(value)) return null;
+  if (latencyString.endsWith('d')) return value * 86400;
+  if (latencyString.endsWith('m')) return value * 60;
+  return value;
+};
 
+const MapLegend = ({ stationData }: { stationData: QCSummary[] }) => {
+  const getAvgLatency = (station: QCSummary): number | null => {
+    if (!station.latencies || station.latencies.length === 0) return null;
+    const sum = station.latencies.reduce((a, b) => a + b, 0);
+    return sum / station.latencies.length;
+  };
+  
+  const summary = [
+    { label: "<10s", color: "bg-teal-500", textColor: "text-teal-600", count: stationData.filter(s => s.result !== "Mati" && getAvgLatency(s) !== null && getAvgLatency(s)! < 10).length },
+    { label: "<1m", color: "bg-yellow-400", textColor: "text-yellow-500", count: stationData.filter(s => s.result !== "Mati" && getAvgLatency(s) !== null && getAvgLatency(s)! >= 10 && getAvgLatency(s)! < 60).length },
+    { label: "<3m", color: "bg-orange-400", textColor: "text-orange-500", count: stationData.filter(s => s.result !== "Mati" && getAvgLatency(s) !== null && getAvgLatency(s)! >= 60 && getAvgLatency(s)! < 180).length },
+    { label: "<30m", color: "bg-red-500", textColor: "text-red-600", count: stationData.filter(s => s.result !== "Mati" && getAvgLatency(s) !== null && getAvgLatency(s)! >= 180 && getAvgLatency(s)! < 1800).length },
+    { label: "<1d", color: "bg-gray-400", textColor: "text-gray-500", count: stationData.filter(s => s.result !== "Mati" && (getAvgLatency(s) === null || (getAvgLatency(s)! >= 1800 && getAvgLatency(s)! < 86400))).length },
+    { label: ">1d", color: "bg-gray-700", textColor: "text-gray-800", count: stationData.filter(s => s.result === "Mati").length },
+  ];
+
+  const total = summary.reduce((acc, cur) => acc + cur.count, 0);
+  const maxCount = Math.max(...summary.map(s => s.count), 1);
+
+  return (
+    <div className="absolute bottom-5 left-5 bg-white/50 p-4 rounded-xl shadow-lg w-64 ">
+      <div className="font-semibold text-gray-800 text-base mb-1">Latency Summary</div>
+      <div className="mb-3 text-sm"><span className="font-bold">Total:</span> {total}</div>
+      <div className="flex flex-col gap-2.5">
+        {summary.map((item) => (
+          <div key={item.label} className="grid grid-cols-[3rem_1fr_2rem] items-center gap-x-2">
+            <span className="text-xs text-gray-600 font-medium">{item.label}</span>
+            <div className={`${item.color} h-3.5 rounded-sm`} style={{ width: `${(item.count / maxCount) * 100}%`, minWidth: item.count > 0 ? '4px' : '0', transition: "width 0.3s ease-in-out" }}></div>
+            <span className={`text-sm font-bold justify-self-start ${item.textColor}`}>{item.count}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// [TETAP] Komponen Kartu Info
+const InfoCard = ({ title, children }: { title: string, children?: React.ReactNode }) => (
+    <div className="bg-white rounded-xl shadow p-4 min-h-[300px] flex flex-col">
+        <h2 className="text-lg font-bold border-b pb-2 mb-4">{title}</h2>
+        <div className="flex-grow flex items-center justify-center text-gray-400">
+           {children ? children : <p>Konten untuk {title} akan ditampilkan di sini.</p>}
+        </div>
+        <a href="#" className="text-sm text-blue-600 hover:underline mt-auto text-right">Details...</a>
+    </div>
+);
+
+
+const Dashboard = () => {
+  const [combinedData, setCombinedData] = useState<QCSummary[]>([]);
+  
+  // [BARU] State untuk menyimpan jumlah ON/OFF dan status loadingnya
+  const [onOffCounts, setOnOffCounts] = useState({ on: 0, off: 0 });
+  const [isLoadingOnOff, setIsLoadingOnOff] = useState(true);
+
+  // useEffect untuk mengambil data summary dan slmon
   useEffect(() => {
-    // Ambil data QC summary untuk tanggal kemarin (bukan tanggal fix)
-    const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
-    axiosServer
-      .get<QCSummary[]>(`/api/qc/summary/${yesterday}`)
-      .then((res) => setQcData(res.data))
-      .catch(err => console.error("Gagal memuat data QC:", err));
-      // .finally(() => setLoadingQC(false));
+    const fetchData = async () => {
+      try {
+        const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
+        const [qcResponse, slmonResponse] = await Promise.all([
+          axiosServer.get<QCSummary[]>(`/api/qc/summary/${yesterday}`),
+          axiosServer.get<SlmonFeatureCollection>('/api/dashboard/slmon/laststatus')
+        ]);
+
+        const qcData = qcResponse.data;
+        const slmonData = slmonResponse.data.features;
+        const slmonMap = new Map(slmonData.map(item => [item.properties.sta, item]));
+
+        const finalData = qcData.map(station => {
+          const slmonStation = slmonMap.get(station.code);
+          let latencies: number[] = [];
+          if (slmonStation) {
+            for (let i = 1; i <= 6; i++) {
+              const latencyKey = `latency${i}` as keyof typeof slmonStation.properties;
+              const latencyValue = slmonStation.properties[latencyKey as keyof typeof slmonStation.properties];
+              if (typeof latencyValue === 'string') {
+                const parsedLatency = parseLatencyToSeconds(latencyValue);
+                if (parsedLatency !== null) latencies.push(parsedLatency);
+              }
+            }
+          }
+          
+          const updatedStation = { ...station, latencies };
+          
+          if (latencies.length > 0) {
+            const avgLatency = latencies.reduce((a, b) => a + b, 0) / latencies.length;
+            if (avgLatency >= 180) {
+              updatedStation.result = "Buruk";
+            }
+          }
+          
+          return updatedStation;
+        });
+
+        setCombinedData(finalData);
+
+      } catch (err) {
+        console.error("Gagal memuat atau menggabungkan data:", err);
+      }
+    };
+
+    fetchData();
   }, []);
 
-  // [DISEMPURNAKAN] Kalkulasi data untuk panel status (angka-angka ini bisa di-hardcode dulu)
-  const totalRegistered = 553;
-  const totalInactive = 4;
-  const totalOperational = 549;
-  const totalOn = 516;
-  const totalOff = 33;
-  
-  // Kalkulasi ON breakdown (bisa di hardcode atau dari data real)
-  const goodCount = 300;
-  const fairCount = 150;
-  const badCount = 66;
-  const noDataCount = 33;
+  // [BARU] useEffect untuk mengambil data detail dan menghitung ON/OFF
+  useEffect(() => {
+    if (combinedData.length === 0) return; // Jangan jalankan jika data utama belum ada
 
+    const fetchDetailsAndCountOnOff = async () => {
+      setIsLoadingOnOff(true);
+      const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
+
+      // Buat array promises untuk mengambil data detail semua stasiun
+      const promises = combinedData.map(station =>
+        axiosServer.get<QCDetail[]>(`/api/qc/data/detail/${station.code}/${yesterday}`, {
+          // [OPTIMASI] Minta hanya field 'availability' untuk mempercepat proses
+          params: {
+            fields: 'availability'
+          }
+        })
+      );
+
+      try {
+        const results = await Promise.allSettled(promises);
+        
+        const counts = results.reduce(
+          (acc, result) => {
+            if (result.status === 'fulfilled' && result.value.data) {
+              const stationDetails = result.value.data;
+              // [LOGIKA BARU] Stasiun dianggap OFF jika SALAH SATU channelnya punya availability 0.
+              const isOff = stationDetails.some(
+                channel => parseFloat(channel.availability) === 0
+              );
+
+              if (isOff) {
+                acc.off++;
+              } else {
+                acc.on++;
+              }
+            } else {
+              // Jika request gagal atau tidak ada data, anggap OFF
+              acc.off++;
+            }
+            return acc;
+          },
+          { on: 0, off: 0 } // Nilai awal accumulator
+        );
+        
+        setOnOffCounts(counts);
+      } catch (error) {
+        console.error("Terjadi kesalahan saat menghitung status ON/OFF:", error);
+        setOnOffCounts({ on: 0, off: 0 }); // Reset jika ada error
+      } finally {
+        setIsLoadingOnOff(false);
+      }
+    };
+
+    fetchDetailsAndCountOnOff();
+  }, [combinedData]); // Dependency: Jalankan hook ini setiap kali combinedData berubah
+
+
+  // [DIUBAH] Kalkulasi panel status sekarang lebih dinamis
+  const totalRegistered = 553; // Angka ini masih statis, bisa diambil dari API stasiun
+  const totalInactive = 4;     // Angka ini masih statis, bisa diambil dari API stasiun
+  const totalOperational = combinedData.length; // Dihitung dari data yang berhasil dimuat
+  
+  const goodCount = combinedData.filter(s => s.result === "Baik").length;
+  const fairCount = combinedData.filter(s => s.result === "Cukup Baik").length;
+  const badCount = combinedData.filter(s => s.result === "Buruk").length;
+  const noDataCount = combinedData.filter(s => s.result === "No Data" || s.result === "Mati").length;
 
   return (
     <MainLayout>
       <h1 className="text-left text-3xl font-bold mt-0 mb-4 ml-2">Dashboard</h1>
       <div className="flex flex-col lg:flex-row gap-6">
-
         {/* BAGIAN KIRI: PETA */}
         <div className="lg:w-2/3 w-full">
            <div className="bg-white rounded-xl shadow p-2 h-[600px]">
              <div className="relative w-full h-full">
-                <MapContainer
-                  center={[-2.5, 118]}
-                  zoom={5}
-                  className="w-full h-full rounded-lg"
-                >
-                  <TileLayer
-                    attribution='&copy; <a href="https://osm.org/copyright">OSM</a>'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  {qcData.map((s, idx) => (
-                    <Marker
-                      key={idx}
-                      position={[s.geometry.coordinates[1], s.geometry.coordinates[0]]}
-                      icon={triangleIcon(getColorByResult(s.result))}
-                    >
-                      <Popup>
-                        <b>Stasiun: {s.code}</b><br />
-                        Status: {getStatusTextEn(s.result)}<br />
-                        {s.quality_percentage !== null && `Kualitas: ${s.quality_percentage.toFixed(1)}%`}
-                      </Popup>
-                    </Marker>
-                  ))}
-                </MapContainer>
-                <MapLegend qcData={qcData} />
-              </div>
+               <MapContainer center={[-2.5, 118]} zoom={5} className="w-full h-full rounded-lg">
+                 <TileLayer attribution='&copy; <a href="https://osm.org/copyright">OSM</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/>
+                 {combinedData.map((s, idx) => (
+                   <Marker key={idx} position={[s.geometry.coordinates[1], s.geometry.coordinates[0]]} icon={triangleIcon(getColorByResult(s.result))}>
+                     <Popup>
+                       <b>Stasiun: {s.code}</b><br />
+                       Status: {getStatusTextEn(s.result)}<br />
+                       {s.quality_percentage !== null && `Kualitas: ${s.quality_percentage.toFixed(1)}%`}<br/>
+                       {s.latencies && s.latencies.length > 0 ? (<span>Latencies: {s.latencies.map(l => `${l}s`).join(', ')}</span>) : (<span>Latency: No data</span>)}
+                     </Popup>
+                   </Marker>
+                 ))}
+               </MapContainer>
+               <MapLegend stationData={combinedData} />
+             </div>
            </div>
         </div>
 
@@ -258,73 +299,483 @@ const Dashboard = () => {
                     <p className="text-4xl font-bold"> {totalInactive} </p>
                 </div>
             </div>
-
             <div className="bg-white rounded-lg p-4 text-center border-2 border-black shadow-lg">
                 <p className="text-sm font-semibold">OPERATIONAL</p>
-                <p className="text-5xl font-bold mb-2"> {totalOperational} </p>
+                {/* [DIUBAH] Menampilkan jumlah stasiun yang diproses */}
+                <p className="text-5xl font-bold mb-2"> {totalOperational > 0 ? totalOperational : '...'} </p>
                 <div className="grid grid-cols-2 gap-2">
                     <div className="bg-green-600 text-white rounded p-2">
                         <p className="text-xs font-bold">ON</p>
-                        <p className="text-2xl font-bold"> {totalOn} </p>
+                        {/* [DIUBAH] Menampilkan angka dinamis dari state */}
+                        <p className="text-2xl font-bold"> {isLoadingOnOff ? '...' : onOffCounts.on} </p>
                     </div>
                     <div className="bg-black text-white rounded p-2">
                         <p className="text-xs font-bold">OFF</p>
-                        <p className="text-2xl font-bold"> {totalOff} </p>
+                        {/* [DIUBAH] Menampilkan angka dinamis dari state */}
+                        <p className="text-2xl font-bold"> {isLoadingOnOff ? '...' : onOffCounts.off} </p>
                     </div>
                 </div>
             </div>
-
             <div className="grid grid-cols-4 gap-2 text-center text-white text-xs font-bold">
-                <div className="bg-green-500 rounded p-2">
-                    <p>GOOD</p>
-                    <p className="text-xl">{goodCount}</p>
-                </div>
-                <div className="bg-orange-400 rounded p-2">
-                    <p>FAIR</p>
-                    <p className="text-xl">{fairCount}</p>
-                </div>
-                <div className="bg-red-600 rounded p-2">
-                    <p>BAD</p>
-                    <p className="text-xl">{badCount}</p>
-                </div>
-                <div className="bg-gray-400 rounded p-2">
-                    <p>NO DATA</p>
-                    <p className="text-xl">{noDataCount}</p>
-                </div>
+                <div className="bg-green-500 rounded p-2"><p>GOOD</p><p className="text-xl">{goodCount}</p></div>
+                <div className="bg-orange-400 rounded p-2"><p>FAIR</p><p className="text-xl">{fairCount}</p></div>
+                <div className="bg-red-600 rounded p-2"><p>BAD</p><p className="text-xl">{badCount}</p></div>
+                <div className="bg-gray-400 rounded p-2"><p>NO DATA</p><p className="text-xl">{noDataCount}</p></div>
             </div>
         </div>
       </div>
 
-      {/* [BARU] BAGIAN BAWAH: 4 KARTU INFORMASI */}
+      {/* BAGIAN BAWAH: 4 KARTU INFORMASI */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
-        <InfoCard title="Availability">
-            {/* Nanti bisa diisi chart atau data */}
-        </InfoCard>
-        <InfoCard title="Quality">
-            {/* Nanti bisa diisi chart atau data */}
-        </InfoCard>
-        <InfoCard title="Performance">
-            {/* Nanti bisa diisi chart atau data */}
-        </InfoCard>
+        <InfoCard title="Availability" />
+        <InfoCard title="Quality" />
+        <InfoCard title="Performance" />
         <InfoCard title="Metadata">
-            {/* Contoh isi untuk metadata */}
-            <div className="text-left text-white w-full text-sm">
-                <p className="font-semibold mb-2">Recent updates:</p>
-                <ul className="list-disc list-inside">
-                    <li>MMPI</li>
-                    <li>MTKI</li>
-                    <li>SPSI</li>
-                    <li>JMBI</li>
-                </ul>
-            </div>
+          <div className="text-left text-gray-800 w-full text-sm">
+              <p className="font-semibold mb-2">Recent updates:</p>
+              <ul className="list-disc list-inside">
+                  <li>MMPI</li><li>MTKI</li><li>SPSI</li><li>JMBI</li>
+              </ul>
+          </div>
         </InfoCard>
       </div>
-
     </MainLayout>
   );
 };
 
 export default Dashboard;
+// Dashboard.tsx
+
+// import { useEffect, useState } from "react";
+// import MainLayout from "../layouts/MainLayout";
+// import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+// import "leaflet/dist/leaflet.css";
+// import L from "leaflet";
+// import axiosServer from "../utilities/AxiosServer";
+// import dayjs from "dayjs"; // Tambahkan import ini di bagian atas
+
+// // [TETAP] Interface data tidak berubah
+// interface QCSummary {
+//   date: string;
+//   code: string;
+//   quality_percentage: number | null;
+//   result: string;
+//   site_quality: string | null;
+//   details: string;
+//   network: string;
+//   geometry: {
+//     type: string;
+//     coordinates: [number, number, number];
+//   };
+// }
+
+// // [BARU] Interface untuk data stasiun dari database
+// interface Stasiun {
+//   stasiun_id: number;
+//   kode_stasiun: string;
+//   status: string; // Kolom kunci: 'aktif' atau 'NONaktif'
+//   // Anda bisa tambahkan properti lain jika dibutuhkan
+// }
+
+// interface QCDetail {
+//     id: string;
+//     code: string;
+//     date: string;
+//     channel: string;
+//     availability: string; // Kunci untuk menentukan status ON/OFF
+// }
+
+// // [TETAP] Fungsi untuk ikon segitiga di peta
+// // [DIPERBARUI] Fungsi ikon segitiga sesuai kode Anda
+// const triangleIcon = (color: string) =>
+//   L.divIcon({
+//     className: "",
+//     html: `
+//       <div style="
+//         width: 0; 
+//         height: 0; 
+//         border-left: 6px solid transparent; 
+//         border-right: 6px solid transparent; 
+//         border-bottom: 12px solid ${color};
+//         position: relative;
+//       ">
+//         <div style="
+//           position: absolute;
+//           left: -7px; top: -1px;
+//           width: 0; height: 0;
+//           border-left: 7px solid transparent;
+//           border-right: 7px solid transparent;
+//           border-bottom: 14px solid #222; /* lineart lebih tebal */
+//           z-index: -1;
+//         "></div>
+//       </div>
+//     `,
+//     iconSize: [14, 14],
+//     iconAnchor: [7, 14],
+//   });
+
+// // Ubah nama LatencyLegend menjadi MapLegend dan pindahkan ke kiri bawah
+// const MapLegend = ({ qcData }: { qcData: QCSummary[] }) => {
+//   // Hanya tampilkan label waktu, tanpa teks kualitas
+//   const summary = [
+//     {
+//       label: "<10s",
+//       color: "bg-teal-500",
+//       textColor: "text-teal-600",
+//       count: qcData.filter(s => s.site_quality === "Very Good" && s.result !== "Mati").length,
+//     },
+//     {
+//       label: "<1m",
+//       color: "bg-yellow-400",
+//       textColor: "text-yellow-500",
+//       count: qcData.filter(s => s.site_quality === "Good" && s.result !== "Mati").length,
+//     },
+//     {
+//       label: "<3m",
+//       color: "bg-orange-400",
+//       textColor: "text-orange-500",
+//       count: qcData.filter(s => s.site_quality === "Fair" && s.result !== "Mati").length,
+//     },
+//     {
+//       label: "<30m",
+//       color: "bg-red-500",
+//       textColor: "text-red-600",
+//       count: qcData.filter(s => s.site_quality === "Poor" && s.result !== "Mati").length,
+//     },
+//     {
+//       label: "<1d",
+//       color: "bg-gray-400",
+//       textColor: "text-gray-500",
+//       count: qcData.filter(s => (!s.site_quality || s.site_quality === "Null") && s.result !== "Mati").length,
+//     },
+//     {
+//       label: ">1d",
+//       color: "bg-gray-700",
+//       textColor: "text-gray-800",
+//       count: qcData.filter(s => s.result === "Mati").length,
+//     },
+//   ];
+
+//   const total = summary.reduce((acc, cur) => acc + cur.count, 0);
+//   const maxCount = Math.max(...summary.map(s => s.count), 1);
+
+//   return (
+//     <div className="absolute bottom-5 left-5 z-[1000] bg-white/50 p-4 rounded-xl shadow-lg w-64">
+//       <div className="font-semibold text-gray-800 text-base mb-1">Summary Status</div>
+//       <div className="mb-3 text-sm">
+//         <span className="font-bold">Total:</span> {total}
+//       </div>
+//       <div className="flex flex-col gap-2.5">
+//         {summary.map((item) => (
+//           <div key={item.label} className="grid grid-cols-[3rem_1fr_2rem] items-center gap-x-2">
+//             <span className="text-xs text-gray-600 font-medium">{item.label}</span>
+//             <div
+//               className={`${item.color} h-3.5 rounded-sm`}
+//               style={{
+//                 width: `${(item.count / maxCount) * 100}%`,
+//                 minWidth: item.count > 0 ? '4px' : '0',
+//                 transition: "width 0.3s ease-in-out",
+//               }}
+//             ></div>
+//             <span className={`text-sm font-bold justify-self-start ${item.textColor}`}>
+//               {item.count}
+//             </span>
+//           </div>
+//         ))}
+//       </div>
+//     </div>
+//   );
+// };
+
+// // [BARU] Komponen Kartu untuk panel bawah (sebagai placeholder)
+// const InfoCard = ({ title, children }: { title: string, children?: React.ReactNode }) => (
+//     <div className="bg-white rounded-xl shadow p-4 min-h-[300px] flex flex-col">
+//         <h2 className="text-lg font-bold border-b pb-2 mb-4">{title}</h2>
+//         <div className="flex-grow flex items-center justify-center text-gray-400">
+//            {children ? children : <p>Konten untuk {title} akan ditampilkan di sini.</p>}
+//         </div>
+//         <a href="#" className="text-sm text-blue-600 hover:underline mt-auto text-right">Details...</a>
+//     </div>
+// );
+
+
+// // Mapping warna dan label triangle berdasarkan result
+// const getColorByResult = (result: string): string => {
+//   switch (result) {
+//     case "Baik": return "#14b8a6"; // Good - teal
+//     case "Cukup Baik": return "#fb923c"; // Fair - orange
+//     case "Buruk": return "#ef4444"; // Bad - red
+//     case "No Data": return "#818cf8"; // Mati/No Data - indigo
+//     case "Mati": return "#374151"; // Mati/Off - gray
+//     default: return "#979797";
+//   }
+// };
+
+// const getStatusTextEn = (result: string): string => {
+//   switch (result) {
+//     case "Baik": return "Good";
+//     case "Cukup Baik": return "Fair";
+//     case "Buruk": return "Bad";
+//     case "No Data": return "No Data";
+//     case "Mati": return "Mati";
+//     default: return result;
+//   }
+// };
+
+// const Dashboard = () => {
+//   const [qcData, setQcData] = useState<QCSummary[]>([]);
+//   const [stations, setStations] = useState<Stasiun[]>([]);
+//   const [loading, setLoading] = useState(true);
+//   const [onOffCounts, setOnOffCounts] = useState({ on: 0, off: 0 });
+//   const [isLoadingOnOff, setIsLoadingOnOff] = useState(true);
+
+//   useEffect(() => {
+//     const fetchInitialData = async () => {
+//       setLoading(true);
+//       try {
+//         const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
+
+//         const [qcResponse, stationsResponse] = await Promise.all([
+//           axiosServer.get<QCSummary[]>(`/api/qc/summary/${yesterday}`),
+//           axiosServer.get<Stasiun[]>("/api/stasiun"),
+//         ]);
+
+//         setQcData(qcResponse.data);
+//         setStations(stationsResponse.data);
+//       } catch (error) {
+//         console.error("Gagal memuat data dashboard awal:", error);
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
+
+//     fetchInitialData();
+//   }, []); // Dependency kosong, hanya berjalan sekali saat komponen dimuat
+
+//   // Ini akan berjalan setelah qcData terisi
+//   useEffect(() => {
+//     if (qcData.length === 0) return;
+
+//     const fetchDetailsAndCountOnOff = async () => {
+//       setIsLoadingOnOff(true);
+//       const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
+
+//       // Buat array of promises untuk mengambil data detail semua stasiun
+//       const promises = qcData.map(station =>
+//         axiosServer.get<QCDetail[]>(`/api/qc/data/detail/${station.code}/${yesterday}`)
+//       );
+
+//       try {
+//         const results = await Promise.all(promises);
+        
+//         let onCount = 0;
+//         let offCount = 0;
+
+//         results.forEach(response => {
+//           const stationDetails = response.data;
+          
+//           // Cek jika data detail ada dan merupakan array
+//           if (Array.isArray(stationDetails) && stationDetails.length > 0) {
+//             // Stasiun dianggap OFF jika SEMUA channelnya punya availability 0.
+//             const isOff = stationDetails.every(
+//               channel => parseFloat(channel.availability) === 0
+//             );
+
+//             if (isOff) {
+//               offCount++;
+//             } else {
+//               onCount++;
+//             }
+//           } else {
+//             // Jika tidak ada data detail, anggap OFF atau sesuai logika bisnis
+//             offCount++;
+//           }
+//         });
+        
+//         setOnOffCounts({ on: onCount, off: offCount });
+
+//       } catch (error) {
+//         console.error("Gagal mengambil data detail untuk status ON/OFF:", error);
+//         // Jika gagal, set ke nol agar tidak menampilkan angka yang salah
+//         setOnOffCounts({ on: 0, off: 0 });
+//       } finally {
+//         setIsLoadingOnOff(false);
+//       }
+//     };
+
+//     fetchDetailsAndCountOnOff();
+//   }, [qcData]); // Dependency: Jalankan hook ini setiap kali qcData berubah
+
+//   useEffect(() => {
+//     const fetchData = async () => {
+//       try {
+//         const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
+
+//         const [qcResponse, stationsResponse] = await Promise.all([
+//           axiosServer.get<QCSummary[]>(`/api/qc/summary/${yesterday}`),
+//           axiosServer.get<Stasiun[]>("/api/stasiun"), // Ambil data stasiun
+//         ]);
+
+//         setQcData(qcResponse.data);
+//         setStations(stationsResponse.data); // Simpan data stasiun ke state
+//       } catch (error) {
+//         console.error("Gagal memuat data dashboard:", error);
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
+
+//     fetchData();
+//   }, []); // Dependency array kosong agar hanya berjalan sekali
+
+//   // [DIUBAH] Kalkulasi data tidak lagi hard-coded
+//   const totalRegistered = stations.length;
+//   const totalInactive = stations.filter(
+//     (s) => s.status.toLowerCase() === "nonaktif"
+//   ).length;
+//   const totalOperational = stations.filter(
+//     (s) => s.status.toLowerCase() === "aktif"
+//   ).length;
+  
+//   useEffect(() => {
+//     // Ambil data QC summary untuk tanggal kemarin (bukan tanggal fix)
+//     const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
+//     axiosServer
+//       .get<QCSummary[]>(`/api/qc/summary/${yesterday}`)
+//       .then((res) => setQcData(res.data))
+//       .catch(err => console.error("Gagal memuat data QC:", err));
+//       // .finally(() => setLoadingQC(false));
+//   }, []);
+
+//   // Hitung jumlah stasiun berdasarkan result (menggunakan data yang sama dengan map)
+//   const goodCount = qcData.filter(s => s.result === "Baik").length;
+//   const fairCount = qcData.filter(s => s.result === "Cukup Baik").length;
+//   const badCount = qcData.filter(s => s.result === "Buruk").length;
+//   const noDataCount = qcData.filter(s => s.result === "No Data" || s.result === "Mati").length;
+
+
+//   return (
+//     <MainLayout>
+//       <h1 className="text-left text-3xl font-bold mt-0 mb-4 ml-2">Dashboard</h1>
+//       <div className="flex flex-col lg:flex-row gap-6">
+
+//         {/* BAGIAN KIRI: PETA */}
+//         <div className="lg:w-2/3 w-full">
+//            <div className="bg-white rounded-xl shadow p-2 h-[600px]">
+//              <div className="relative w-full h-full">
+//                 <MapContainer
+//                   center={[-2.5, 118]}
+//                   zoom={5}
+//                   className="w-full h-full rounded-lg"
+//                 >
+//                   <TileLayer
+//                     attribution='&copy; <a href="https://osm.org/copyright">OSM</a>'
+//                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+//                   />
+//                   {qcData.map((s, idx) => (
+//                     <Marker
+//                       key={idx}
+//                       position={[s.geometry.coordinates[1], s.geometry.coordinates[0]]}
+//                       icon={triangleIcon(getColorByResult(s.result))}
+//                     >
+//                       <Popup>
+//                         <b>Stasiun: {s.code}</b><br />
+//                         Status: {getStatusTextEn(s.result)}<br />
+//                         {s.quality_percentage !== null && `Kualitas: ${s.quality_percentage.toFixed(1)}%`}
+//                       </Popup>
+//                     </Marker>
+//                   ))}
+//                 </MapContainer>
+//                 <MapLegend qcData={qcData} />
+//               </div>
+//            </div>
+//         </div>
+
+//         {/* BAGIAN KANAN: PANEL STATUS */}
+//        <div className="lg:w-1/3 w-full flex flex-col gap-4">
+//           <div className="grid grid-cols-2 gap-4">
+//             <div className="bg-gray-200 rounded-lg p-4 text-center">
+//               <p className="text-sm font-semibold text-gray-600">REGISTERED</p>
+//               {/* [DIUBAH] Menggunakan variabel dinamis */}
+//               <p className="text-4xl font-bold"> {loading ? '...' : totalRegistered} </p>
+//             </div>
+//             <div className="bg-gray-200 rounded-lg p-4 text-center">
+//               <p className="text-sm font-semibold text-gray-600">INACTIVE</p>
+//               {/* [DIUBAH] Menggunakan variabel dinamis */}
+//               <p className="text-4xl font-bold"> {loading ? '...' : totalInactive} </p>
+//             </div>
+//           </div>
+
+//             <div className="bg-white rounded-lg p-4 text-center border-2 border-black shadow-lg">
+//                 <p className="text-sm font-semibold">OPERATIONAL</p>
+//                 <p className="text-5xl font-bold mb-2"> {loading ? '...' : totalOperational} </p>
+//                 <div className="grid grid-cols-2 gap-2">
+//                     <div className="bg-green-600 text-white rounded p-2">
+//                         <p className="text-xs font-bold">ON</p>
+//                         {/* [DIUBAH] Menggunakan state dinamis dengan loading */}
+//                         <p className="text-2xl font-bold"> {isLoadingOnOff ? '...' : onOffCounts.on} </p>
+//                     </div>
+//                     <div className="bg-black text-white rounded p-2">
+//                         <p className="text-xs font-bold">OFF</p>
+//                         {/* [DIUBAH] Menggunakan state dinamis dengan loading */}
+//                         <p className="text-2xl font-bold"> {isLoadingOnOff ? '...' : onOffCounts.off} </p>
+//                     </div>
+//                 </div>
+//             </div>
+
+//             <div className="grid grid-cols-4 gap-2 text-center text-white text-xs font-bold">
+//                 <div className="bg-green-500 rounded p-2">
+//                     <p>GOOD</p>
+//                     <p className="text-xl">{goodCount}</p>
+//                 </div>
+//                 <div className="bg-orange-400 rounded p-2">
+//                     <p>FAIR</p>
+//                     <p className="text-xl">{fairCount}</p>
+//                 </div>
+//                 <div className="bg-red-600 rounded p-2">
+//                     <p>BAD</p>
+//                     <p className="text-xl">{badCount}</p>
+//                 </div>
+//                 <div className="bg-gray-400 rounded p-2">
+//                     <p>NO DATA</p>
+//                     <p className="text-xl">{noDataCount}</p>
+//                 </div>
+//             </div>
+//         </div>
+//       </div>
+
+//       {/* [BARU] BAGIAN BAWAH: 4 KARTU INFORMASI */}
+//       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+//         <InfoCard title="Availability">
+//             {/* Nanti bisa diisi chart atau data */}
+//         </InfoCard>
+//         <InfoCard title="Quality">
+//             {/* Nanti bisa diisi chart atau data */}
+//         </InfoCard>
+//         <InfoCard title="Performance">
+//             {/* Nanti bisa diisi chart atau data */}
+//         </InfoCard>
+//         <InfoCard title="Metadata">
+//             {/* Contoh isi untuk metadata */}
+//             <div className="text-left text-white w-full text-sm">
+//                 <p className="font-semibold mb-2">Recent updates:</p>
+//                 <ul className="list-disc list-inside">
+//                     <li>MMPI</li>
+//                     <li>MTKI</li>
+//                     <li>SPSI</li>
+//                     <li>JMBI</li>
+//                 </ul>
+//             </div>
+//         </InfoCard>
+//       </div>
+
+//     </MainLayout>
+//   );
+// };
+
+// export default Dashboard;
+
+
 // import { useEffect, useState } from "react";
 // import MainLayout from "../layouts/MainLayout";
 // import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";

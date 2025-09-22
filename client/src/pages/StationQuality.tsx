@@ -62,12 +62,32 @@ export interface StationMetadata {
 //   shadowUrl: markerShadow,
 // });
 
+// Ganti fungsi triangleIcon agar sama dengan Dashboard (dengan lineart tebal)
 const triangleIcon = (color: string) =>
   L.divIcon({
     className: "",
-    html: `<div style="width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 12px solid ${color};"></div>`,
-    iconSize: [12, 12],
-    iconAnchor: [6, 12],
+    html: `
+      <div style="
+        width: 0; 
+        height: 0; 
+        border-left: 6px solid transparent; 
+        border-right: 6px solid transparent; 
+        border-bottom: 12px solid ${color};
+        position: relative;
+      ">
+        <div style="
+          position: absolute;
+          left: -7px; top: -1px;
+          width: 0; height: 0;
+          border-left: 7px solid transparent;
+          border-right: 7px solid transparent;
+          border-bottom: 14px solid #222;
+          z-index: -1;
+        "></div>
+      </div>
+    `,
+    iconSize: [14, 14],
+    iconAnchor: [7, 14],
   });
 
 const getColorByQuality = (quality: number | null): string => {
@@ -79,14 +99,26 @@ const getColorByQuality = (quality: number | null): string => {
   return "#6b7280"; // default
 };
 
+// Tambahkan fungsi pewarnaan berdasarkan result (seperti Dashboard)
+const getColorByResult = (result: string | null): string => {
+  switch (result) {
+    case "Baik": return "#14b8a6";      // Good - teal
+    case "Cukup Baik": return "#fb923c"; // Fair - orange
+    case "Buruk": return "#ef4444";      // Bad - red
+    case "No Data": return "#818cf8";    // No Data - indigo
+    case "Mati": return "#374151";       // Mati - gray
+    default: return "#979797";
+  }
+};
+
 const MapLegend = () => {
+  // Warna legend disesuaikan dengan warna segitiga pada map (berdasarkan result)
   const legendItems = [
-    { color: "#14532d", label: "Sangat Baik" },
-    { color: "#22c55e", label: "Baik" },
-    { color: "#f97316", label: "Cukup" },
-    { color: "#ef4444", label: "Buruk" },
-    { color: "#000000", label: "Mati" },
-    { color: "#6b7280", label: "No Data" },
+    { color: "#14b8a6", label: "Baik" },        // Baik (Good)
+    { color: "#fb923c", label: "Cukup Baik" },  // Cukup Baik (Fair)
+    { color: "#ef4444", label: "Buruk" },       // Buruk (Bad)
+    { color: "#818cf8", label: "No Data" },     // No Data
+    { color: "#374151", label: "Mati" },        // Mati
   ];
 
   return (
@@ -98,8 +130,11 @@ const MapLegend = () => {
             <span
               className="w-3 h-3 inline-block mr-2"
               style={{
-                width: 0, height: 0, borderLeft: '6px solid transparent',
-                borderRight: '6px solid transparent', borderBottom: `12px solid ${item.color}`
+                width: 0,
+                height: 0,
+                borderLeft: '6px solid transparent',
+                borderRight: '6px solid transparent',
+                borderBottom: `12px solid ${item.color}`,
               }}
             ></span>
             {item.label}
@@ -357,20 +392,16 @@ const StationQuality = () => {
               />
               {/* [DIUBAH] Logika rendering marker disesuaikan dengan Dashboard */}
               {stationPositions.map((station, idx) => {
-                const { result, quality_percentage, kode_stasiun } = station.data;
+                const { result, kode_stasiun, quality_percentage } = station.data;
                 return (
                   <Marker 
                     key={idx} 
                     position={station.coords}
-                    icon={triangleIcon(
-                        result === 'Mati'
-                          ? '#000000'
-                          : getColorByQuality(quality_percentage)
-                    )}
+                    icon={triangleIcon(getColorByResult(result))}
                   >
                     <Popup>
                       <b>Stasiun: {kode_stasiun}</b><br />
-                      Status: {getStatusText(result, quality_percentage)}<br />
+                      Status: {result}<br />
                       {quality_percentage !== null && `Kualitas: ${quality_percentage.toFixed(1)}%`}
                     </Popup>
                   </Marker>
@@ -380,45 +411,6 @@ const StationQuality = () => {
             </MapContainer>
           </div>
         </CardContainer>
-        {/* <CardContainer className="mb-6">
-          <div className="w-full h-120 z-0">
-            <MapContainer
-              center={[-2.5, 118]}
-              zoom={5}
-              className="w-full h-full rounded-lg"
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              {stationPositions.map((station, idx) => (
-                <Marker 
-                  key={idx} 
-                  position={station.coords}
-                >
-                  <Tooltip permanent={false} direction="top" opacity={1} offset={L.point(0, -10)}>
-                    {station.data.kode_stasiun}
-                  </Tooltip>
-                  <Popup closeOnClick={false}>
-                    <div className="p-2">
-                      <h3 className="font-bold text-lg mb-1">{station.data.kode_stasiun}</h3>
-                      <p><strong>Lokasi:</strong> {station.data.lokasi}</p>
-                      <p><strong>Status:</strong> {station.data.status}</p>
-                      <p><strong>Digitizer Komunikasi:</strong> {station.data.digitizer_komunikasi}</p>
-                      <button
-                        onClick={() => navigate(`/station/${station.data.kode_stasiun}`)}
-                        className="mt-3 bg-black text-white rounded-lg px-3 py-1 text-xs hover:bg-gray-800 transition duration-300"
-                      >
-                        Lihat Detail Stasiun
-                      </button>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
-            </MapContainer>
-          </div>
-        </CardContainer> */}
-
         <CardContainer>
           <div className="flex justify-between items-center mb-6">
             <TableFilters
