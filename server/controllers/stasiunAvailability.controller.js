@@ -1,6 +1,6 @@
 import axios from 'axios';
 import pool from '../config/database.js';
-import redisClient from '../config/redisClient.js';
+import getRedisClient from '../config/redisClient.js';
 
 const API_BASE_URL = process.env.API_BASE_URL;
 const API_KEY = process.env.API_KEY;  
@@ -46,22 +46,28 @@ export const getAllStationAvailability = async (req, res) => {
     // Generate cache key berdasarkan date range
     const cacheKey = `availability:${start_date}:${end_date}`;
 
-    // Check Redis cache terlebih dahulu
-    try {
-      const cachedData = await redisClient.get(cacheKey);
-      if (cachedData) {
-        console.log('✅ Data retrieved from cache');
-        const parsedData = JSON.parse(cachedData);
-        return res.json({
-          success: true,
-          message: 'Data retrieved from cache',
-          cached: true,
-          cache_key: cacheKey,
-          ...parsedData
-        });
+    // Check Redis cache terlebih dahulu (jika Redis tersedia)
+    const redisClient = getRedisClient();
+    if (redisClient) {
+      try {
+        const cachedData = await redisClient.get(cacheKey);
+        if (cachedData) {
+          console.log('✅ Data retrieved from cache');
+          const parsedData = JSON.parse(cachedData);
+          return res.json({
+            success: true,
+            message: 'Data retrieved from cache',
+            cached: true,
+            cache_key: cacheKey,
+            ...parsedData
+          });
+        }
+      } catch (cacheError) {
+        console.warn('⚠️ Redis cache error:', cacheError.message);
+        // Continue without cache - aplikasi tetap berjalan
       }
-    } catch (cacheError) {
-      console.warn('⚠️ Redis cache error:', cacheError.message);
+    } else {
+      console.log('ℹ️ Redis not available, skipping cache check');
     }
 
     // 1. Fetch data availability dari API
@@ -111,19 +117,31 @@ export const getAllStationAvailability = async (req, res) => {
     const dbStationSet = new Set(dbStationCodes);
     const apiStationSet = new Set(apiStationCodes);
 
-    // Helper function untuk menghitung rata-rata availability dari 3 channel
+    // Helper function untuk menghitung rata-rata availability dari channel yang berakhiran N, E, Z
     const calculateAverageAvailability = (recordData) => {
-      const { SHN, SHE, SHZ, timestamp } = recordData;
-      
-      const shn = parseFloat(SHN) || 0;
-      const she = parseFloat(SHE) || 0;
-      const shz = parseFloat(SHZ) || 0;
-      
-      const average = (shn + she + shz) / 3;
-      
+      // Cari semua channel yang berakhiran N, E, atau Z (SHN, SHE, SHZ, HHN, HHE, HHZ, dll)
+      const channelKeys = Object.keys(recordData).filter(key =>
+        key.endsWith('N') || key.endsWith('E') || key.endsWith('Z')
+      );
+
+      if (channelKeys.length === 0) {
+        return {
+          timestamp: recordData.timestamp,
+          availability: null,
+          note: "No valid channels found (N, E, Z)"
+        };
+      }
+
+      // Ambil nilai dari channel yang ditemukan
+      const channelValues = channelKeys.map(key => parseFloat(recordData[key]) || 0);
+
+      // Hitung rata-rata
+      const average = channelValues.reduce((sum, val) => sum + val, 0) / channelValues.length;
+
       return {
-        timestamp: timestamp,
-        availability: Math.round(average * 100) / 100
+        timestamp: recordData.timestamp,
+        availability: Math.round(average * 100) / 100,
+        channels: channelKeys // Optional: untuk debugging
       };
     };
 
@@ -174,13 +192,19 @@ export const getAllStationAvailability = async (req, res) => {
       data: filteredData
     };
 
-    // 5. Cache data ke Redis dengan expiry 30 menit
-    try {
-      const cacheData = JSON.stringify(filteredResponse);
-      await redisClient.setEx(cacheKey, 1800, cacheData);
-      console.log(`💾 Data cached for 30 minutes`);
-    } catch (cacheError) {
-      console.warn('⚠️ Caching failed:', cacheError.message);
+    // 5. Cache data ke Redis dengan expiry 30 menit (jika Redis tersedia)
+    const redisClientForCache = getRedisClient();
+    if (redisClientForCache) {
+      try {
+        const cacheData = JSON.stringify(filteredResponse);
+        await redisClientForCache.setEx(cacheKey, 1800, cacheData);
+        console.log(`💾 Data cached for 30 minutes`);
+      } catch (cacheError) {
+        console.warn('⚠️ Caching failed:', cacheError.message);
+        // Continue without caching - aplikasi tetap berjalan
+      }
+    } else {
+      console.log('ℹ️ Redis not available, skipping cache storage');
     }
 
     console.log(`✅ Integration completed successfully`);
@@ -253,22 +277,28 @@ export const getStationAvailabilityByCode = async (req, res) => {
     // Generate cache key berdasarkan station code dan date range
     const cacheKey = `availability:${stationCode}:${start_date}:${end_date}`;
 
-    // Check Redis cache terlebih dahulu
-    try {
-      const cachedData = await redisClient.get(cacheKey);
-      if (cachedData) {
-        console.log('✅ Data retrieved from cache');
-        const parsedData = JSON.parse(cachedData);
-        return res.json({
-          success: true,
-          message: 'Data retrieved from cache',
-          cached: true,
-          cache_key: cacheKey,
-          ...parsedData
-        });
+    // Check Redis cache terlebih dahulu (jika Redis tersedia)
+    const redisClient = getRedisClient();
+    if (redisClient) {
+      try {
+        const cachedData = await redisClient.get(cacheKey);
+        if (cachedData) {
+          console.log('✅ Data retrieved from cache');
+          const parsedData = JSON.parse(cachedData);
+          return res.json({
+            success: true,
+            message: 'Data retrieved from cache',
+            cached: true,
+            cache_key: cacheKey,
+            ...parsedData
+          });
+        }
+      } catch (cacheError) {
+        console.warn('⚠️ Redis cache error:', cacheError.message);
+        // Continue without cache - aplikasi tetap berjalan
       }
-    } catch (cacheError) {
-      console.warn('⚠️ Redis cache error:', cacheError.message);
+    } else {
+      console.log('ℹ️ Redis not available, skipping cache check');
     }
 
     // 1. Check apakah stasiun ada di database
@@ -309,19 +339,31 @@ export const getStationAvailabilityByCode = async (req, res) => {
     let processedData = [];
     let totalRecords = 0;
 
-    // Helper function untuk menghitung rata-rata availability dari 3 channel
+    // Helper function untuk menghitung rata-rata availability dari channel yang berakhiran N, E, Z
     const calculateAverageAvailability = (recordData) => {
-      const { SHN, SHE, SHZ, timestamp } = recordData;
+      // Cari semua channel yang berakhiran N, E, atau Z (SHN, SHE, SHZ, HHN, HHE, HHZ, dll)
+      const channelKeys = Object.keys(recordData).filter(key =>
+        key.endsWith('N') || key.endsWith('E') || key.endsWith('Z')
+      );
 
-      const shn = parseFloat(SHN) || 0;
-      const she = parseFloat(SHE) || 0;
-      const shz = parseFloat(SHZ) || 0;
+      if (channelKeys.length === 0) {
+        return {
+          timestamp: recordData.timestamp,
+          availability: null,
+          note: "No valid channels found (N, E, Z)"
+        };
+      }
 
-      const average = (shn + she + shz) / 3;
+      // Ambil nilai dari channel yang ditemukan
+      const channelValues = channelKeys.map(key => parseFloat(recordData[key]) || 0);
+
+      // Hitung rata-rata
+      const average = channelValues.reduce((sum, val) => sum + val, 0) / channelValues.length;
 
       return {
-        timestamp: timestamp,
-        availability: Math.round(average * 100) / 100
+        timestamp: recordData.timestamp,
+        availability: Math.round(average * 100) / 100,
+        channels: channelKeys // Optional: untuk debugging
       };
     };
 
@@ -344,9 +386,7 @@ export const getStationAvailabilityByCode = async (req, res) => {
     // 4. Prepare response
     // Get all station codes from database for dropdown
     const [allStationRows] = await pool.query('SELECT kode_stasiun FROM stasiun ORDER BY kode_stasiun');
-    const allStationCodes = allStationRows.map(row => ({
-      kode_stasiun: row.kode_stasiun,
-    }));
+    const allStationCodes = allStationRows.map(row => row.kode_stasiun);
     
     const stationResponse = {
       meta: {
@@ -363,13 +403,19 @@ export const getStationAvailabilityByCode = async (req, res) => {
       }
     };
 
-    // 5. Cache data ke Redis dengan expiry 30 menit
-    try {
-      const cacheData = JSON.stringify(stationResponse);
-      await redisClient.setEx(cacheKey, 1800, cacheData);
-      console.log(`💾 Data cached for 30 minutes`);
-    } catch (cacheError) {
-      console.warn('⚠️ Caching failed:', cacheError.message);
+    // 5. Cache data ke Redis dengan expiry 30 menit (jika Redis tersedia)
+    const redisClientForCache = getRedisClient();
+    if (redisClientForCache) {
+      try {
+        const cacheData = JSON.stringify(stationResponse);
+        await redisClientForCache.setEx(cacheKey, 1800, cacheData);
+        console.log(`💾 Data cached for 30 minutes`);
+      } catch (cacheError) {
+        console.warn('⚠️ Caching failed:', cacheError.message);
+        // Continue without caching - aplikasi tetap berjalan
+      }
+    } else {
+      console.log('ℹ️ Redis not available, skipping cache storage');
     }
 
     console.log(`✅ Single station integration completed successfully`);

@@ -13,27 +13,6 @@ interface StationData {
 
 interface Station {
   kode_stasiun: string;
-  nama_stasiun?: string;
-  lokasi?: string;
-  stasiun_id?: number;
-  net?: string;
-  lintang?: number;
-  bujur?: number;
-  elevasi?: number;
-  provinsi?: string;
-  upt_penanggung_jawab?: string;
-  status?: string;
-  tahun_instalasi?: number;
-  jaringan?: string;
-  prioritas?: string;
-  keterangan?: string;
-  accelerometer?: string;
-  digitizer_komunikasi?: string;
-  tipe_shelter?: string;
-  lokasi_shelter?: string;
-  penjaga_shelter?: string;
-  penggantian_terakhir_alat?: string;
-  updated_at?: string;
 }
 
 interface APIResponse {
@@ -48,10 +27,7 @@ interface APIResponse {
       start_date: string;
       end_date: string;
     };
-    stationCodes?: Array<{
-      kode_stasiun: string;
-      nama_stasiun: string;
-    }>;
+    stationCodes?: string[];
   };
   data: Record<string, StationData[]>;
 }
@@ -98,7 +74,34 @@ const StationAvailabilityDetail = () => {
 
   const getCurrentStationName = () => {
     const currentStation = stations.find(station => station.kode_stasiun === stationCode);
-    return currentStation ? (currentStation.nama_stasiun || currentStation.kode_stasiun) : stationCode;
+    return currentStation ? currentStation.kode_stasiun : stationCode;
+  };
+
+  const fetchStations = useCallback(async () => {
+    try {
+      setStationsLoading(true);
+      const response = await axiosInstance.get('/api/stasiun');
+      if (response.data.success) {
+        setStations(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching stations:', error);
+      // Fallback: create station from current stationCode
+      const fallbackStation: Station = {
+        kode_stasiun: stationCode!
+      };
+      setStations([fallbackStation]);
+    } finally {
+      setStationsLoading(false);
+    }
+  }, [stationCode]);
+
+  const getMonthName = (month: number) => {
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    return monthNames[month];
   };
 
   const fetchStationData = useCallback(async () => {
@@ -106,6 +109,14 @@ const StationAvailabilityDetail = () => {
 
     setLoading(true);
     setError(null);
+    // Reset stats when fetching new data
+    setStats({
+      totalDays: 0,
+      availableDays: 0,
+      averageAvailability: 0,
+      minAvailability: 0,
+      maxAvailability: 0
+    });
 
     try {
       // Get data dari awal bulan hingga akhir bulan yang dipilih
@@ -136,82 +147,36 @@ const StationAvailabilityDetail = () => {
 
         // Set stations from meta if available
         if (apiResponse.meta.stationCodes && apiResponse.meta.stationCodes.length > 0) {
-          const stationList: Station[] = apiResponse.meta.stationCodes.map((station) => ({
-            kode_stasiun: station.kode_stasiun,
-            nama_stasiun: station.nama_stasiun || station.kode_stasiun,
-            lokasi: '',
-            stasiun_id: 0,
-            net: '',
-            lintang: 0,
-            bujur: 0,
-            elevasi: 0,
-            provinsi: '',
-            upt_penanggung_jawab: '',
-            status: '',
-            tahun_instalasi: 0,
-            jaringan: '',
-            prioritas: '',
-            keterangan: '',
-            accelerometer: '',
-            digitizer_komunikasi: '',
-            tipe_shelter: '',
-            lokasi_shelter: '',
-            penjaga_shelter: '',
-            penggantian_terakhir_alat: '',
-            updated_at: ''
+          const stationList: Station[] = apiResponse.meta.stationCodes.map((stationCode) => ({
+            kode_stasiun: stationCode
           }));
           setStations(stationList);
         } else {
-          // Fallback: create station from current stationCode
-          const fallbackStation: Station = {
-            kode_stasiun: stationCode,
-            nama_stasiun: stationCode,
-            lokasi: '',
-            stasiun_id: 0,
-            net: '',
-            lintang: 0,
-            bujur: 0,
-            elevasi: 0,
-            provinsi: '',
-            upt_penanggung_jawab: '',
-            status: '',
-            tahun_instalasi: 0,
-            jaringan: '',
-            prioritas: '',
-            keterangan: '',
-            accelerometer: '',
-            digitizer_komunikasi: '',
-            tipe_shelter: '',
-            lokasi_shelter: '',
-            penjaga_shelter: '',
-            penggantian_terakhir_alat: '',
-            updated_at: ''
-          };
-          setStations([fallbackStation]);
+          // Fallback: fetch from /api/stasiun
+          fetchStations();
         }
         setStationsLoading(false);
 
-        // Create complete data for all days in the selected month
-        const startDate = new Date(selectedMonth.year, selectedMonth.month, 1);
-        const endDate = new Date(selectedMonth.year, selectedMonth.month + 1, 0);
-        const allDaysInMonth: DailyDataPoint[] = [];
-
-        for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-          const dateString = date.toISOString().split('T')[0];
-          const existingData = stationData.find((record: StationData) => 
-            record.timestamp.split('T')[0] === dateString
-          );
-
-          allDaysInMonth.push({
-            date: dateString,
-            availability: existingData ? existingData.availability : null,
-            formattedDate: date.toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric'
-            }),
-            dayOfWeek: DAYS_OF_WEEK[date.getDay()]
+        // Create data points directly from API response, filtered for selected month only
+        const allDaysInMonth: DailyDataPoint[] = stationData
+          .filter((record) => {
+            const date = new Date(record.timestamp);
+            return date.getFullYear() === selectedMonth.year && date.getMonth() === selectedMonth.month;
+          })
+          .map((record) => {
+            const date = new Date(record.timestamp);
+            const dayOfMonth = date.getDate();
+            
+            return {
+              date: record.timestamp.split('T')[0], // Use API timestamp date directly
+              availability: record.availability,
+              formattedDate: `${getMonthName(selectedMonth.month).slice(0, 3)} ${dayOfMonth}`,
+              dayOfWeek: DAYS_OF_WEEK[date.getDay()]
+            };
           });
-        }
+
+        // Sort data by date to ensure chronological order
+        allDaysInMonth.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
         setDailyData(allDaysInMonth);
 
@@ -237,7 +202,7 @@ const StationAvailabilityDetail = () => {
     } finally {
       setLoading(false);
     }
-  }, [stationCode, selectedMonth]);
+  }, [stationCode, selectedMonth, fetchStations]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -268,14 +233,6 @@ const StationAvailabilityDetail = () => {
         month: newDate.getMonth()
       };
     });
-  };
-
-  const getMonthName = (month: number) => {
-    const monthNames = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
-    ];
-    return monthNames[month];
   };
 
   const getAvailabilityColor = (value: number | null) => {
@@ -334,8 +291,7 @@ const StationAvailabilityDetail = () => {
                           onClick={() => handleStationSelect(station.kode_stasiun)}
                           className="w-full text-left px-3 py-2 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 text-sm"
                         >
-                          <div className="font-medium text-gray-900">{station.nama_stasiun}</div>
-                          <div className="text-xs text-gray-500">{station.kode_stasiun}</div>
+                          <div className="font-medium text-gray-900">{station.kode_stasiun}</div>
                         </button>
                       ))}
                     </div>
@@ -471,8 +427,7 @@ const StationAvailabilityDetail = () => {
                           onClick={() => handleStationSelect(station.kode_stasiun)}
                           className="w-full text-left px-3 py-2 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 text-sm"
                         >
-                          <div className="font-medium text-gray-900">{station.nama_stasiun || station.kode_stasiun}</div>
-                          <div className="text-xs text-gray-500">{station.kode_stasiun}</div>
+                          <div className="font-medium text-gray-900">{station.kode_stasiun}</div>
                         </button>
                       ))}
                     </div>
@@ -540,7 +495,7 @@ const StationAvailabilityDetail = () => {
                     angle={-45}
                     textAnchor="end"
                     height={60}
-                    interval={0}
+                    interval={0} // Changed from 0 to 1 to show every other label
                   />
                   <YAxis
                     domain={[0, 100]}
@@ -552,7 +507,7 @@ const StationAvailabilityDetail = () => {
                       value !== null ? `${value}%` : 'No Data',
                       'Availability'
                     ]}
-                    labelFormatter={(label) => `Date: ${label}`}
+                    labelFormatter={(label: string) => `Date: ${label}`}
                   />
                   <Line
                     type="monotone"
@@ -593,14 +548,28 @@ const StationAvailabilityDetail = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {dailyData.map((day, index) => (
                     <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {day.formattedDate}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {day.dayOfWeek}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {day.availability !== null ? (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {day.formattedDate}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {day.dayOfWeek}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {day.availability !== null ? (
+                            <span
+                              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                              style={{
+                                backgroundColor: `${getAvailabilityColor(day.availability)}20`,
+                                color: getAvailabilityColor(day.availability)
+                              }}
+                            >
+                              {day.availability}%
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">No Data</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
                           <span
                             className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                             style={{
@@ -608,24 +577,10 @@ const StationAvailabilityDetail = () => {
                               color: getAvailabilityColor(day.availability)
                             }}
                           >
-                            {day.availability}%
+                            {getAvailabilityStatus(day.availability)}
                           </span>
-                        ) : (
-                          <span className="text-gray-400">No Data</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span
-                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                          style={{
-                            backgroundColor: `${getAvailabilityColor(day.availability)}20`,
-                            color: getAvailabilityColor(day.availability)
-                          }}
-                        >
-                          {getAvailabilityStatus(day.availability)}
-                        </span>
-                      </td>
-                    </tr>
+                        </td>
+                      </tr>
                   ))}
                 </tbody>
               </table>
