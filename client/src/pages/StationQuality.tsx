@@ -160,6 +160,7 @@ const StationQuality = () => {
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<Record<string, any>>({});
   const [filterConfig, setFilterConfig] = useState<Record<string, FilterConfig>>({});
+  const [globalFilter, setGlobalFilter] = useState<string>("");
   const navigate = useNavigate();
 
   const fetchStationMetadata = async () => {
@@ -246,26 +247,38 @@ const StationQuality = () => {
     });
   }, [stationData, qcSummaryData]);
 
+  // [UBAH] DataTable dan Map akan sinkron dengan hasil pencarian (globalFilter)
+  // Filter dataStasiunLengkap dengan globalFilter (search)
   const filteredData = useMemo(() => {
     const activeFilterKeys = Object.keys(filters).filter(key =>
       filters[key] && filters[key].length > 0
     );
+    let dataSource = dataStasiunLengkap;
 
-    // [PENAMBAHAN] Sumber data sekarang adalah dataStasiunLengkap
-    const dataSource = dataStasiunLengkap;
-
-    if (activeFilterKeys.length === 0) {
-      return dataSource;
+    // Apply TableFilters
+    if (activeFilterKeys.length > 0) {
+      dataSource = dataSource.filter(station => {
+        return activeFilterKeys.every(key => {
+          const filterValues = filters[key];
+          const stationValue = station[key as keyof StationMetadata];
+          return filterValues.includes(stationValue);
+        });
+      });
     }
 
-    return dataSource.filter(station => {
-      return activeFilterKeys.every(key => {
-        const filterValues = filters[key];
-        const stationValue = station[key as keyof StationMetadata]; 
-        return filterValues.includes(stationValue);
-      });
-    });
-  }, [dataStasiunLengkap, filters]); // [PENAMBAHAN] Dependensi diubah
+    // Apply global search (search seluruh kolom string)
+    if (globalFilter && globalFilter.trim() !== "") {
+      const search = globalFilter.toLowerCase();
+      dataSource = dataSource.filter(station =>
+        Object.values(station)
+          .join(" ")
+          .toLowerCase()
+          .includes(search)
+      );
+    }
+
+    return dataSource;
+  }, [dataStasiunLengkap, filters, globalFilter]);
 
   const stationPositions = useMemo(() => {
     return filteredData
@@ -379,8 +392,8 @@ const StationQuality = () => {
         <h1 className="bg-gray-100 rounded-2xl text-center text-3xl font-bold my-4 mx-48 py-2">
           Stasiun Quality
         </h1>
-        <CardContainer className="mb-6 relative"> {/* [DIUBAH] Menambahkan 'relative' untuk posisi legenda */}
-          <div className="w-full h-[500px] z-0"> {/* [DIUBAH] Mengatur tinggi peta */}
+        <CardContainer className="mb-6 relative">
+          <div className="w-full h-[500px] z-0">
             <MapContainer
               center={[-2.5, 118]}
               zoom={5}
@@ -390,7 +403,6 @@ const StationQuality = () => {
                 attribution='&copy; <a href="https://osm.org/copyright">OSM</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-              {/* [DIUBAH] Logika rendering marker disesuaikan dengan Dashboard */}
               {stationPositions.map((station, idx) => {
                 const { result, kode_stasiun, quality_percentage } = station.data;
                 return (
@@ -407,7 +419,7 @@ const StationQuality = () => {
                   </Marker>
                 );
               })}
-              <MapLegend /> {/* [DITAMBAHKAN] Komponen legenda ditambahkan ke peta */}
+              <MapLegend />
             </MapContainer>
           </div>
         </CardContainer>
@@ -422,12 +434,20 @@ const StationQuality = () => {
               onClick={handleDownloadCSV}
               className="bg-black text-white rounded-lg px-4 py-2 hover:bg-gray-800 transition duration-300"
             >
-              Unduh CSV
+              Export CSV
             </button>
           </div>
 
           {loading && <p>Loading station data...</p>}
-          {!loading && <DataTable columns={columns} data={filteredData} />} 
+          {/* [UBAH] DataTable menerima globalFilter dan setGlobalFilter */}
+          {!loading && (
+            <DataTable
+              columns={columns}
+              data={filteredData}
+              globalFilter={globalFilter}
+              setGlobalFilter={setGlobalFilter}
+            />
+          )}
         </CardContainer>
       </MainLayout>
     </div>

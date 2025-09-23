@@ -135,14 +135,6 @@ const StationDetail = () => {
     }
   }, [stationCode]);
 
-  // Ubah navigasi ke /station/{kode_stasiun}
-  const handleStationChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const newStationCode = event.target.value;
-    if (newStationCode) {
-      navigate(`/station/${newStationCode}`);
-    }
-  };
-
   const groupedByChannel = CHANNELS.reduce<Record<string, QCData[]>>(
     (acc, ch) => {
       acc[ch] = qcData.filter((d) => d.channel.toUpperCase().includes(ch));
@@ -194,7 +186,12 @@ const StationDetail = () => {
             <h1 className="text-2xl font-bold text-gray-900">Station</h1>
             <select
               value={stationCode}
-              onChange={handleStationChange}
+              onChange={(e) => {
+                const newStationCode = e.target.value;
+                if (newStationCode) {
+                  navigate(`/station/${newStationCode}`);
+                }
+              }}
               className="p-2 border rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
             >
               {stationList.map((station) => (
@@ -208,7 +205,14 @@ const StationDetail = () => {
           {/* Bagian Kanan: Tombol Navigasi */}
           <div className="flex flex-col items-end">
             <div className="flex space-x-1 rounded-lg bg-gray-200 p-1">
-              <button className="px-4 py-1 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-300">
+              <button
+                className="px-4 py-1 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-300"
+                onClick={() => {
+                  if (stationCode) {
+                    navigate(`/station-daily/${stationCode}`);
+                  }
+                }}
+              >
                 Daily
               </button>
               <button className="px-4 py-1 rounded-md text-sm font-medium bg-white shadow text-blue-600">

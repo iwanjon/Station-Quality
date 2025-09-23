@@ -1,7 +1,6 @@
 // services/externalApi.js
 import axios from 'axios';
 import redisClient from '../config/redisClient.js';
-// import { get } from "axios";
 
 const API_BASE_URL = process.env.API_BASE_URL;
 const API_KEY = process.env.API_KEY;
@@ -128,6 +127,72 @@ export async function fetchSLMONLastStatus() {
       console.error("❌ No response from SLMON API:", err.request);
     } else {
       console.error("❌ SLMON Request setup error:", err.message);
+    }
+    throw err;
+  }
+}
+
+// --- [FUNGSI BARU UNTUK GAMBAR] ---
+
+/**
+ * Mengambil gambar Power Spectral Density (PSD) dari API eksternal.
+ * @param {string} date_str - Tanggal format YYYY-MM-DD
+ * @param {string} code - Kode stasiun
+ * @param {string} channel - Channel (E, N, atau Z)
+ * @returns {Promise<import('axios').AxiosResponse>} - Axios response sebagai stream
+ */
+export async function fetchPsdImage(date_str, code, channel) {
+  try {
+    const url = `${API_BASE_URL}/qc/data/psd/${date_str}/${code}/${channel}`;
+    console.log("🖼️  Fetching PSD Image from:", url);
+
+    const response = await axios.get(url, {
+      headers: {
+        Authorization: `Bearer ${API_KEY}`,
+      },
+      responseType: 'stream',
+    });
+
+    return response;
+  } catch (err) {
+    if (err.response) {
+      console.error("❌ API Error fetching PSD image:", err.response.status, err.response.data);
+    } else if (err.request) {
+      console.error("❌ No response for PSD image from API:", err.request);
+    } else {
+      console.error("❌ PSD image request setup error:", err.message);
+    }
+    throw err;
+  }
+}
+
+/**
+ * Mengambil gambar Signal dari API eksternal.
+ * @param {string} date_str - Tanggal format YYYY-MM-DD
+ * @param {string} code - Kode stasiun
+ * @param {string} channel - Channel (E, N, atau Z)
+ * @returns {Promise<import('axios').AxiosResponse>} - Axios response sebagai stream
+ */
+export async function fetchSignalImage(date_str, code, channel) {
+  try {
+    const url = `${API_BASE_URL}/qc/data/signal/${date_str}/${code}/${channel}`;
+    console.log("📶 Fetching Signal Image from:", url);
+
+    const response = await axios.get(url, {
+      headers: {
+        Authorization: `Bearer ${API_KEY}`,
+      },
+      responseType: 'stream',
+    });
+
+    return response;
+  } catch (err) {
+    if (err.response) {
+      console.error("❌ API Error fetching Signal image:", err.response.status, err.response.data);
+    } else if (err.request) {
+      console.error("❌ No response for Signal image from API:", err.request);
+    } else {
+      console.error("❌ Signal image request setup error:", err.message);
     }
     throw err;
   }

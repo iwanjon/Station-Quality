@@ -13,6 +13,8 @@ import {
 export interface DataTableProps<T> {
   columns: ColumnDef<T, any>[];
   data: T[];
+  globalFilter?: string;
+  setGlobalFilter?: (value: string) => void;
 }
 
 // Komponen icon sorting dengan SVG dan Tailwind
@@ -24,7 +26,7 @@ const SortIcon = ({
   if (direction === "asc") {
     return (
       <svg
-        className="inline-block w-6 h-6  ml-1 text-blue-600"
+        className="inline-block w-6 h-6 ml-1 text-blue-600"
         fill="currentColor"
         viewBox="0 0 20 20"
       >
@@ -35,7 +37,7 @@ const SortIcon = ({
   if (direction === "desc") {
     return (
       <svg
-        className="inline-block w-6 h-6  ml-1 text-blue-600"
+        className="inline-block w-6 h-6 ml-1 text-blue-600"
         fill="currentColor"
         viewBox="0 0 20 20"
       >
@@ -46,7 +48,7 @@ const SortIcon = ({
   // none (belum di-sort)
   return (
     <svg
-      className="inline-block w-6 h-6  ml-1 text-gray-400"
+      className="inline-block w-6 h-6 ml-1 text-gray-400"
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
@@ -60,9 +62,20 @@ const SortIcon = ({
   );
 };
 
-function DataTable<T extends object>({ columns, data }: DataTableProps<T>) {
+function DataTable<T extends object>({
+  columns,
+  data,
+  globalFilter: globalFilterProp,
+  setGlobalFilter: setGlobalFilterProp,
+}: DataTableProps<T>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [globalFilter, setGlobalFilter] = React.useState<string>("");
+  // Gunakan state internal hanya jika prop tidak diberikan
+  const [internalGlobalFilter, setInternalGlobalFilter] = React.useState<string>("");
+
+  // Gunakan globalFilter dari prop jika ada, jika tidak gunakan state internal
+  const globalFilterValue = globalFilterProp !== undefined ? globalFilterProp : internalGlobalFilter;
+  const setGlobalFilterValue = setGlobalFilterProp !== undefined ? setGlobalFilterProp : setInternalGlobalFilter;
+
   const [pagination, setPagination] = React.useState({
     pageIndex: 0,
     pageSize: 10,
@@ -73,11 +86,11 @@ function DataTable<T extends object>({ columns, data }: DataTableProps<T>) {
     columns,
     state: {
       sorting,
-      globalFilter,
+      globalFilter: globalFilterValue,
       pagination,
     },
     onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
+    onGlobalFilterChange: setGlobalFilterValue,
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -92,8 +105,8 @@ function DataTable<T extends object>({ columns, data }: DataTableProps<T>) {
         <input
           type="text"
           placeholder="Search..."
-          value={globalFilter ?? ""}
-          onChange={(e) => setGlobalFilter(e.target.value)}
+          value={globalFilterValue ?? ""}
+          onChange={(e) => setGlobalFilterValue(e.target.value)}
           className="border p-1 rounded"
         />
       </div>
