@@ -1,448 +1,640 @@
-// import { useState, useEffect } from "react";
-// import { useParams, useNavigate } from "react-router-dom";
-// import MainLayout from "../layouts/MainLayout";
-// import axiosInstance from "../utilities/Axios";
-// import { ArrowLeft, MapPin, Network, Building, Activity } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import MainLayout from "../layouts/MainLayout";
+import axiosInstance from "../utilities/AxiosServer";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 
-// interface StationDetail {
-//   id: number;
-//   net: string;
-//   kode: string;
-//   lokasi: string;
-//   upt: string;
-//   jaringan: string;
-//   availability: number[];
-//   koordinat?: { lat: number; lng: number };
-//   instalasi_date?: string;
-//   last_maintenance?: string;
-//   status: string;
-//   perangkat?: string[];
-// }
+interface StationData {
+  timestamp: string;
+  availability: number | null;
+  note?: string;
+}
 
-// interface AvailabilityStats {
-//   average: number;
-//   highest: number;
-//   lowest: number;
-//   trend: 'up' | 'down' | 'stable';
-// }
+interface Station {
+  kode_stasiun: string;
+  nama_stasiun?: string;
+  lokasi?: string;
+  stasiun_id?: number;
+  net?: string;
+  lintang?: number;
+  bujur?: number;
+  elevasi?: number;
+  provinsi?: string;
+  upt_penanggung_jawab?: string;
+  status?: string;
+  tahun_instalasi?: number;
+  jaringan?: string;
+  prioritas?: string;
+  keterangan?: string;
+  accelerometer?: string;
+  digitizer_komunikasi?: string;
+  tipe_shelter?: string;
+  lokasi_shelter?: string;
+  penjaga_shelter?: string;
+  penggantian_terakhir_alat?: string;
+  updated_at?: string;
+}
 
-// const monthNames = [
-//   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-//   "Juli", "Agustus", "September", "Oktober", "November", "Desember"
-// ];
+interface APIResponse {
+  success: boolean;
+  message: string;
+  cached: boolean;
+  cache_key: string;
+  meta: {
+    stationCode: string;
+    totalRecords: number;
+    dateRange: {
+      start_date: string;
+      end_date: string;
+    };
+    stationCodes?: Array<{
+      kode_stasiun: string;
+      nama_stasiun: string;
+    }>;
+  };
+  data: Record<string, StationData[]>;
+}
 
-// const StationAvailabilityDetail = () => {
-//   const { id } = useParams<{ id: string }>();
-//   const navigate = useNavigate();
-//   const [station, setStation] = useState<StationDetail | null>(null);
-//   const [loading, setLoading] = useState(true);
-//   const [selectedMonthRange, setSelectedMonthRange] = useState<{ start: number; end: number }>({
-//     start: 1,
-//     end: 12
-//   });
+interface DailyDataPoint {
+  date: string;
+  availability: number | null;
+  formattedDate: string;
+  dayOfWeek: string;
+}
 
-//   useEffect(() => {
-//     if (!id) return;
+const DAYS_OF_WEEK = [
+  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
+];
 
-//     setLoading(true);
-//     axiosInstance
-//       .get("/data/stationDetailData.json")
-//       .then((res) => {
-//         const stations: StationDetail[] = res.data;
-//         const stationData = stations.find(s => s.id === parseInt(id));
-        
-//         if (!stationData) {
-//           setStation(null);
-//           return;
-//         }
+const StationAvailabilityDetail = () => {
+  const { stationCode } = useParams<{ stationCode: string }>();
+  const navigate = useNavigate();
+  const [dailyData, setDailyData] = useState<DailyDataPoint[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [stations, setStations] = useState<Station[]>([]);
+  const [stationsLoading, setStationsLoading] = useState(true);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const today = new Date();
+    return {
+      year: today.getFullYear(),
+      month: today.getMonth() // 0-based
+    };
+  });
+  const [stats, setStats] = useState({
+    totalDays: 0,
+    availableDays: 0,
+    averageAvailability: 0,
+    minAvailability: 0,
+    maxAvailability: 0
+  });
 
-//         setStation(stationData);
-//       })
-//       .catch((err) => {
-//         console.error("Error fetching station detail:", err);
-//         setStation(null);
-//       })
-//       .finally(() => setLoading(false));
-//   }, [id]);
+  const handleStationSelect = (selectedStationCode: string) => {
+    setDropdownOpen(false);
+    navigate(`/station-availability/${selectedStationCode}`);
+  };
 
-//   // Filter availability data based on selected month range
-//   const getFilteredAvailability = () => {
-//     if (!station || !station.availability) return { data: [], months: [] };
-    
-//     const { start, end } = selectedMonthRange;
-//     let filteredData = [];
-//     let filteredMonths = [];
-    
-//     if (start <= end) {
-//       // Normal range (e.g., Jan to Jun)
-//       for (let i = start - 1; i < end; i++) {
-//         if (i < station.availability.length) {
-//           filteredData.push(station.availability[i]);
-//           filteredMonths.push(monthNames[i]);
-//         }
-//       }
-//     } else {
-//       // Wrap around range (e.g., Oct to Mar)
-//       for (let i = start - 1; i < 12 && i < station.availability.length; i++) {
-//         filteredData.push(station.availability[i]);
-//         filteredMonths.push(monthNames[i]);
-//       }
-//       for (let i = 0; i < end && i < station.availability.length; i++) {
-//         filteredData.push(station.availability[i]);
-//         filteredMonths.push(monthNames[i]);
-//       }
-//     }
-    
-//     return { data: filteredData, months: filteredMonths };
-//   };
+  const getCurrentStationName = () => {
+    const currentStation = stations.find(station => station.kode_stasiun === stationCode);
+    return currentStation ? (currentStation.nama_stasiun || currentStation.kode_stasiun) : stationCode;
+  };
 
-//   const filteredChart = getFilteredAvailability();
+  const fetchStationData = useCallback(async () => {
+    if (!stationCode) return;
 
-//   // Recalculate stats for filtered data
-//   const getFilteredStats = () => {
-//     const availability = filteredChart.data.filter(val => val !== null && val !== undefined && !isNaN(val));
-//     if (availability.length === 0) return null;
+    setLoading(true);
+    setError(null);
 
-//     const average = availability.reduce((sum, val) => sum + val, 0) / availability.length;
-//     const highest = Math.max(...availability);
-//     const lowest = Math.min(...availability);
-    
-//     // Simple trend calculation for filtered data
-//     if (availability.length < 2) {
-//       return { average, highest, lowest, trend: 'stable' as const };
-//     }
+    try {
+      // Get data dari awal bulan hingga akhir bulan yang dipilih
+      const startDate = new Date(selectedMonth.year, selectedMonth.month, 1); // Awal bulan
+      
+      // Hitung akhir bulan dengan benar - hari terakhir dari bulan yang dipilih
+      const endDate = new Date(selectedMonth.year, selectedMonth.month + 1, 0); // Akhir bulan
+      
+      // Jika bulan yang dipilih adalah bulan saat ini, gunakan hari ini sebagai end date
+      const today = new Date();
+      const isCurrentMonth = selectedMonth.year === today.getFullYear() && selectedMonth.month === today.getMonth();
+      const actualEndDate = isCurrentMonth ? today : endDate;
+      
+      const start_date = startDate.toISOString().split('T')[0];
+      const end_date = actualEndDate.toISOString().split('T')[0];
 
-//     const firstHalf = availability.slice(0, Math.ceil(availability.length / 2));
-//     const secondHalf = availability.slice(Math.floor(availability.length / 2));
-    
-//     const firstAvg = firstHalf.reduce((sum, val) => sum + val, 0) / firstHalf.length;
-//     const secondAvg = secondHalf.reduce((sum, val) => sum + val, 0) / secondHalf.length;
-    
-//     const trend = secondAvg > firstAvg + 1 ? 'up' : secondAvg < firstAvg - 1 ? 'down' : 'stable';
+      const response = await axiosInstance.get(`/api/availability/${stationCode}`, {
+        params: {
+          start_date,
+          end_date
+        },
+      });
 
-//     return { average, highest, lowest, trend };
-//   };
+      const apiResponse: APIResponse = response.data;
 
-//   const filteredStats = getFilteredStats();
+      if (apiResponse.success && apiResponse.data[stationCode]) {
+        const stationData = apiResponse.data[stationCode];
 
-//   const getAvailabilityColor = (value: number | null | undefined) => {
-//     if (value === null || value === undefined || isNaN(value)) return "bg-gray-200";
-//     if (value >= 95) return "bg-green-500";
-//     if (value >= 90) return "bg-yellow-500";
-//     if (value >= 80) return "bg-orange-500";
-//     return "bg-red-500";
-//   };
+        // Set stations from meta if available
+        if (apiResponse.meta.stationCodes && apiResponse.meta.stationCodes.length > 0) {
+          const stationList: Station[] = apiResponse.meta.stationCodes.map((station) => ({
+            kode_stasiun: station.kode_stasiun,
+            nama_stasiun: station.nama_stasiun || station.kode_stasiun,
+            lokasi: '',
+            stasiun_id: 0,
+            net: '',
+            lintang: 0,
+            bujur: 0,
+            elevasi: 0,
+            provinsi: '',
+            upt_penanggung_jawab: '',
+            status: '',
+            tahun_instalasi: 0,
+            jaringan: '',
+            prioritas: '',
+            keterangan: '',
+            accelerometer: '',
+            digitizer_komunikasi: '',
+            tipe_shelter: '',
+            lokasi_shelter: '',
+            penjaga_shelter: '',
+            penggantian_terakhir_alat: '',
+            updated_at: ''
+          }));
+          setStations(stationList);
+        } else {
+          // Fallback: create station from current stationCode
+          const fallbackStation: Station = {
+            kode_stasiun: stationCode,
+            nama_stasiun: stationCode,
+            lokasi: '',
+            stasiun_id: 0,
+            net: '',
+            lintang: 0,
+            bujur: 0,
+            elevasi: 0,
+            provinsi: '',
+            upt_penanggung_jawab: '',
+            status: '',
+            tahun_instalasi: 0,
+            jaringan: '',
+            prioritas: '',
+            keterangan: '',
+            accelerometer: '',
+            digitizer_komunikasi: '',
+            tipe_shelter: '',
+            lokasi_shelter: '',
+            penjaga_shelter: '',
+            penggantian_terakhir_alat: '',
+            updated_at: ''
+          };
+          setStations([fallbackStation]);
+        }
+        setStationsLoading(false);
 
-//   const getTrendIcon = (trend: string) => {
-//     switch (trend) {
-//       case 'up': return <span className="text-green-500">↗️</span>;
-//       case 'down': return <span className="text-red-500">↘️</span>;
-//       default: return <span className="text-gray-500">➡️</span>;
-//     }
-//   };
+        // Create complete data for all days in the selected month
+        const startDate = new Date(selectedMonth.year, selectedMonth.month, 1);
+        const endDate = new Date(selectedMonth.year, selectedMonth.month + 1, 0);
+        const allDaysInMonth: DailyDataPoint[] = [];
 
-//   // MonthRangePicker component
-//   const MonthRangePicker = () => {
-//     return (
-//       <div className="flex gap-4 items-center mb-6 p-4 bg-gray-50 rounded-lg">
-//         <label className="font-medium text-gray-700">Filter Bulan:</label>
-//         <div className="flex gap-2 items-center">
-//           <select
-//             value={selectedMonthRange.start}
-//             onChange={(e) => {
-//               const newStart = Number(e.target.value);
-//               setSelectedMonthRange(prev => ({ ...prev, start: newStart }));
-//             }}
-//             className="border border-gray-300 p-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-//           >
-//             {monthNames.map((name, i) => (
-//               <option key={i} value={i + 1}>
-//                 {name}
-//               </option>
-//             ))}
-//           </select>
-//           <span className="text-gray-500">s/d</span>
-//           <select
-//             value={selectedMonthRange.end}
-//             onChange={(e) => {
-//               const newEnd = Number(e.target.value);
-//               setSelectedMonthRange(prev => ({ ...prev, end: newEnd }));
-//             }}
-//             className="border border-gray-300 p-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-//           >
-//             {monthNames.map((name, i) => (
-//               <option key={i} value={i + 1}>
-//                 {name}
-//               </option>
-//             ))}
-//           </select>
-//         </div>
-//         <button
-//           onClick={() => setSelectedMonthRange({ start: 1, end: 12 })}
-//           className="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm"
-//         >
-//           Reset
-//         </button>
-//       </div>
-//     );
-//   };
+        for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+          const dateString = date.toISOString().split('T')[0];
+          const existingData = stationData.find((record: StationData) => 
+            record.timestamp.split('T')[0] === dateString
+          );
 
-//   if (loading) {
-//     return (
-//       <MainLayout>
-//         <div className="flex justify-center items-center h-64">
-//           <p className="text-gray-500">Loading station detail...</p>
-//         </div>
-//       </MainLayout>
-//     );
-//   }
+          allDaysInMonth.push({
+            date: dateString,
+            availability: existingData ? existingData.availability : null,
+            formattedDate: date.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric'
+            }),
+            dayOfWeek: DAYS_OF_WEEK[date.getDay()]
+          });
+        }
 
-//   if (!station) {
-//     return (
-//       <MainLayout>
-//         <div className="text-center">
-//           <p className="text-red-500 mb-4">Station not found</p>
-//           <button
-//             onClick={() => navigate("/station-availability")}
-//             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-//           >
-//             Back to Station List
-//           </button>
-//         </div>
-//       </MainLayout>
-//     );
-//   }
+        setDailyData(allDaysInMonth);
 
-//   return (
-//     <MainLayout>
-//       <div className="space-y-6">
-//         {/* Header */}
-//         <div className="bg-white p-6 rounded-xl shadow">
-//           <div className="flex items-center gap-4 mb-4">
-//             <button
-//               onClick={() => navigate("/station-availability")}
-//               className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
-//             >
-//               <ArrowLeft size={20} />
-//               Kembali
-//             </button>
-//           </div>
-          
-//           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//             <div>
-//               <h1 className="text-3xl font-bold text-gray-800 mb-2">
-//                 {station.kode} - {station.lokasi}
-//               </h1>
-//               <div className="space-y-2">
-//                 <div className="flex items-center gap-2 text-gray-600">
-//                   <Network size={16} />
-//                   <span>Net: {station.net}</span>
-//                 </div>
-//                 <div className="flex items-center gap-2 text-gray-600">
-//                   <Building size={16} />
-//                   <span>UPT: {station.upt}</span>
-//                 </div>
-//                 <div className="flex items-center gap-2 text-gray-600">
-//                   <Activity size={16} />
-//                   <span>Jaringan: {station.jaringan}</span>
-//                 </div>
-//                 <div className="flex items-center gap-2 text-gray-600">
-//                   <MapPin size={16} />
-//                   <span>Status: <span className={`font-semibold ${station.status === 'Active' ? 'text-green-600' : 'text-red-600'}`}>{station.status}</span></span>
-//                 </div>
-//               </div>
-//             </div>
+        // Calculate statistics based on complete month data
+        const validData = allDaysInMonth.filter(d => d.availability !== null);
+        const availabilityValues = validData.map(d => d.availability!);
 
-//             {/* Statistics - Update to use filtered stats */}
-//             {filteredStats && (
-//               <div className="bg-gray-50 p-4 rounded-lg">
-//                 <h3 className="font-semibold mb-3">Statistik Availability</h3>
-//                 <div className="grid grid-cols-2 gap-4">
-//                   <div>
-//                     <p className="text-sm text-gray-600">Rata-rata</p>
-//                     <p className="text-xl font-bold text-blue-600">{filteredStats.average.toFixed(1)}%</p>
-//                   </div>
-//                   <div>
-//                     <p className="text-sm text-gray-600">Tertinggi</p>
-//                     <p className="text-xl font-bold text-green-600">{filteredStats.highest.toFixed(1)}%</p>
-//                   </div>
-//                   <div>
-//                     <p className="text-sm text-gray-600">Terendah</p>
-//                     <p className="text-xl font-bold text-red-600">{filteredStats.lowest.toFixed(1)}%</p>
-//                   </div>
-//                   <div>
-//                     <p className="text-sm text-gray-600">Trend</p>
-//                     <p className="text-xl font-bold flex items-center gap-1">
-//                       {getTrendIcon(filteredStats.trend)}
-//                       {filteredStats.trend === 'up' ? 'Naik' : filteredStats.trend === 'down' ? 'Turun' : 'Stabil'}
-//                     </p>
-//                   </div>
-//                 </div>
-//               </div>
-//             )}
-//           </div>
-//         </div>
+        setStats({
+          totalDays: allDaysInMonth.length,
+          availableDays: validData.length,
+          averageAvailability: availabilityValues.length > 0
+            ? Math.round((availabilityValues.reduce((sum, val) => sum + val, 0) / availabilityValues.length) * 100) / 100
+            : 0,
+          minAvailability: availabilityValues.length > 0 ? Math.min(...availabilityValues) : 0,
+          maxAvailability: availabilityValues.length > 0 ? Math.max(...availabilityValues) : 0
+        });
+      } else {
+        setError("Station data not found");
+      }
+    } catch (err) {
+      console.error("Error fetching station data:", err);
+      setError("Failed to load station data");
+    } finally {
+      setLoading(false);
+    }
+  }, [stationCode, selectedMonth]);
 
-//         {/* Availability Chart */}
-//         <div className="bg-white p-6 rounded-xl shadow">
-//           <h2 className="text-xl font-semibold mb-4">Availability per Bulan</h2>
-          
-//           {/* Month Range Filter */}
-//           <MonthRangePicker />
-          
-//           {/* Bar Chart - Update to use filtered data */}
-//           <div className="flex items-end space-x-2 h-64 mb-4">
-//             {filteredChart.data.length > 0 ? (
-//               filteredChart.data.map((value, index) => (
-//                 <div key={index} className="flex-1 flex flex-col items-center">
-//                   <div
-//                     className={`w-full ${getAvailabilityColor(value)} transition-all duration-300 hover:opacity-80`}
-//                     style={{ 
-//                       height: `${value && !isNaN(value) ? Math.max((value / 100) * 200, 2) : 2}px`,
-//                       minHeight: '2px'
-//                     }}
-//                     title={`${filteredChart.months[index]}: ${value && !isNaN(value) ? value.toFixed(1) : 'N/A'}%`}
-//                   />
-//                   <span className="text-xs text-gray-600 mt-2 transform -rotate-45 origin-left">
-//                     {filteredChart.months[index]}
-//                   </span>
-//                 </div>
-//               ))
-//             ) : (
-//               <div className="w-full flex items-center justify-center h-32">
-//                 <p className="text-gray-500">No data available for selected range</p>
-//               </div>
-//             )}
-//           </div>
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownOpen && !(event.target as Element).closest('.relative')) {
+        setDropdownOpen(false);
+      }
+    };
 
-//           {/* Legend */}
-//           <div className="flex flex-wrap gap-4 text-sm">
-//             <div className="flex items-center gap-2">
-//               <div className="w-4 h-4 bg-green-500 rounded"></div>
-//               <span>≥95% (Excellent)</span>
-//             </div>
-//             <div className="flex items-center gap-2">
-//               <div className="w-4 h-4 bg-yellow-500 rounded"></div>
-//               <span>90-94% (Good)</span>
-//             </div>
-//             <div className="flex items-center gap-2">
-//               <div className="w-4 h-4 bg-orange-500 rounded"></div>
-//               <span>80-89% (Fair)</span>
-//             </div>
-//             <div className="flex items-center gap-2">
-//               <div className="w-4 h-4 bg-red-500 rounded"></div>
-//               <span>&lt;80% (Poor)</span>
-//             </div>
-//             <div className="flex items-center gap-2">
-//               <div className="w-4 h-4 bg-gray-200 rounded"></div>
-//               <span>No Data</span>
-//             </div>
-//           </div>
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [dropdownOpen]);
 
-//           {/* Chart Info */}
-//           {filteredChart.months.length > 0 && (
-//             <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-//               <p className="text-sm text-blue-700">
-//                 Menampilkan data dari <strong>{filteredChart.months[0]}</strong> sampai <strong>{filteredChart.months[filteredChart.months.length - 1]}</strong>
-//                 {filteredChart.data.length < 12 && (
-//                   <span> ({filteredChart.data.length} bulan)</span>
-//                 )}
-//               </p>
-//             </div>
-//           )}
-//         </div>
+  useEffect(() => {
+    if (!stationCode) {
+      setError("Station code not provided");
+      setLoading(false);
+      return;
+    }
 
-//         {/* Detailed Information */}
-//         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-//           {/* Technical Info */}
-//           <div className="bg-white p-6 rounded-xl shadow">
-//             <h3 className="text-lg font-semibold mb-4">Informasi Teknis</h3>
-//             <div className="space-y-3">
-//               <div>
-//                 <span className="text-gray-600">Tanggal Instalasi:</span>
-//                 <span className="ml-2 font-medium">{station.instalasi_date || 'N/A'}</span>
-//               </div>
-//               <div>
-//                 <span className="text-gray-600">Maintenance Terakhir:</span>
-//                 <span className="ml-2 font-medium">{station.last_maintenance || 'N/A'}</span>
-//               </div>
-//               {station.koordinat && (
-//                 <div>
-//                   <span className="text-gray-600">Koordinat:</span>
-//                   <span className="ml-2 font-medium">
-//                     {station.koordinat.lat}, {station.koordinat.lng}
-//                   </span>
-//                 </div>
-//               )}
-//             </div>
-//           </div>
+    fetchStationData();
+  }, [stationCode, fetchStationData]);
 
-//           {/* Equipment */}
-//           {station.perangkat && (
-//             <div className="bg-white p-6 rounded-xl shadow">
-//               <h3 className="text-lg font-semibold mb-4">Perangkat</h3>
-//               <div className="space-y-2">
-//                 {station.perangkat.map((item, index) => (
-//                   <div key={index} className="bg-gray-50 p-2 rounded text-sm">
-//                     {item}
-//                   </div>
-//                 ))}
-//               </div>
-//             </div>
-//           )}
-//         </div>
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    setSelectedMonth(prev => {
+      const newDate = new Date(prev.year, prev.month + (direction === 'next' ? 1 : -1), 1);
+      return {
+        year: newDate.getFullYear(),
+        month: newDate.getMonth()
+      };
+    });
+  };
 
-//         {/* Monthly Availability Table - Keep showing all months */}
-//         <div className="bg-white p-6 rounded-xl shadow">
-//           <h3 className="text-lg font-semibold mb-4">Data Availability Bulanan (Semua Bulan)</h3>
-//           <div className="overflow-x-auto">
-//             <table className="w-full text-sm">
-//               <thead>
-//                 <tr className="border-b">
-//                   <th className="text-left p-2">Bulan</th>
-//                   <th className="text-left p-2">Availability (%)</th>
-//                   <th className="text-left p-2">Status</th>
-//                 </tr>
-//               </thead>
-//               <tbody>
-//                 {station.availability?.map((value, index) => (
-//                   <tr key={index} className="border-b hover:bg-gray-50">
-//                     <td className="p-2 font-medium">{monthNames[index] || `Month ${index + 1}`}</td>
-//                     <td className="p-2">
-//                       {value !== null && value !== undefined && !isNaN(value) ? (
-//                         <span className={`font-semibold ${
-//                           value >= 95 ? 'text-green-600' : 
-//                           value >= 90 ? 'text-yellow-600' : 
-//                           value >= 80 ? 'text-orange-600' : 'text-red-600'
-//                         }`}>
-//                           {value.toFixed(1)}%
-//                         </span>
-//                       ) : (
-//                         <span className="text-gray-400">No Data</span>
-//                       )}
-//                     </td>
-//                     <td className="p-2">
-//                       {value !== null && value !== undefined && !isNaN(value) ? (
-//                         <span className={`px-2 py-1 rounded-full text-xs ${
-//                           value >= 95 ? 'bg-green-100 text-green-800' : 
-//                           value >= 90 ? 'bg-yellow-100 text-yellow-800' : 
-//                           value >= 80 ? 'bg-orange-100 text-orange-800' : 'bg-red-100 text-red-800'
-//                         }`}>
-//                           {value >= 95 ? 'Excellent' : value >= 90 ? 'Good' : value >= 80 ? 'Fair' : 'Poor'}
-//                         </span>
-//                       ) : (
-//                         <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800">N/A</span>
-//                       )}
-//                     </td>
-//                   </tr>
-//                 )) || []}
-//               </tbody>
-//             </table>
-//           </div>
-//         </div>
-//       </div>
-//     </MainLayout>
-//   );
-// };
+  const getMonthName = (month: number) => {
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    return monthNames[month];
+  };
 
-// export default StationAvailabilityDetail;
+  const getAvailabilityColor = (value: number | null) => {
+    if (value === null) return "#gray";
+    if (value >= 95) return "#16a34a"; // green
+    if (value >= 80) return "#ca8a04"; // yellow
+    return "#dc2626"; // red
+  };
+
+  const getAvailabilityStatus = (value: number | null) => {
+    if (value === null) return "No Data";
+    if (value >= 95) return "Excellent";
+    if (value >= 80) return "Good";
+    return "Poor";
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <MainLayout>
+          <div className="flex items-center justify-center h-64">
+            <p className="text-gray-500">Loading station data...</p>
+          </div>
+        </MainLayout>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <MainLayout>
+        <div className="mb-4">
+          {/* Compact Header with Station Selector */}
+          <div className="bg-white rounded-xl shadow p-4 mb-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              {/* Station Selector */}
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-gray-800">Station:</h1>
+                <div className="relative">
+                  <button
+                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                    className="flex items-center gap-2 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 hover:bg-gray-100 transition-colors min-w-[180px]"
+                  >
+                    <span className="text-gray-700 text-sm">
+                      {stationsLoading ? 'Loading...' : getCurrentStationName()}
+                    </span>
+                    <ChevronDown size={14} className={`text-gray-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {dropdownOpen && (
+                    <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-10 min-w-[180px] max-h-48 overflow-y-auto">
+                      {stations.map((station) => (
+                        <button
+                          key={station.kode_stasiun}
+                          onClick={() => handleStationSelect(station.kode_stasiun)}
+                          className="w-full text-left px-3 py-2 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 text-sm"
+                        >
+                          <div className="font-medium text-gray-900">{station.nama_stasiun}</div>
+                          <div className="text-xs text-gray-500">{station.kode_stasiun}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Empty Statistics */}
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 flex-1 lg:ml-6">
+                <div className="text-center">
+                  <div className="text-xs text-gray-500 uppercase tracking-wide">Total Days</div>
+                  <div className="text-lg font-bold text-gray-900">-</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-gray-500 uppercase tracking-wide">Available</div>
+                  <div className="text-lg font-bold text-green-600">-</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-gray-500 uppercase tracking-wide">Average</div>
+                  <div className="text-lg font-bold text-blue-600">-</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-gray-500 uppercase tracking-wide">Min</div>
+                  <div className="text-lg font-bold text-orange-600">-</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-gray-500 uppercase tracking-wide">Max</div>
+                  <div className="text-lg font-bold text-purple-600">-</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+            {/* Error Message */}
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+
+            {/* Chart Section with Navigation */}
+            <div className="bg-white p-4 rounded-xl shadow mb-4">
+              <div className="flex items-center justify-center gap-4 mb-4">
+                <button
+                  onClick={() => navigateMonth('prev')}
+                  className="flex items-center gap-1 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-md text-sm font-medium transition-colors"
+                >
+                  <ChevronLeft size={16} />
+                  Previous
+                </button>
+
+                <h2 className="text-xl font-semibold text-gray-700 min-w-[200px] text-center">
+                  {getMonthName(selectedMonth.month)} {selectedMonth.year}
+                </h2>
+
+                <button
+                  onClick={() => navigateMonth('next')}
+                  disabled={selectedMonth.year === new Date().getFullYear() && selectedMonth.month === new Date().getMonth()}
+                  className="flex items-center gap-1 px-3 py-1 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 rounded-md text-sm font-medium transition-colors"
+                >
+                  Next
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+              <div className="h-80 flex items-center justify-center">
+                <p className="text-gray-500">No data available for selected month</p>
+              </div>
+            </div>
+
+            {/* Empty Data Table */}
+            <div className="bg-white p-6 rounded-xl shadow">
+              <h2 className="text-xl font-semibold text-gray-700 mb-4">
+                Daily Availability Data
+              </h2>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Day
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Availability
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    <tr>
+                      <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                        No data available
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </MainLayout>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-gray-50">
+      <MainLayout>
+        <div className="mb-4">
+          {/* Compact Header with Station Selector and Stats */}
+          <div className="bg-white rounded-xl shadow p-4 mb-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              {/* Station Selector */}
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-gray-800">Station:</h1>
+                <div className="relative">
+                  <button
+                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                    className="flex items-center gap-2 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 hover:bg-gray-100 transition-colors min-w-[180px]"
+                  >
+                    <span className="text-gray-700 text-sm">
+                      {stationsLoading ? 'Loading...' : getCurrentStationName()}
+                    </span>
+                    <ChevronDown size={14} className={`text-gray-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {dropdownOpen && (
+                    <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-10 min-w-[180px] max-h-48 overflow-y-auto">
+                      {stations.map((station) => (
+                        <button
+                          key={station.kode_stasiun}
+                          onClick={() => handleStationSelect(station.kode_stasiun)}
+                          className="w-full text-left px-3 py-2 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 text-sm"
+                        >
+                          <div className="font-medium text-gray-900">{station.nama_stasiun || station.kode_stasiun}</div>
+                          <div className="text-xs text-gray-500">{station.kode_stasiun}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Compact Statistics */}
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 flex-1 lg:ml-6">
+                <div className="text-center">
+                  <div className="text-xs text-gray-500 uppercase tracking-wide">Total Days</div>
+                  <div className="text-lg font-bold text-gray-900">{stats.totalDays}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-gray-500 uppercase tracking-wide">Available</div>
+                  <div className="text-lg font-bold text-green-600">{stats.availableDays}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-gray-500 uppercase tracking-wide">Average</div>
+                  <div className="text-lg font-bold text-blue-600">{stats.averageAvailability}%</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-gray-500 uppercase tracking-wide">Min</div>
+                  <div className="text-lg font-bold text-orange-600">{stats.minAvailability}%</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-gray-500 uppercase tracking-wide">Max</div>
+                  <div className="text-lg font-bold text-purple-600">{stats.maxAvailability}%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Chart Section */}
+          <div className="bg-white p-4 rounded-xl shadow mb-4">
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <button
+                onClick={() => navigateMonth('prev')}
+                className="flex items-center gap-1 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-md text-sm font-medium transition-colors"
+              >
+                <ChevronLeft size={16} />
+                Previous
+              </button>
+              
+              <h2 className="text-xl font-semibold text-gray-700 min-w-[200px] text-center">
+                {getMonthName(selectedMonth.month)} {selectedMonth.year}
+              </h2>
+              
+              <button
+                onClick={() => navigateMonth('next')}
+                disabled={selectedMonth.year === new Date().getFullYear() && selectedMonth.month === new Date().getMonth()}
+                className="flex items-center gap-1 px-3 py-1 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 rounded-md text-sm font-medium transition-colors"
+              >
+                Next
+                <ChevronRight size={16} />
+              </button>
+            </div>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={dailyData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="formattedDate"
+                    fontSize={10}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                    interval={0}
+                  />
+                  <YAxis
+                    domain={[0, 100]}
+                    label={{ value: 'Availability (%)', angle: -90, position: 'insideLeft' }}
+                    fontSize={12}
+                  />
+                  <Tooltip
+                    formatter={(value: number) => [
+                      value !== null ? `${value}%` : 'No Data',
+                      'Availability'
+                    ]}
+                    labelFormatter={(label) => `Date: ${label}`}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="availability"
+                    stroke="#2563eb"
+                    strokeWidth={2}
+                    dot={{ fill: '#2563eb', strokeWidth: 2, r: 4 }}
+                    connectNulls={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Daily Data Table */}
+          <div className="bg-white p-4 rounded-xl shadow">
+            <h2 className="text-xl font-semibold text-gray-700 mb-4">
+              Daily Availability Data
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Day
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Availability
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {dailyData.map((day, index) => (
+                    <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {day.formattedDate}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {day.dayOfWeek}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {day.availability !== null ? (
+                          <span
+                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                            style={{
+                              backgroundColor: `${getAvailabilityColor(day.availability)}20`,
+                              color: getAvailabilityColor(day.availability)
+                            }}
+                          >
+                            {day.availability}%
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">No Data</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span
+                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                          style={{
+                            backgroundColor: `${getAvailabilityColor(day.availability)}20`,
+                            color: getAvailabilityColor(day.availability)
+                          }}
+                        >
+                          {getAvailabilityStatus(day.availability)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </MainLayout>
+    </div>
+  );
+};
+
+export default StationAvailabilityDetail;

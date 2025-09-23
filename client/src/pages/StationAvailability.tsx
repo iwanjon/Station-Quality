@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { Link } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import TableFilters from "../components/TableFilters";
 import type { FilterConfig } from "../components/TableFilters";
@@ -30,6 +31,7 @@ interface APIResponse {
       start_date: string;
       end_date: string;
     };
+    stationCodes?: string[];
   };
   data: Record<string, StationData[]>;
 }
@@ -330,10 +332,34 @@ const StationAvailability = () => {
   // Helper function to generate dynamic columns based on month range
   const generateColumns = (): ColumnDef<Station>[] => {
     const columns: ColumnDef<Station>[] = [
-      { 
-        header: "Station Code", 
-        accessorKey: "kode", 
+      {
+        header: "Station Code",
+        accessorKey: "kode",
         enableSorting: true,
+        cell: ({ row }) => {
+          const station = row.original;
+          return (
+            <span className="font-medium text-gray-900">
+              {station.kode}
+            </span>
+          );
+        },
+      },
+      {
+        header: "Station Detail",
+        accessorKey: "actions",
+        enableSorting: false,
+        cell: ({ row }) => {
+          const station = row.original;
+          return (
+            <Link
+              to={`/station-availability/${station.kode}`}
+              className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            >
+              View Detail
+            </Link>
+          );
+        },
       }
     ];
 
