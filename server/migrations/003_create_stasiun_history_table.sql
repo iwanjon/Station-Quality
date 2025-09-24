@@ -4,13 +4,14 @@ CREATE TABLE `stasiun_history` (
   `SHE` float,
   `SHN` float,
   `SHZ` float,
-  `sensor_type` text,
   `data_logger` text,
-  `unit` varchar(10),
+  `total_gain` float,
+  `input_unit` varchar(10),
+  `sampling_rate` float,
+  `sensor_type` text,
   `start_date` datetime,
   `end_date` datetime,
   `PAZ` float,
-  `total_gain` float,
   `status` boolean DEFAULT true,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP
 );

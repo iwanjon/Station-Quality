@@ -18,6 +18,7 @@ CREATE TABLE `stasiun` (
   `tipe_shelter` ENUM ('bunker', 'posthole', 'surface'),
   `lokasi_shelter` ENUM ('outside_BMKG_office', 'inside_BMKG_office'),
   `penjaga_shelter` ENUM ('ada', 'tidak_ada'),
+  `kondisi_shelter` ENUM ('baik', 'rusak_ringan', 'rusak_berat'),
   `penggantian_terakhir_alat` datetime,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
