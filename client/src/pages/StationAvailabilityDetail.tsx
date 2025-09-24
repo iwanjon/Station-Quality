@@ -27,7 +27,6 @@ interface APIResponse {
       start_date: string;
       end_date: string;
     };
-    stationCodes?: string[];
   };
   data: Record<string, StationData[]>;
 }
@@ -80,9 +79,12 @@ const StationAvailabilityDetail = () => {
   const fetchStations = useCallback(async () => {
     try {
       setStationsLoading(true);
-      const response = await axiosInstance.get('/api/stasiun');
+      const response = await axiosInstance.get('/api/stasiun/codes');
       if (response.data.success) {
-        setStations(response.data.data);
+        const stationList: Station[] = response.data.data.map((item: { kode_stasiun: string }) => ({
+          kode_stasiun: item.kode_stasiun
+        }));
+        setStations(stationList);
       }
     } catch (error) {
       console.error('Error fetching stations:', error);
@@ -145,17 +147,8 @@ const StationAvailabilityDetail = () => {
       if (apiResponse.success && apiResponse.data[stationCode]) {
         const stationData = apiResponse.data[stationCode];
 
-        // Set stations from meta if available
-        if (apiResponse.meta.stationCodes && apiResponse.meta.stationCodes.length > 0) {
-          const stationList: Station[] = apiResponse.meta.stationCodes.map((stationCode) => ({
-            kode_stasiun: stationCode
-          }));
-          setStations(stationList);
-        } else {
-          // Fallback: fetch from /api/stasiun
-          fetchStations();
-        }
-        setStationsLoading(false);
+        // Fetch station codes from the new API endpoint
+        fetchStations();
 
         // Create data points directly from API response, filtered for selected month only
         const allDaysInMonth: DailyDataPoint[] = stationData

@@ -384,15 +384,10 @@ export const getStationAvailabilityByCode = async (req, res) => {
     }
 
     // 4. Prepare response
-    // Get all station codes from database for dropdown
-    const [allStationRows] = await pool.query('SELECT kode_stasiun FROM stasiun ORDER BY kode_stasiun');
-    const allStationCodes = allStationRows.map(row => row.kode_stasiun);
-    
     const stationResponse = {
       meta: {
         stationCode: stationCode,
         totalRecords: totalRecords,
-        stationCodes: allStationCodes,
         dateRange: {
           start_date,
           end_date

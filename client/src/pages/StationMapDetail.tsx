@@ -7,7 +7,7 @@ import L from "leaflet";
 import marker2x from "leaflet/dist/images/marker-icon-2x.png";
 import marker from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
-import { ChevronLeft, MapPin } from "lucide-react";
+import { ChevronLeft, MapPin, ChevronDown } from "lucide-react";
 import axiosServer from "../utilities/AxiosServer";
 
 // Fix Leaflet default markers
@@ -85,6 +85,9 @@ const StationMapDetail = () => {
   const [station, setStation] = useState<Stasiun | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [stations, setStations] = useState<Stasiun[]>([]);
+  const [stationsLoading, setStationsLoading] = useState(true);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const fetchStationDetail = useCallback(async () => {
     if (!stationCode) return;
@@ -92,8 +95,8 @@ const StationMapDetail = () => {
     try {
       setLoading(true);
       // Fetch detail station berdasarkan kode
-      const response = await axiosServer.get(`api/stasiun/${stationCode}`);
-      setStation(response.data);
+      const response = await axiosServer.get(`/api/stasiun/bycode?code=${stationCode}`);
+      setStation(response.data.data);
     } catch (err) {
       console.error('Error fetching station detail:', err);
       setError('Failed to load station detail');
@@ -101,6 +104,38 @@ const StationMapDetail = () => {
       setLoading(false);
     }
   }, [stationCode]);
+
+  const fetchStations = useCallback(async () => {
+    try {
+      setStationsLoading(true);
+      const response = await axiosServer.get('/api/stasiun/codes');
+      if (response.data.success) {
+        const stationList: Stasiun[] = response.data.data.map((item: { kode_stasiun: string }) => ({
+          kode_stasiun: item.kode_stasiun
+        } as Stasiun));
+        setStations(stationList);
+      }
+    } catch (error) {
+      console.error('Error fetching stations:', error);
+      // Fallback: create station from current stationCode
+      const fallbackStation: Stasiun = {
+        kode_stasiun: stationCode!
+      } as Stasiun;
+      setStations([fallbackStation]);
+    } finally {
+      setStationsLoading(false);
+    }
+  }, [stationCode]);
+
+  const handleStationSelect = (selectedStationCode: string) => {
+    setDropdownOpen(false);
+    navigate(`/station-map/${selectedStationCode}`);
+  };
+
+  const getCurrentStationName = () => {
+    const currentStation = stations.find(station => station.kode_stasiun === stationCode);
+    return currentStation ? currentStation.kode_stasiun : stationCode;
+  };
 
   useEffect(() => {
     // Cek apakah data station dikirim melalui state navigation
@@ -118,37 +153,23 @@ const StationMapDetail = () => {
     }
   }, [stationCode, location.state, fetchStationDetail]);
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'active':
-      case 'aktif':
-        return 'text-green-600 bg-green-100';
-      case 'inactive':
-      case 'non-aktif':
-        return 'text-red-600 bg-red-100';
-      case 'maintenance':
-      case 'perawatan':
-        return 'text-yellow-600 bg-yellow-100';
-      default:
-        return 'text-gray-600 bg-gray-100';
-    }
-  };
+  useEffect(() => {
+    fetchStations();
+  }, [fetchStations]);
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority.toLowerCase()) {
-      case 'high':
-      case 'tinggi':
-        return 'text-red-600 bg-red-100';
-      case 'medium':
-      case 'sedang':
-        return 'text-yellow-600 bg-yellow-100';
-      case 'low':
-      case 'rendah':
-        return 'text-green-600 bg-green-100';
-      default:
-        return 'text-gray-600 bg-gray-100';
-    }
-  };
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownOpen && !(event.target as Element).closest('.relative')) {
+        setDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [dropdownOpen]);
 
   if (loading) {
     return (
@@ -193,7 +214,37 @@ const StationMapDetail = () => {
         <div className="mb-6">
           {/* Header */}
           <div className="bg-white rounded-xl shadow p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              {/* Station Selector */}
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-gray-800">Station:</h1>
+                <div className="relative">
+                  <button
+                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                    className="flex items-center gap-2 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 hover:bg-gray-100 transition-colors min-w-[180px]"
+                  >
+                    <span className="text-gray-700 text-sm">
+                      {stationsLoading ? 'Loading...' : getCurrentStationName()}
+                    </span>
+                    <ChevronDown size={14} className={`text-gray-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {dropdownOpen && (
+                    <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-10 min-w-[180px] max-h-48 overflow-y-auto">
+                      {stations.map((station) => (
+                        <button
+                          key={station.kode_stasiun}
+                          onClick={() => handleStationSelect(station.kode_stasiun)}
+                          className="w-full text-left px-3 py-2 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 text-sm"
+                        >
+                          <div className="font-medium text-gray-900">{station.kode_stasiun}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <button
                 onClick={() => navigate('/station-map')}
                 className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors"
@@ -201,24 +252,6 @@ const StationMapDetail = () => {
                 <ChevronLeft size={20} />
                 Back to Station Map
               </button>
-              <div className="flex items-center gap-4">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(station.status)}`}>
-                  {station.status}
-                </span>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getPriorityColor(station.prioritas)}`}>
-                  {station.prioritas} Priority
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                <MapPin className="w-8 h-8 text-blue-600" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">{station.kode_stasiun}</h1>
-                <p className="text-gray-600">{station.net} Network</p>
-              </div>
             </div>
           </div>
 
@@ -301,46 +334,101 @@ const StationMapDetail = () => {
               <div>
                 <h3 className="text-lg font-semibold mb-4 text-gray-700">Location Map</h3>
                 <div className="h-96 rounded-lg overflow-hidden border border-gray-300">
-                  <MapContainer
-                    center={[station.lintang, station.bujur]}
-                    zoom={17}
-                    style={{ height: '100%', width: '100%' }}
-                  >
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-                    <Marker position={[station.lintang, station.bujur]} icon={triangleIcon(getColorByStatus())}>
-                      <Popup>
-                        <div className="text-center">
-                          <h3 className="font-semibold">{station.kode_stasiun}</h3>
-                          <p className="text-sm text-gray-600">{station.lokasi}</p>
-                          <p className="text-sm text-gray-600">{station.provinsi}</p>
+                  {station.lintang && station.bujur && !isNaN(station.lintang) && !isNaN(station.bujur) ? (
+                    <MapContainer
+                      center={[station.lintang, station.bujur]}
+                      zoom={17}
+                      style={{ height: '100%', width: '100%' }}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <Marker position={[station.lintang, station.bujur]} icon={triangleIcon(getColorByStatus())}>
+                        <Popup>
+                          <div className="text-center">
+                            <h3 className="font-semibold">{station.kode_stasiun}</h3>
+                            <p className="text-sm text-gray-600">{station.lokasi}</p>
+                            <p className="text-sm text-gray-600">{station.provinsi}</p>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    </MapContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center bg-gray-100">
+                      <div className="text-center">
+                        <div className="text-gray-400 mb-2">
+                          <MapPin size={48} className="mx-auto" />
                         </div>
-                      </Popup>
-                    </Marker>
-                  </MapContainer>
+                        <p className="text-gray-500">Loading map...</p>
+                        <p className="text-sm text-gray-400">Coordinates not available</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="mt-4 text-end">
-                  <a
-                    href={`https://www.google.com/maps?q=${station.lintang},${station.bujur}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <MapPin size={16} />
-                    Open in Google Maps
-                  </a>
+                  {station.lintang && station.bujur && !isNaN(station.lintang) && !isNaN(station.bujur) ? (
+                    <a
+                      href={`https://www.google.com/maps?q=${station.lintang},${station.bujur}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <MapPin size={16} />
+                      Open in Google Maps
+                    </a>
+                  ) : (
+                    <button
+                      disabled
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-gray-400 text-white text-sm font-medium rounded-lg cursor-not-allowed"
+                    >
+                      <MapPin size={16} />
+                      Open in Google Maps
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
           </div>
 
           {/* Bagian 2: Kosongkan dulu */}
-          <div className="bg-white p-6 rounded-2xl shadow-md">
-            <h2 className="text-xl font-bold mb-4 text-gray-800">Section 2</h2>
+          <div className="bg-white p-6 rounded-2xl shadow-md mb-6">
+            <h2 className="text-xl font-bold mb-4 text-gray-800">Site photo</h2>
             <div className="text-center py-16 text-gray-500">
               This section is currently empty
+            </div>
+          </div>
+
+          {/* Bagian 3: Tabel Data Station */}
+          <div className="bg-white p-6 rounded-2xl shadow-md mb-6">
+            <h2 className="text-xl font-bold mb-4 text-gray-800">Equipment Details</h2>
+            <div className="mb-4">
+              <table className="w-full border border-gray-300 text-sm">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Column 1</th>
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Column 2</th>
+                    <th className="px-3 py-2 font-medium text-left">Column 3</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Tabel kosong untuk sementara */}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex gap-4 justify-center">
+              <button
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                onClick={() => window.open(`https://geof.bmkg.go.id/fdsnws/station/1/query?network=${station.net}&station=${station.kode_stasiun}&level=response&format=sc3ml&nodata=404`, '_blank')}
+              >
+                Metadata (SC3ML)
+              </button>
+              <button
+                className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                onClick={() => window.open(`https://geof.bmkg.go.id/fdsnws/station/1/query?network=${station.net}&station=${station.kode_stasiun}&level=response&format=fdsnxml&nodata=404`, '_blank')}
+              >
+                Metadata (FDSNXML)
+              </button>
             </div>
           </div>
         </div>
