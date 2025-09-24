@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -9,6 +9,33 @@ import marker from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import { ChevronLeft, MapPin, ChevronDown } from "lucide-react";
 import axiosServer from "../utilities/AxiosServer";
+
+// Define interfaces
+interface Stasiun {
+  kode_stasiun: string;
+  net: string;
+  // Add other station properties as needed
+}
+
+interface StationHistory {
+  history_id: number;
+  stasiun_id: number;
+  kode_stasiun: string;
+  net: string;
+  SHE: number | null;
+  SHN: number | null;
+  SHZ: number | null;
+  data_logger: string | null;
+  total_gain: number | null;
+  input_unit: string | null;
+  sampling_rate: number | null;
+  sensor_type: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  PAZ: number | null;
+  status: boolean;
+  created_at: string;
+}
 
 // Fix Leaflet default markers
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -88,6 +115,8 @@ const StationMapDetail = () => {
   const [stations, setStations] = useState<Stasiun[]>([]);
   const [stationsLoading, setStationsLoading] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [stationHistory, setStationHistory] = useState<StationHistory[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const fetchStationDetail = useCallback(async () => {
     if (!stationCode) return;
@@ -137,6 +166,22 @@ const StationMapDetail = () => {
     return currentStation ? currentStation.kode_stasiun : stationCode;
   };
 
+  const fetchStationHistory = useCallback(async () => {
+    if (!stationCode) return;
+
+    try {
+      setHistoryLoading(true);
+      const response = await axiosServer.get(`/api/station-history/bycode?code=${stationCode}`);
+      if (response.data.success) {
+        setStationHistory(response.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching station history:', err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [stationCode]);
+
   useEffect(() => {
     // Cek apakah data station dikirim melalui state navigation
     const stationData = location.state?.station as Stasiun;
@@ -156,6 +201,12 @@ const StationMapDetail = () => {
   useEffect(() => {
     fetchStations();
   }, [fetchStations]);
+
+  useEffect(() => {
+    if (stationCode && station) {
+      fetchStationHistory();
+    }
+  }, [stationCode, station, fetchStationHistory]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -399,20 +450,77 @@ const StationMapDetail = () => {
             </div>
           </div>
 
-          {/* Bagian 3: Tabel Data Station */}
+          {/* Bagian 3: Equipment Details dengan Station History per Channel */}
           <div className="bg-white p-6 rounded-2xl shadow-md mb-6">
-            <h2 className="text-xl font-bold mb-4 text-gray-800">Equipment Details</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-800">Equipment Details</h2>
+              <Link
+                to={`/station-history/${stationCode}`}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium underline"
+              >
+                View Full Station History →
+              </Link>
+            </div>
             <div className="mb-4">
               <table className="w-full border border-gray-300 text-sm">
                 <thead>
                   <tr className="bg-gray-50">
-                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Column 1</th>
-                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Column 2</th>
-                    <th className="px-3 py-2 font-medium text-left">Column 3</th>
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Channel</th>
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Sensor Type</th>
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Data Logger</th>
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Total Gain</th>
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Input Unit</th>
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Sampling Rate</th>
+                    <th className="px-3 py-2 font-medium text-left">Last Updated</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Tabel kosong untuk sementara */}
+                  {historyLoading ? (
+                    <tr>
+                      <td colSpan={7} className="px-3 py-4 text-center text-gray-500">
+                        Loading equipment data...
+                      </td>
+                    </tr>
+                  ) : stationHistory.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-3 py-4 text-center text-gray-500">
+                        No equipment history data available
+                      </td>
+                    </tr>
+                  ) : (
+                    // Group by channel and show latest record for each channel
+                    ['SHE', 'SHN', 'SHZ'].map((channel) => {
+                      const channelData = stationHistory
+                        .filter((history: StationHistory) => {
+                          // Check if this history record has data for this channel
+                          return history[channel as keyof StationHistory] !== null && history[channel as keyof StationHistory] !== undefined;
+                        })
+                        .sort((a: StationHistory, b: StationHistory) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+
+                      return (
+                        <tr key={channel} className="border-t border-gray-200">
+                          <td className="px-3 py-2 font-medium text-blue-600">{channel}</td>
+                          <td className="px-3 py-2">{channelData?.sensor_type || '-'}</td>
+                          <td className="px-3 py-2">{channelData?.data_logger || '-'}</td>
+                          <td className="px-3 py-2">{channelData?.total_gain || '-'}</td>
+                          <td className="px-3 py-2">{channelData?.input_unit || '-'}</td>
+                          <td className="px-3 py-2">{channelData?.sampling_rate || '-'}</td>
+                          <td className="px-3 py-2">
+                            {channelData?.created_at
+                              ? new Date(channelData.created_at).toLocaleDateString('id-ID', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })
+                              : '-'
+                            }
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>

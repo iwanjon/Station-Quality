@@ -11,6 +11,7 @@ import StationDetail from '../pages/StationDetail';
 import StationPerformance from '../pages/StationPerformance';
 import StationDaily from '../pages/StationDaily';
 import StationMapDetail from '../pages/StationMapDetail';
+import StationHistory from '../pages/StationHistory';
 
 const Router = () => {
   return (
@@ -23,6 +24,7 @@ const Router = () => {
       <Route path="/station/:stationCode" element={<StationDetail />} />
       <Route path="/station-performance" element={<StationPerformance />} />
       <Route path="/station-daily/:stationCode" element={<StationDaily />} />
+      <Route path="/station-history/:stationCode" element={<StationHistory />} />
       <Route path="/about" element={<About />} /> 
       <Route path="/station-map/:stationCode" element={<StationMapDetail />} />
       <Route path="*" element={<NotFound />} />
