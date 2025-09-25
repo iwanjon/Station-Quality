@@ -45,6 +45,39 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
+// Triangle icon function (same as quality page)
+const triangleIcon = (color: string) =>
+  L.divIcon({
+    className: "",
+    html: `
+      <div style="
+        width: 0; 
+        height: 0; 
+        border-left: 6px solid transparent; 
+        border-right: 6px solid transparent; 
+        border-bottom: 12px solid ${color};
+        position: relative;
+      ">
+        <div style="
+          position: absolute;
+          left: -7px; top: -1px;
+          width: 0; height: 0;
+          border-left: 7px solid transparent;
+          border-right: 7px solid transparent;
+          border-bottom: 14px solid #222;
+          z-index: -1;
+        "></div>
+      </div>
+    `,
+    iconSize: [14, 14],
+    iconAnchor: [7, 14],
+  });
+
+// Function to get color based on station status
+const getColorByStatus = (): string => {
+  return '#6b7280'; // gray for all stations
+};
+
 const StationMap = () => {
   const [data, setData] = useState<Stasiun[]>([]);
   const [loading, setLoading] = useState(true);
@@ -175,7 +208,7 @@ const StationMap = () => {
       });
   }, []);
 
-  // Filter data berdasarkan semua filter
+  // Filter data berdasarkan All filter
   const filteredData = data && Array.isArray(data) ? data.filter((station) => {
     return (
       (filterPriority === "" || String(station.prioritas) === filterPriority) &&
@@ -226,17 +259,17 @@ const StationMap = () => {
       cell: (info: { getValue: () => string }) => info.getValue(),
     },
     {
-      header: "Kode Stasiun",
+      header: "Station Code",
       accessorKey: "kode_stasiun",
       cell: (info: { getValue: () => string }) => info.getValue(),
     },
     {
-      header: "Lokasi",
+      header: "Location",
       accessorKey: "lokasi",
       cell: (info: { getValue: () => string }) => info.getValue(),
     },
     {
-      header: "Provinsi",
+      header: "Province",
       accessorKey: "provinsi",
       cell: (info: { getValue: () => string }) => info.getValue(),
     },
@@ -251,17 +284,17 @@ const StationMap = () => {
       cell: (info: { getValue: () => string }) => info.getValue(),
     },
     {
-      header: "Tahun Instalasi",
+      header: "Installation Year",
       accessorKey: "tahun_instalasi",
       cell: (info: { getValue: () => number }) => info.getValue(),
     },
     {
-      header: "Lintang",
+      header: "Latitude",
       accessorKey: "lintang",
       cell: (info: { getValue: () => number }) => info.getValue(),
     },
     {
-      header: "Bujur",
+      header: "Longitude",
       accessorKey: "bujur",
       cell: (info: { getValue: () => number }) => info.getValue(),
     },
@@ -292,7 +325,7 @@ const StationMap = () => {
                   id="search-kode"
                   type="text"
                   className="border rounded px-2 py-1 text-sm"
-                  placeholder="Masukkan kode stasiun"
+                  placeholder="Input station code..."
                   value={searchKode}
                   onChange={(e) => setSearchKode(e.target.value)}
                 />
@@ -309,7 +342,7 @@ const StationMap = () => {
                   value={filterProvinsi}
                   onChange={(e) => setFilterProvinsi(e.target.value)}
                 >
-                  <option value="">Semua</option>
+                  <option value="">All</option>
                   {availableOptions.provinsi.map((provinsi: string) => (
                     <option key={provinsi} value={provinsi}>
                       {provinsi}
@@ -329,7 +362,7 @@ const StationMap = () => {
                   value={filterUpt}
                   onChange={(e) => setFilterUpt(e.target.value)}
                 >
-                  <option value="">Semua</option>
+                  <option value="">All</option>
                   {availableOptions.upt.map((upt: string) => (
                     <option key={upt} value={upt}>
                       {upt}
@@ -341,7 +374,7 @@ const StationMap = () => {
               {/* Tahun Instalasi Filter */}
               <div className="flex flex-col">
                 <label htmlFor="filter-tahun" className="font-semibold text-sm mb-1">
-                  Tahun Instalasi:
+                  Installation Year:
                 </label>
                 <select
                   id="filter-tahun"
@@ -349,7 +382,7 @@ const StationMap = () => {
                   value={filterTahun}
                   onChange={(e) => setFilterTahun(e.target.value)}
                 >
-                  <option value="">Semua</option>
+                  <option value="">All</option>
                   {availableOptions.tahun.map((tahun: number) => (
                     <option key={tahun} value={tahun}>
                       {tahun}
@@ -369,7 +402,7 @@ const StationMap = () => {
                   value={filterPriority}
                   onChange={(e) => setFilterPriority(e.target.value)}
                 >
-                  <option value="">Semua</option>
+                  <option value="">All</option>
                   {availableOptions.prioritas.map((prioritas: string) => (
                     <option key={prioritas} value={prioritas}>
                       {prioritas}
@@ -389,7 +422,7 @@ const StationMap = () => {
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
                 >
-                  <option value="">Semua</option>
+                  <option value="">All</option>
                   {availableOptions.status.map((status: string) => (
                     <option key={status} value={status}>
                       {status}
@@ -430,7 +463,7 @@ const StationMap = () => {
 
           {/* Map Container - Right Side */}
           <div className="flex-1 overflow-hidden shadow relative">
-            <MapContainer center={center} zoom={5} style={{ height: "70vh", width: "100%" }}>
+            <MapContainer center={center} zoom={5} style={{ height: "80vh", width: "100%" }}>
               <TileLayer
                 attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -441,6 +474,7 @@ const StationMap = () => {
                     <Marker
                       key={station.stasiun_id}
                       position={[station.lintang, station.bujur]}
+                      icon={triangleIcon(getColorByStatus())}
                       eventHandlers={{
                         click: () => setSelectedStation(station)
                       }}
@@ -459,7 +493,8 @@ const StationMap = () => {
                   <div className="text-sm"><span className="font-medium">Priority:</span> {selectedStation.prioritas}</div>
                   <div className="text-sm"><span className="font-medium">Status:</span> {selectedStation.status}</div>
                   <Link 
-                    to={`/station/${selectedStation.stasiun_id}`}
+                    to={`/station-map/${selectedStation.kode_stasiun}`}
+                    state={{ station: selectedStation }}
                     className="w-full mt-3 px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors text-center block"
                   >
                     Show details &gt;&gt;&gt;

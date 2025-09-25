@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { Link } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import TableFilters from "../components/TableFilters";
 import type { FilterConfig } from "../components/TableFilters";
@@ -30,6 +31,7 @@ interface APIResponse {
       start_date: string;
       end_date: string;
     };
+    stationCodes?: string[];
   };
   data: Record<string, StationData[]>;
 }
@@ -64,7 +66,7 @@ interface ChartDataPoint {
   month: string;
   '> 97%': number;
   '90-97%': number;
-  '0-90%': number;
+  '1-89%': number;
   '0%': number;
   counts: Record<string, number>;
 }
@@ -147,19 +149,21 @@ function convertToStationFormat(processedStations: ProcessedStation[]): Station[
 // Function to determine availability category based on overall average
 function getAvailabilityCategory(station: Station): string {
   const monthlyValues = Object.values(station.monthlyData).filter(val => val !== null) as number[];
-  
+
   if (monthlyValues.length === 0) {
-    return 'No Data';
+    return '0%';
   }
-  
+
   const overallAverage = monthlyValues.reduce((sum, val) => sum + val, 0) / monthlyValues.length;
-  
-  if (overallAverage < 50) {
-    return 'Low (< 50%)';
-  } else if (overallAverage >= 50 && overallAverage < 90) {
-    return 'Medium (50% - 90%)';
+
+  if (overallAverage === 0) {
+    return '0%';
+  } else if (overallAverage >= 0 && overallAverage < 90) {
+    return '1-89  %';
+  } else if (overallAverage >= 90 && overallAverage <= 97) {
+    return '90-97%';
   } else {
-    return 'High (90% - 100%)';
+    return '> 97%';
   }
 }
 
@@ -241,7 +245,7 @@ const StationAvailability = () => {
             const distribution = {
               '> 97%': 0,
               '90-97%': 0,
-              '0-90%': 0,
+              '1-89%': 0,
               '0%': 0
             };
             
@@ -253,7 +257,7 @@ const StationAvailability = () => {
                 } else if (value >= 90 && value <= 97) {
                   distribution['90-97%']++;
                 } else if (value > 0 && value < 90) {
-                  distribution['0-90%']++;
+                  distribution['1-89%']++;
                 } else {
                   distribution['0%']++;
                 }
@@ -264,18 +268,18 @@ const StationAvailability = () => {
             });
             
             // Calculate total stations and convert to percentage
-            const totalStations = distribution['> 97%'] + distribution['90-97%'] + distribution['0-90%'] + distribution['0%'];
+            const totalStations = distribution['> 97%'] + distribution['90-97%'] + distribution['1-89%'] + distribution['0%'];
             
             chartDataTemp.push({
               month: monthLabel,
               '> 97%': totalStations > 0 ? Math.round((distribution['> 97%'] / totalStations) * 100 * 10) / 10 : 0,
               '90-97%': totalStations > 0 ? Math.round((distribution['90-97%'] / totalStations) * 100 * 10) / 10 : 0,
-              '0-90%': totalStations > 0 ? Math.round((distribution['0-90%'] / totalStations) * 100 * 10) / 10 : 0,
+              '1-89%': totalStations > 0 ? Math.round((distribution['1-89%'] / totalStations) * 100 * 10) / 10 : 0,
               '0%': totalStations > 0 ? Math.round((distribution['0%'] / totalStations) * 100 * 10) / 10 : 0,
               counts: {
                 '> 97%': distribution['> 97%'],
                 '90-97%': distribution['90-97%'],
-                '0-90%': distribution['0-90%'],
+                '1-89%': distribution['1-89%'],
                 '0%': distribution['0%']
               }
             });
@@ -288,7 +292,7 @@ const StationAvailability = () => {
 
           // Setup filter config
           const uniqueKode = Array.from(new Set(stations.map((s: Station) => s.kode))).sort();
-          const availabilityCategories = ['Low (< 50%)', 'Medium (50% - 90%)', 'High (90% - 100%)', 'No Data'];
+          const availabilityCategories = ['0%', '1-89%', '90-97%', '> 97%'];
           
           setFilterConfig({
             kode: { label: "Station Code", type: "multi", options: uniqueKode },
@@ -330,10 +334,34 @@ const StationAvailability = () => {
   // Helper function to generate dynamic columns based on month range
   const generateColumns = (): ColumnDef<Station>[] => {
     const columns: ColumnDef<Station>[] = [
-      { 
-        header: "Station Code", 
-        accessorKey: "kode", 
+      {
+        header: "Station Code",
+        accessorKey: "kode",
         enableSorting: true,
+        cell: ({ row }) => {
+          const station = row.original;
+          return (
+            <span className="font-medium text-gray-900">
+              {station.kode}
+            </span>
+          );
+        },
+      },
+      {
+        header: "Station Detail",
+        accessorKey: "actions",
+        enableSorting: false,
+        cell: ({ row }) => {
+          const station = row.original;
+          return (
+            <Link
+              to={`/station-availability/${station.kode}`}
+              className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            >
+              View Detail
+            </Link>
+          );
+        },
       }
     ];
 
@@ -518,7 +546,7 @@ const StationAvailability = () => {
                         />
                         <Bar dataKey="> 97%" stackId="a" fill="#16a34a" radius={[0, 0, 0, 0]} />
                         <Bar dataKey="90-97%" stackId="a" fill="#ffff00" radius={[0, 0, 0, 0]} />
-                        <Bar dataKey="0-90%" stackId="a" fill="#ff7f00  " radius={[0, 0, 0, 0]} />
+                        <Bar dataKey="1-89%" stackId="a" fill="#ff7f00" radius={[0, 0, 0, 0]} />
                         <Bar dataKey="0%" stackId="a" fill="#ff0000" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
@@ -534,7 +562,7 @@ const StationAvailability = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 bg-orange-400 rounded"></div>
-                      <span>0-90%</span>
+                      <span>1-89%</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 bg-red-500 rounded"></div>
