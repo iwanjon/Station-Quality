@@ -5,6 +5,8 @@ import ChartSlide from "../components/ChartSlide";
 import LazyLatencyChart from "../components/LazyLatencyChart";
 import MainLayout from "../layouts/MainLayout";
 
+// --- INTERFACES & TYPES ---
+
 type QCData = {
   code?: string;
   date: string;
@@ -25,37 +27,14 @@ type QCData = {
   lp_percentage?: number;
 };
 
-const dummySummaryData = {
-  SHE: [
-    { date: "07-Sep", status: "Good" },
-    { date: "08-Sep", status: "Good" },
-    { date: "09-Sep", status: "Fair" },
-    { date: "10-Sep", status: "Poor" },
-    { date: "11-Sep", status: "No Data" },
-    { date: "12-Sep", status: "Fair" },
-    { date: "13-Sep", status: "Good" },
-  ],
-  SHN: [
-    { date: "07-Sep", status: "Good" },
-    { date: "08-Sep", status: "Good" },
-    { date: "09-Sep", status: "Fair" },
-    { date: "10-Sep", status: "Poor" },
-    { date: "11-Sep", status: "No Data" },
-    { date: "12-Sep", status: "Fair" },
-    { date: "13-Sep", status: "Good" },
-  ],
-  SHZ: [
-    { date: "07-Sep", status: "Good" },
-    { date: "08-Sep", status: "Good" },
-    { date: "09-Sep", status: "Fair" },
-    { date: "10-Sep", status: "Poor" },
-    { date: "11-Sep", status: "No Data" },
-    { date: "12-Sep", status: "Fair" },
-    { date: "13-Sep", status: "Good" },
-  ],
+// [PENAMBAHAN] Tipe data baru untuk summary
+type SummaryDataItem = {
+  date: string;
+  status: string;
 };
 
-// --- [BARU] Helper function untuk warna status ---
+// --- FUNGSI HELPER ---
+
 const getStatusColor = (status: string) => {
   switch (status) {
     case "Good":
@@ -70,20 +49,31 @@ const getStatusColor = (status: string) => {
       return "bg-gray-200 text-gray-800";
   }
 };
-// --- END [BARU] ---
 
 const CHANNELS = ["E", "N", "Z"];
+// [PENAMBAHAN] Channel lengkap untuk mencocokkan dengan data summary
+const CHANNELS_FULL = ["SHE", "SHN", "SHZ"];
+
 
 const StationDetail = () => {
   const { stationCode } = useParams<{ stationCode: string }>();
   const navigate = useNavigate();
 
   const [qcData, setQcData] = useState<QCData[]>([]);
+  
+  // [PENAMBAHAN] State baru untuk data summary
+  const [summaryData, setSummaryData] = useState<Record<string, SummaryDataItem[]>>({
+    SHE: [],
+    SHN: [],
+    SHZ: [],
+  });
+  const [loadingSummary, setLoadingSummary] = useState(true);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stationList, setStationList] = useState<string[]>([]);
 
-  // Ambil daftar kode stasiun dari database
+  // Ambil daftar kode stasiun dari database (tidak berubah)
   useEffect(() => {
     axiosServer
       .get("/api/stasiun")
@@ -97,8 +87,12 @@ const StationDetail = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
-
+  
+  // [MODIFIKASI] useEffect utama digabung untuk mengambil data QC dan Summary
   useEffect(() => {
+    if (!stationCode) return;
+
+    // Fungsi untuk mengambil data time series (grafik utama)
     const fetchQcData = async () => {
       setLoading(true);
       setError(null);
@@ -130,10 +124,32 @@ const StationDetail = () => {
       }
     };
 
-    if (stationCode) {
-      fetchQcData();
-    }
+    // [PENAMBAHAN] Fungsi baru untuk mengambil data summary
+    const fetchSummaryData = async () => {
+      setLoadingSummary(true);
+      try {
+        const res = await axiosServer.get(`/api/qc/summary/7days/${stationCode}`);
+        // Asumsi data yang diterima sudah dalam format yang benar [{date, status}]
+        // Kita set data yang sama untuk ketiga channel
+        setSummaryData({
+          SHE: res.data,
+          SHN: res.data,
+          SHZ: res.data,
+        });
+      } catch (err) {
+        console.error("Gagal memuat data summary:", err);
+        // Jika gagal, set summary ke array kosong
+        setSummaryData({ SHE: [], SHN: [], SHZ: [] });
+      } finally {
+        setLoadingSummary(false);
+      }
+    };
+
+    fetchQcData();
+    fetchSummaryData(); // Panggil fungsi baru
+
   }, [stationCode]);
+
 
   const groupedByChannel = CHANNELS.reduce<Record<string, QCData[]>>(
     (acc, ch) => {
@@ -181,7 +197,6 @@ const StationDetail = () => {
       <div className="p-4 sm:p-6 space-y-8 bg-gray-50 min-h-screen">
         {/* --- Bagian Header Halaman --- */}
         <div className="flex justify-between items-start mb-6">
-          {/* Bagian Kiri: Dropdown Stasiun */}
           <div className="flex items-center space-x-3">
             <h1 className="text-2xl font-bold text-gray-900">Station</h1>
             <select
@@ -202,7 +217,6 @@ const StationDetail = () => {
             </select>
           </div>
 
-          {/* Bagian Kanan: Tombol Navigasi */}
           <div className="flex flex-col items-end">
             <div className="flex space-x-1 rounded-lg bg-gray-200 p-1">
               <button
@@ -225,32 +239,44 @@ const StationDetail = () => {
           </div>
         </div>
 
-        {/* --- [BARU] Bagian Summary --- */}
+        {/* --- Bagian Summary (Menggunakan data dinamis) --- */}
         <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-md">
           <h2 className="text-xl font-bold mb-4 text-gray-800">Summary</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {Object.entries(dummySummaryData).map(([channel, data]) => (
-              <div key={channel}>
-                <h3 className="text-lg font-semibold text-center mb-2">
-                  {channel}
-                </h3>
-                <div className="flex justify-between space-x-1">
-                  {data.map((item) => (
-                    <div
-                      key={item.date}
-                      className={`flex-1 p-2 rounded-md text-center text-xs font-bold ${getStatusColor(
-                        item.status
-                      )}`}
-                    >
-                      <p>{item.status}</p>
-                      <p className="font-normal mt-1">{item.date}</p>
-                    </div>
-                  ))}
+          {loadingSummary ? (
+             <div className="text-center text-gray-500">Memuat summary...</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {CHANNELS_FULL.map((channel) => (
+                <div key={channel}>
+                  <h3 className="text-lg font-semibold text-center mb-2">
+                    {channel}
+                  </h3>
+                  <div className="flex justify-between space-x-1 min-h-[70px]">
+                    {summaryData[channel]?.length > 0 ? (
+                      summaryData[channel].map((item) => (
+                        <div
+                          key={item.date}
+                          className={`flex-1 p-2 rounded-md text-center text-xs font-bold ${getStatusColor(
+                            item.status
+                          )}`}
+                        >
+                          <p>{item.status}</p>
+                          <p className="font-normal mt-1">{item.date}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="w-full flex items-center justify-center text-gray-400 text-sm">
+                        Data tidak tersedia
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
+
+        {/* --- Bagian Grafik (Tidak Berubah) --- */}
 
         {/* RMS */}
         <ChartGridSection title="RMS">
@@ -317,8 +343,27 @@ const StationDetail = () => {
             </div>
           ))}
         </ChartGridSection>
-        {/* Penerapan lazy loading pada Latency Chart  secara terpisah */}
+
+        {/* Latency Chart */}
         <LazyLatencyChart stationCode={stationCode} />
+
+        {/* % Above NHNM & Linear Dead Channel */}
+        <ChartGridSection title="% Above NHNM & Linear Dead Channel">
+          {CHANNELS.map((ch) => (
+            <div key={`nhnm-ldc-${ch}`}>
+              <ChartSlide
+                channel={ch}
+                titlePrefix={`% Above NHNM & Linear Dead - SH${ch}`}
+                data={groupedByChannel[ch]}
+                lines={[
+                  { dataKey: "perc_above_nhnm", stroke: "#6366f1", },
+                  { dataKey: "linear_dead_channel", stroke: "#ef4444", },
+                ]}
+                yAxisProps={{ domain: [0, "auto"] }}
+              />
+            </div>
+          ))}
+        </ChartGridSection>
       </div>
     </MainLayout>
   );
