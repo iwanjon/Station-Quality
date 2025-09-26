@@ -5,6 +5,9 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import axiosServer from "../utilities/AxiosServer";
 import dayjs from "dayjs";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { Link } from "react-router-dom";
+import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, ResponsiveContainer as RechartsResponsiveContainer } from "recharts";
 
 // --- INTERFACES ---
 
@@ -124,11 +127,42 @@ const InfoCard = ({ title, children }: { title: string; children?: React.ReactNo
     <div className="flex-grow flex items-center justify-center text-gray-400">
       {children ? children : <p>Konten untuk {title} akan ditampilkan di sini.</p>}
     </div>
-    <a href="#" className="text-sm text-blue-600 hover:underline mt-auto text-right">
-      Details...
-    </a>
   </div>
 );
+
+const AVAILABILITY_COLORS = ["#16a34a", "#facc15", "#fb923c", "#ef4444", "#a3a3a3"];
+
+const getAvailabilityCategory = (value: number | null) => {
+  if (value === null) return "No Data";
+  if (value >= 97) return ">97%";
+  if (value >= 90) return "90-97%";
+  if (value > 0) return "1-89%";
+  if (value === 0) return "0%";
+  return "No Data";
+};
+
+const QUALITY_COLORS = ["#16a34a", "#fb923c", "#ef4444", "#a3a3a3"];
+const QUALITY_LABELS = [
+  { label: "GOOD", color: "#16a34a" },
+  { label: "FAIR", color: "#fb923c" },
+  { label: "BAD", color: "#ef4444" },
+  { label: "NO DATA", color: "#a3a3a3" },
+];
+
+// Dummy data untuk 7 hari terakhir (mulai dari kemarin, urut mundur)
+const getLast7Days = () => {
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    days.push(dayjs().subtract(i + 1, "day").format("YYYY-MM-DD"));
+  }
+  return days;
+};
+
+const dummyStackedBarData = getLast7Days().map((date, idx) => ({
+  date,
+  ON: Math.floor(400 + Math.random() * 100),   // Dummy: 400-500 ON
+  OFF: Math.floor(50 + Math.random() * 50),    // Dummy: 50-100 OFF
+}));
 
 const Dashboard = () => {
   const [combinedData, setCombinedData] = useState<QCSummary[]>([]);
@@ -233,6 +267,88 @@ const Dashboard = () => {
     (s) => s.result === "No Data" || s.result === "Mati"
   ).length;
 
+  // --- AVAILABILITY PIECHART LOGIC ---
+  const [availabilityPieData, setAvailabilityPieData] = useState<
+    { name: string; value: number }[]
+  >([]);
+
+  useEffect(() => {
+    // Fetch availability data for yesterday
+    const fetchAvailability = async () => {
+      try {
+        const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
+        const res = await axiosServer.get(`/api/availability`, {
+          params: { start_date: yesterday, end_date: yesterday },
+        });
+        // Data shape: { data: { [stationCode]: [{ timestamp, availability }] }, ... }
+        const apiData = res.data?.data || {};
+        const allAvail: number[] = [];
+        Object.values(apiData).forEach((arr: any) => {
+          if (Array.isArray(arr) && arr.length > 0) {
+            // Ambil data availability hari kemarin (ambil satu saja)
+            const avail = arr[0]?.availability;
+            if (typeof avail === "number") allAvail.push(avail);
+          }
+        });
+        // Kategorikan
+        const categories = {
+          ">97%": 0,
+          "90-97%": 0,
+          "1-89%": 0,
+          "0%": 0,
+          "No Data": 0,
+        };
+        allAvail.forEach((val) => {
+          const cat = getAvailabilityCategory(val);
+          categories[cat] = (categories[cat] || 0) + 1;
+        });
+        // Hitung yang tidak ada datanya
+        const totalStations = Object.keys(apiData).length;
+        const counted = categories[">97%"] + categories["90-97%"] + categories["1-89%"] + categories["0%"];
+        categories["No Data"] = totalStations - counted;
+        // Siapkan data untuk PieChart
+        setAvailabilityPieData(
+          Object.entries(categories)
+            .filter(([_, v]) => v > 0)
+            .map(([name, value]) => ({ name, value }))
+        );
+      } catch (err) {
+        setAvailabilityPieData([]);
+      }
+    };
+    fetchAvailability();
+  }, []);
+
+  // --- QUALITY PIECHART LOGIC ---
+  const [qualityPieData, setQualityPieData] = useState<{ name: string; value: number }[]>([]);
+
+  useEffect(() => {
+    // Fetch QC summary for yesterday
+    const fetchQuality = async () => {
+      try {
+        const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
+        const res = await axiosServer.get(`/api/qc/summary/${yesterday}`);
+        // Kategorikan
+        let good = 0, fair = 0, bad = 0, nodata = 0;
+        (res.data || []).forEach((item: any) => {
+          if (item.result === "Baik") good++;
+          else if (item.result === "Cukup Baik") fair++;
+          else if (item.result === "Buruk") bad++;
+          else nodata++;
+        });
+        setQualityPieData([
+          { name: "GOOD", value: good },
+          { name: "FAIR", value: fair },
+          { name: "BAD", value: bad },
+          { name: "NO DATA", value: nodata },
+        ]);
+      } catch {
+        setQualityPieData([]);
+      }
+    };
+    fetchQuality();
+  }, []);
+
   return (
     <MainLayout>
       <h1 className="text-left text-3xl font-bold mt-0 mb-4 ml-2">Dashboard</h1>
@@ -266,7 +382,9 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* BAGIAN KANAN: STATUS & STACKED BAR */}
         <div className="lg:w-1/3 w-full flex flex-col gap-4">
+          {/* Status Cards */}
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-gray-200 rounded-lg p-4 text-center">
               <p className="text-sm font-semibold text-gray-600">REGISTERED</p>
@@ -277,7 +395,7 @@ const Dashboard = () => {
               <p className="text-4xl font-bold"> 4 </p>
             </div>
           </div>
-          <div className="bg-white rounded-lg p-4 text-center border-2 border-black shadow-lg">
+          <div className="bg-white rounded-lg p-4 text-center border-2 border-gray-300 shadow-lg">
             <p className="text-sm font-semibold">OPERATIONAL</p>
             <p className="text-5xl font-bold mb-2"> {isLoading ? "..." : combinedData.length} </p>
             <div className="grid grid-cols-2 gap-2">
@@ -309,12 +427,155 @@ const Dashboard = () => {
               <p className="text-xl">{noDataCount}</p>
             </div>
           </div>
+            {/* STACKED BAR CHART: ON/OFF 7 HARI */}
+            <div
+              className="bg-white rounded-xl p-4 mt-2 flex flex-col items-center border border-gray-300 shadow-md"
+              style={{
+                minHeight: 180,
+                maxHeight: 220,
+                height: 215, // Lebih kecil dari tinggi map (600px)
+              }}
+            >
+              <h2 className="text-base font-bold mb-2 text-gray-700">
+                Stasiun ON/OFF 7 Hari Terakhir
+              </h2>
+              <RechartsResponsiveContainer width="100%" height={120}>
+                <BarChart
+                  data={dummyStackedBarData}
+                  margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
+                >
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <RechartsTooltip />
+                  <Legend verticalAlign="top" height={30} />
+                  <Bar dataKey="ON" stackId="a" fill="#16a34a" name="ON" />
+                  <Bar dataKey="OFF" stackId="a" fill="#ef4444" name="OFF" />
+                </BarChart>
+              </RechartsResponsiveContainer>
+            </div>
         </div>
       </div>
 
+      {/* --- AVAILABILITY & QUALITY CARD & PIECHART --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
-        <InfoCard title="Availability" />
-        <InfoCard title="Quality" />
+        {/* Availability Card */}
+        <InfoCard title="Availability">
+          <div className="w-full flex flex-col items-center">
+            <div className="w-full h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={availabilityPieData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={70}
+                    label
+                  >
+                    {availabilityPieData.map((_, idx) => (
+                      <Cell key={`cell-${idx}`} fill={AVAILABILITY_COLORS[idx % AVAILABILITY_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-6 flex flex-wrap justify-center gap-x-3 gap-y-1">
+              {[
+                {
+                  label: ">97%",
+                  color: "#16a34a",
+                },
+                {
+                  label: "90-97%",
+                  color: "#facc15",
+                },
+                {
+                  label: "1-89%",
+                  color: "#fb923c",
+                },
+                {
+                  label: "0%",
+                  color: "#ef4444",
+                },
+                {
+                  label: "No Data",
+                  color: "#a3a3a3",
+                },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center space-x-1 text-[11px]">
+                  <span
+                    className="inline-block rounded-full"
+                    style={{
+                      width: "0.65em",
+                      height: "0.65em",
+                      backgroundColor: item.color,
+                      marginRight: "0.25em",
+                    }}
+                  />
+                  <span className="font-medium">{item.label}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 text-[10px] text-gray-500">
+              Data for yesterday's availability
+            </div>
+          </div>
+          <Link to="/station-availability" className="text-sm text-blue-600 hover:underline mt-auto text-right block">
+            Details...
+          </Link> 
+        </InfoCard>
+
+        {/* Quality Card */}
+        <InfoCard title="Quality">
+          <div className="w-full flex flex-col items-center">
+            <div className="w-full h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={qualityPieData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={70}
+                    label
+                  >
+                    {qualityPieData.map((_, idx) => (
+                      <Cell key={`cell-q-${idx}`} fill={QUALITY_COLORS[idx % QUALITY_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-6 flex flex-wrap justify-center gap-x-3 gap-y-1">
+              {QUALITY_LABELS.map((item) => (
+                <div key={item.label} className="flex items-center space-x-1 text-[11px]">
+                  <span
+                    className="inline-block rounded-full"
+                    style={{
+                      width: "0.65em",
+                      height: "0.65em",
+                      backgroundColor: item.color,
+                      marginRight: "0.25em",
+                    }}
+                  />
+                  <span className="font-medium">{item.label}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 text-[10px] text-gray-500">
+              Data for yesterday's quality
+            </div>
+          </div>
+          <Link to="/station-quality" className="text-sm text-blue-600 hover:underline mt-auto text-right block">
+            Details...
+          </Link>
+        </InfoCard>
+
+        {/* Performance & Metadata Cards */}
         <InfoCard title="Performance" />
         <InfoCard title="Metadata">
           <div className="text-left text-gray-800 w-full text-sm">

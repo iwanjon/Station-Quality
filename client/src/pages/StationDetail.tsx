@@ -198,7 +198,13 @@ const StationDetail = () => {
         {/* --- Bagian Header Halaman --- */}
         <div className="flex justify-between items-start mb-6">
           <div className="flex items-center space-x-3">
-            <h1 className="text-2xl font-bold text-gray-900">Station</h1>
+            <button
+              type="button"
+              className="bg-gray-200 text-gray-800 font-bold px-4 py-2 rounded-lg hover:bg-gray-300"
+              onClick={() => { /* nanti bisa diisi navigasi, sekarang tetap '#' */ }}
+            >
+              Station
+            </button>
             <select
               value={stationCode}
               onChange={(e) => {
@@ -207,7 +213,7 @@ const StationDetail = () => {
                   navigate(`/station/${newStationCode}`);
                 }
               }}
-              className="p-2 border rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+              className="p-2 border rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 font-bold"
             >
               {stationList.map((station) => (
                 <option key={station} value={station}>
