@@ -1,20 +1,22 @@
 import { useEffect, useState, useMemo } from "react";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+import { Doughnut } from "react-chartjs-2";
 import MainLayout from "../layouts/MainLayout.tsx";
 import DataTable from "../components/DataTable.tsx";
 import TableFilters from "../components/TableFilters";
 import type { FilterConfig } from "../components/TableFilters";
 import type { ColumnDef } from "@tanstack/react-table";
-import { MapContainer, TileLayer, Marker, Popup, Tooltip } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-// import marker2x from "leaflet/dist/images/marker-icon-2x.png";
-// import marker from "leaflet/dist/images/marker-icon.png";
-// import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import CardContainer from "../components/Card.tsx";
 import { useNavigate } from "react-router-dom";
 import axiosServer from "../utilities/AxiosServer.tsx";
 import StatusBadge from "../components/StatusBadge";
 import dayjs from "dayjs";
+
+// Registrasi elemen-elemen Chart.js
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 // Interface data QC Summary
 interface QCSummary {
@@ -23,11 +25,9 @@ interface QCSummary {
   result: string;
 }
 
-// [PENAMBAHAN] Interface baru untuk data yang sudah digabungkan
-// Penamaan yang lebih jelas: data stasiun yang sudah lengkap dengan summary.
+// Interface baru untuk data yang sudah digabungkan
 export interface StasiunDenganSummary extends StationMetadata {
   quality_percentage: number | null;
-  // 'result' sudah ada di StationMetadata, tidak perlu ditambahkan lagi
 }
 
 export interface StationMetadata {
@@ -54,15 +54,7 @@ export interface StationMetadata {
   result: string | null;
 }
 
-// delete (L.Icon.Default.prototype as any)._getIconUrl;
-
-// L.Icon.Default.mergeOptions({
-//   iconRetinaUrl: marker2x,
-//   iconUrl: marker,
-//   shadowUrl: markerShadow,
-// });
-
-// Ganti fungsi triangleIcon agar sama dengan Dashboard (dengan lineart tebal)
+// Fungsi ikon segitiga (tidak berubah)
 const triangleIcon = (color: string) =>
   L.divIcon({
     className: "",
@@ -90,35 +82,26 @@ const triangleIcon = (color: string) =>
     iconAnchor: [7, 14],
   });
 
-const getColorByQuality = (quality: number | null): string => {
-  if (quality === null) return "#6b7280"; // no data
-  if (quality >= 80) return "#14532d"; // very good (Hijau Tua)
-  if (quality >= 60) return "#22c55e"; // good (Hijau Terang)
-  if (quality >= 40) return "#f97316"; // fair (Oranye)
-  if (quality >= 20) return "#ef4444"; // poor (Merah)
-  return "#6b7280"; // default
-};
-
-// Tambahkan fungsi pewarnaan berdasarkan result (seperti Dashboard)
+// Fungsi pewarnaan berdasarkan result untuk peta (tidak berubah)
 const getColorByResult = (result: string | null): string => {
   switch (result) {
-    case "Baik": return "#14b8a6";      // Good - teal
+    case "Baik": return "#14b8a6";       // Good - teal
     case "Cukup Baik": return "#fb923c"; // Fair - orange
-    case "Buruk": return "#ef4444";      // Bad - red
-    case "No Data": return "#818cf8";    // No Data - indigo
+    case "Buruk": return "#ef4444";       // Bad - red
+    case "No Data": return "#818cf8";     // No Data - indigo
     case "Mati": return "#374151";       // Mati - gray
     default: return "#979797";
   }
 };
 
+// MapLegend (tidak berubah)
 const MapLegend = () => {
-  // Warna legend disesuaikan dengan warna segitiga pada map (berdasarkan result)
   const legendItems = [
-    { color: "#14b8a6", label: "Baik" },        // Baik (Good)
-    { color: "#fb923c", label: "Cukup Baik" },  // Cukup Baik (Fair)
-    { color: "#ef4444", label: "Buruk" },       // Buruk (Bad)
-    { color: "#818cf8", label: "No Data" },     // No Data
-    { color: "#374151", label: "Mati" },        // Mati
+    { color: "#14b8a6", label: "Baik" },
+    { color: "#fb923c", label: "Cukup Baik" },
+    { color: "#ef4444", label: "Buruk" },
+    { color: "#818cf8", label: "No Data" },
+    { color: "#374151", label: "Mati" },
   ];
 
   return (
@@ -130,8 +113,7 @@ const MapLegend = () => {
             <span
               className="w-3 h-3 inline-block mr-2"
               style={{
-                width: 0,
-                height: 0,
+                width: 0, height: 0,
                 borderLeft: '6px solid transparent',
                 borderRight: '6px solid transparent',
                 borderBottom: `12px solid ${item.color}`,
@@ -145,6 +127,7 @@ const MapLegend = () => {
   );
 };
 
+// Fungsi getStatusText untuk tabel (tidak berubah)
 const getStatusText = (result: string | null, quality: number | null): string => {
   if (result === 'Mati') return 'Mati';
   if (quality === null) return 'No Data';
@@ -153,6 +136,67 @@ const getStatusText = (result: string | null, quality: number | null): string =>
   if (quality >= 40) return 'Cukup';
   return 'Buruk';
 };
+
+// Komponen untuk Grafik Donat (Diperbaiki)
+const QualityDonutChart = ({ data }: { data: StasiunDenganSummary[] }) => {
+  const chartData = useMemo(() => {
+    // Kategori dan warna disamakan persis dengan legenda peta
+    const categories: { [key: string]: { count: number; color: string } } = {
+      'Baik': { count: 0, color: '#14b8a6' },
+      'Cukup Baik': { count: 0, color: '#fb923c' },
+      'Buruk': { count: 0, color: '#ef4444' },
+      'No Data': { count: 0, color: '#818cf8' },
+      'Mati': { count: 0, color: '#374151' },
+    };
+
+    data.forEach(station => {
+      const status = station.result;
+      if (status && categories[status]) {
+        categories[status].count++;
+      } else {
+        // Jika status null atau tidak terdaftar, masukkan ke 'No Data'
+        categories['No Data'].count++;
+      }
+    });
+
+    return Object.entries(categories).map(([label, { count, color }]) => ({
+      label: `${label} (${count})`,
+      count,
+      color,
+    }));
+  }, [data]);
+
+  const dataForChart = {
+    labels: chartData.map(d => d.label),
+    datasets: [
+      {
+        label: 'Jumlah Stasiun',
+        data: chartData.map(d => d.count),
+        backgroundColor: chartData.map(d => d.color),
+        borderColor: '#ffffff',
+        borderWidth: 2,
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '70%',
+    plugins: {
+      legend: {
+        position: 'bottom' as const,
+        labels: {
+          boxWidth: 15,
+          padding: 15,
+        },
+      },
+    },
+  };
+
+  return <Doughnut data={dataForChart} options={options} />;
+};
+
 
 const StationQuality = () => {
   const [stationData, setStationData] = useState<StationMetadata[]>([]);
@@ -166,7 +210,7 @@ const StationQuality = () => {
   const fetchStationMetadata = async () => {
     try {
       setLoading(true);
-      const response = await axiosServer.get("/api/stasiun"); 
+      const response = await axiosServer.get("/api/stasiun");
       setStationData(response.data);
     } catch (error) {
       console.error("Error fetching station data:", error);
@@ -190,14 +234,12 @@ const StationQuality = () => {
     if (savedFilters) {
       setFilters(JSON.parse(savedFilters));
     }
-
     fetchStationMetadata();
-    fetchQCSummary(); // [PENAMBAHAN] Memanggil fungsi untuk mengambil data summary
+    fetchQCSummary();
   }, []);
 
   useEffect(() => {
     localStorage.setItem('stationQualityFilters', JSON.stringify(filters));
-
     if (stationData.length > 0) {
       const getUniqueOptions = (key: keyof StationMetadata): string[] => {
         const allValues = stationData.map(item => item[key]);
@@ -205,37 +247,17 @@ const StationQuality = () => {
       };
 
       const dynamicFilterConfig: Record<string, FilterConfig> = {
-        prioritas: {
-          label: "Prioritas",
-          type: "multi",
-          options: getUniqueOptions("prioritas"),
-        },
-        upt_penanggung_jawab: {
-          label: "UPT",
-          type: "multi",
-          options: getUniqueOptions("upt_penanggung_jawab"),
-        },
-        jaringan: {
-          label: "Jaringan",
-          type: "multi",
-          options: getUniqueOptions("jaringan"),
-        },
-        provinsi: {
-          label: "Provinsi",
-          type: "multi",
-          options: getUniqueOptions("provinsi"),
-        },
+        prioritas: { label: "Prioritas", type: "multi", options: getUniqueOptions("prioritas") },
+        upt_penanggung_jawab: { label: "UPT", type: "multi", options: getUniqueOptions("upt_penanggung_jawab") },
+        jaringan: { label: "Jaringan", type: "multi", options: getUniqueOptions("jaringan") },
+        provinsi: { label: "Provinsi", type: "multi", options: getUniqueOptions("provinsi") },
       };
-      
       setFilterConfig(dynamicFilterConfig);
     }
   }, [stationData, filters]);
 
-  // [PENAMBAHAN] useMemo untuk menggabungkan data stasiun dengan data summary
   const dataStasiunLengkap = useMemo<StasiunDenganSummary[]>(() => {
-    if (stationData.length === 0) {
-      return [];
-    }
+    if (stationData.length === 0) return [];
     const summaryMap = new Map(qcSummaryData.map(item => [item.code, item]));
     return stationData.map(station => {
       const summary = summaryMap.get(station.kode_stasiun);
@@ -247,36 +269,24 @@ const StationQuality = () => {
     });
   }, [stationData, qcSummaryData]);
 
-  // [UBAH] DataTable dan Map akan sinkron dengan hasil pencarian (globalFilter)
-  // Filter dataStasiunLengkap dengan globalFilter (search)
   const filteredData = useMemo(() => {
-    const activeFilterKeys = Object.keys(filters).filter(key =>
-      filters[key] && filters[key].length > 0
-    );
+    const activeFilterKeys = Object.keys(filters).filter(key => filters[key] && filters[key].length > 0);
     let dataSource = dataStasiunLengkap;
 
-    // Apply TableFilters
     if (activeFilterKeys.length > 0) {
-      dataSource = dataSource.filter(station => {
-        return activeFilterKeys.every(key => {
-          const filterValues = filters[key];
-          const stationValue = station[key as keyof StationMetadata];
-          return filterValues.includes(stationValue);
-        });
-      });
-    }
-
-    // Apply global search (search seluruh kolom string)
-    if (globalFilter && globalFilter.trim() !== "") {
-      const search = globalFilter.toLowerCase();
       dataSource = dataSource.filter(station =>
-        Object.values(station)
-          .join(" ")
-          .toLowerCase()
-          .includes(search)
+        activeFilterKeys.every(key =>
+          filters[key].includes(station[key as keyof StationMetadata])
+        )
       );
     }
 
+    if (globalFilter && globalFilter.trim() !== "") {
+      const search = globalFilter.toLowerCase();
+      dataSource = dataSource.filter(station =>
+        Object.values(station).join(" ").toLowerCase().includes(search)
+      );
+    }
     return dataSource;
   }, [dataStasiunLengkap, filters, globalFilter]);
 
@@ -291,54 +301,37 @@ const StationQuality = () => {
   }, [filteredData]);
 
   const handleDownloadCSV = () => {
-    // [PENAMBAHAN] Menambahkan kolom summary ke data unduhan CSV
-    const dataToDownload = filteredData.map(item => {
-      const statusText = getStatusText(item.result, item.quality_percentage);
-      return {
-        ...item,
-        summary_kualitas: statusText,
-        persentase_kualitas: item.quality_percentage !== null ? `${item.quality_percentage.toFixed(1)}%` : 'N/A',
-      };
-    });
-
-    if (dataToDownload.length === 0) {
-      console.log("Tidak ada data untuk diunduh.");
-      return;
-    }
+    const dataToDownload = filteredData.map(item => ({
+      ...item,
+      summary_kualitas: getStatusText(item.result, item.quality_percentage),
+      persentase_kualitas: item.quality_percentage !== null ? `${item.quality_percentage.toFixed(1)}%` : 'N/A',
+    }));
+    if (dataToDownload.length === 0) return;
 
     const headers = Object.keys(dataToDownload[0]).join(",");
-    const csvContent =
-      headers +
-      "\n" +
-      dataToDownload
-        .map((row: any) =>
-          Object.values(row)
-            .map((val) => (typeof val === "string" ? `"${val.replace(/"/g, '""')}"` : val))
-            .join(",")
-        )
-        .join("\n");
-
+    const csvContent = headers + "\n" + dataToDownload.map((row: any) =>
+      Object.values(row)
+        .map((val) => (typeof val === "string" ? `"${val.replace(/"/g, '""')}"` : val))
+        .join(",")
+    ).join("\n");
+    
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute("download", "station_quality.csv");
-      link.style.visibility = "hidden";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "station_quality.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  // Menggunakan interface StasiunDenganSummary dan memperbarui kolom Summary
   const columns: ColumnDef<StasiunDenganSummary>[] = [
     { accessorKey: "stasiun_id", header: "No" },
     { accessorKey: "kode_stasiun", header: "Kode Stasiun" },
     { accessorKey: "lokasi", header: "Lokasi" },
     { accessorKey: "jaringan", header: "Jaringan" },
-    { 
-      accessorKey: "status", 
+    {
+      accessorKey: "status",
       header: "Status",
       cell: ({ row }) => {
         const status = row.original.status;
@@ -353,19 +346,12 @@ const StationQuality = () => {
       header: "Summary Kualitas",
       cell: ({ row }) => {
         const { result, quality_percentage } = row.original;
-        
         if (quality_percentage === undefined || quality_percentage === null) {
           return <span className="text-gray-500">-</span>;
         }
-
-        const statusText = getStatusText(result, quality_percentage);
-        
         return (
           <div className="flex flex-col justify-center">
-            <StatusBadge value={statusText} />
-            {/* <span className="text-xs text-gray-600 mt-1"> */}
-              {/* {quality_percentage.toFixed(1)}% */}
-            {/* </span> */}
+            <StatusBadge value={getStatusText(result, quality_percentage)} />
           </div>
         );
       },
@@ -373,56 +359,64 @@ const StationQuality = () => {
     {
       id: "detail",
       header: "Detail Stasiun",
-      cell: ({ row }) => {
-        return (
+      cell: ({ row }) => (
         <button
           onClick={() => navigate(`/station/${row.original.kode_stasiun}`)}
           className="bg-black text-white rounded-lg px-3 py-1 hover:bg-gray-800"
         >
           <span className="text-sm">Lihat Detail</span>
         </button>
-        );
-      },
+      ),
     },
   ];
-  
+
   return (
     <div className="min-h-screen flex flex-col">
       <MainLayout className="flex-1 p-8 ml-16">
         <h1 className="bg-gray-100 rounded-2xl text-center text-3xl font-bold my-4 mx-48 py-2">
           Stasiun Quality
         </h1>
-        <CardContainer className="mb-6 relative">
-          <div className="w-full h-[500px] z-0">
-            <MapContainer
-              center={[-2.5, 118]}
-              zoom={5}
-              className="w-full h-full rounded-lg"
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://osm.org/copyright">OSM</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              {stationPositions.map((station, idx) => {
-                const { result, kode_stasiun, quality_percentage } = station.data;
-                return (
-                  <Marker 
-                    key={idx} 
-                    position={station.coords}
-                    icon={triangleIcon(getColorByResult(result))}
-                  >
-                    <Popup>
-                      <b>Stasiun: {kode_stasiun}</b><br />
-                      Status: {result}<br />
-                      {quality_percentage !== null && `Kualitas: ${quality_percentage.toFixed(1)}%`}
-                    </Popup>
-                  </Marker>
-                );
-              })}
-              <MapLegend />
-            </MapContainer>
+
+        <CardContainer className="mb-6">
+          <div className="flex flex-col lg:flex-row gap-6">
+
+            {/* Kolom Grafik Donat */}
+            <div className="lg:w-1/3 w-full h-[500px] flex flex-col items-center justify-center p-4">
+               <h2 className="text-xl font-bold mb-4">Ringkasan Status Stasiun</h2>
+               <div className="w-full h-full max-w-sm">
+                 <QualityDonutChart data={dataStasiunLengkap} />
+               </div>
+            </div>
+
+            {/* Kolom Peta */}
+            <div className="lg:w-2/3 w-full h-[500px] relative">
+              <MapContainer center={[-2.5, 118]} zoom={5} className="w-full h-full rounded-lg">
+                <TileLayer
+                  attribution='&copy; <a href="https://osm.org/copyright">OSM</a>'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                {stationPositions.map((station, idx) => {
+                  const { result, kode_stasiun, quality_percentage } = station.data;
+                  return (
+                    <Marker
+                      key={idx}
+                      position={station.coords}
+                      icon={triangleIcon(getColorByResult(result))}
+                    >
+                      <Popup>
+                        <b>Stasiun: {kode_stasiun}</b><br />
+                        Status: {result}<br />
+                        {quality_percentage !== null && `Kualitas: ${quality_percentage.toFixed(1)}%`}
+                      </Popup>
+                    </Marker>
+                  );
+                })}
+                <MapLegend />
+              </MapContainer>
+            </div>
           </div>
         </CardContainer>
+        
         <CardContainer>
           <div className="flex justify-between items-center mb-6">
             <TableFilters
@@ -439,7 +433,6 @@ const StationQuality = () => {
           </div>
 
           {loading && <p>Loading station data...</p>}
-          {/* [UBAH] DataTable menerima globalFilter dan setGlobalFilter */}
           {!loading && (
             <DataTable
               columns={columns}
