@@ -7,8 +7,14 @@ import L from "leaflet";
 import marker2x from "leaflet/dist/images/marker-icon-2x.png";
 import marker from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
-import { ChevronLeft, MapPin, ChevronDown } from "lucide-react";
+import { ChevronLeft, MapPin, ChevronDown, Edit } from "lucide-react";
 import axiosServer from "../utilities/AxiosServer";
+import EditStationModal from "../components/EditStationModal";
+
+// Define StationData interface
+interface StationData {
+  [key: string]: string | number | null | undefined;
+}
 
 // Define interfaces
 interface Stasiun {
@@ -90,10 +96,13 @@ interface Stasiun {
   elevasi: number;
   lokasi: string;
   provinsi: string;
+  provinsi_id: number;
   upt_penanggung_jawab: string;
+  upt: number;
   status: string;
   tahun_instalasi: number;
   jaringan: string;
+  jaringan_id: number;
   prioritas: string;
   keterangan: string | null;
   accelerometer: string;
@@ -117,6 +126,8 @@ const StationMapDetail = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [stationHistory, setStationHistory] = useState<StationHistory[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingSection, setEditingSection] = useState<string>('');
 
   const fetchStationDetail = useCallback(async () => {
     if (!stationCode) return;
@@ -222,6 +233,11 @@ const StationMapDetail = () => {
     };
   }, [dropdownOpen]);
 
+  const handleEditClick = (section: string) => {
+    setEditingSection(section);
+    setEditModalOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-gray-50">
@@ -314,7 +330,16 @@ const StationMapDetail = () => {
               <div className="space-y-6">
                 {/* Site Information Table */}
                 <div>
-                  <h4 className="text-md font-semibold mb-3 text-gray-700">Site Information</h4>
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="text-md font-semibold text-gray-700">Site Information</h4>
+                    <button
+                      onClick={() => handleEditClick('site')}
+                      className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      <Edit size={14} />
+                      Edit
+                    </button>
+                  </div>
                   <table className="w-full border border-gray-300 text-sm">
                     <tbody>
                       <tr>
@@ -351,7 +376,16 @@ const StationMapDetail = () => {
 
                 {/* Location Information Table */}
                 <div>
-                  <h4 className="text-md font-semibold mb-3 text-gray-700">Location Information</h4>
+                  <div className="flex justify-between items-center mb-3">
+                    <h4 className="text-md font-semibold text-gray-700">Location Information</h4>
+                    <button
+                      onClick={() => handleEditClick('location')}
+                      className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      <Edit size={14} />
+                      Edit
+                    </button>
+                  </div>
                   <table className="w-full border border-gray-300 text-sm">
                     <tbody>
                       <tr>
@@ -541,6 +575,47 @@ const StationMapDetail = () => {
           </div>
         </div>
       </MainLayout>
+
+      {/* Edit Station Modal */}
+      {station && (
+        <EditStationModal
+          isOpen={editModalOpen}
+          onClose={() => {
+            setEditModalOpen(false);
+            setEditingSection('');
+          }}
+          stationCode={station.kode_stasiun}
+          stationData={station as unknown as StationData}
+          onSuccess={async (_updatedData) => { // eslint-disable-line @typescript-eslint/no-unused-vars
+            console.log('✅ Update successful, refreshing data...');
+            if (!station?.kode_stasiun) {
+              console.error('❌ Station code not available for refresh');
+              return;
+            }
+            try {
+              // Fetch fresh data from server
+              const response = await axiosServer.get(`/api/stasiun/bycode?code=${station.kode_stasiun}`);
+              if (response.data.success) {
+                setStation(response.data.data);
+                console.log('🔄 Data refreshed successfully');
+              }
+            } catch (error) {
+              console.error('❌ Failed to refresh data:', error);
+            }
+            setEditModalOpen(false);
+            setEditingSection('');
+            alert('Station data updated successfully!');
+          }}
+          fieldsToEdit={
+            editingSection === 'site'
+              ? ['lintang', 'bujur', 'elevasi', 'tahun_instalasi', 'jaringan', 'upt_penanggung_jawab']
+              : editingSection === 'location'
+              ? ['lokasi', 'provinsi', 'status', 'prioritas', 'keterangan']
+              : []
+          }
+          title={editingSection === 'site' ? 'Edit Site Information' : 'Edit Location Information'}
+        />
+      )}
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getAllStasiun, getAllStasiunCodes, getStasiunByCode } from '../controllers/stasiun.controller.js';
+import { getAllStasiun, getAllStasiunCodes, getStasiunByCode, updateStasiunByCode } from '../controllers/stasiun.controller.js';
 
 const router = Router();
 
@@ -11,5 +11,8 @@ router.get('/codes', getAllStasiunCodes);
 
 // GET /api/stasiunbycode?code=XXX - Get stasiun by code
 router.get('/bycode', getStasiunByCode);
+
+// PUT /api/stasiun/:code - Update stasiun by code
+router.put('/:code', updateStasiunByCode);
 
 export default router;
