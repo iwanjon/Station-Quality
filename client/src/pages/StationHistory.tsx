@@ -239,7 +239,7 @@ const StationHistory = () => {
                                 : 'bg-red-100 text-red-800'
                             }`}
                           >
-                            {history.status ? 'Active' : 'Inactive'}
+                            {history.status ? 'In Use' : 'Inactive'}
                           </span>
                         </td>
                       </tr>
