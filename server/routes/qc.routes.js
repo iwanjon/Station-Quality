@@ -1,12 +1,29 @@
 // routes/qc.routes.js
 import { Router } from 'express';
 import { cached } from '../utils/cacheHelper.js'; 
-import { fetchQCDetail, fetchQCSummary  } from '../services/externalApi.js'; 
+import { fetchQCDetail, fetchQCSummary, fetchQCSiteDetail } from '../services/externalApi.js'; 
 import dayjs from "dayjs";
 
 const router = Router();
 
-// [ENDPOINT BARU] Ambil data summary QC untuk 7 hari terakhir per stasiun
+// [ENDPOINT BARU] Ambil data detail site quality control per stasiun
+router.get("/site/detail/:code", async (req, res) => {
+  const { code } = req.params;
+  const cacheKey = `qc-sitedetail:${code}`;
+
+  try {
+    const data = await cached(cacheKey, 86400, () => // Cache untuk 1 hari
+      fetchQCSiteDetail(code)
+    );
+    res.json(data);
+  } catch (err) {
+    console.error(`Error in /site/detail/${code}:`, err);
+    res.status(500).json({ error: "Failed to fetch QC site detail" });
+  }
+});
+
+
+// Ambil data summary QC untuk 7 hari terakhir per stasiun
 router.get("/summary/7days/:stationCode", async (req, res) => {
   const { stationCode } = req.params;
   const cacheKey = `qc-summary-7days:${stationCode}`;
@@ -16,7 +33,6 @@ router.get("/summary/7days/:stationCode", async (req, res) => {
       const today = dayjs();
       const promises = [];
 
-      // Siapkan 7 promise untuk mengambil data 7 hari terakhir secara paralel
       for (let i = 1; i <= 7; i++) {
         const date = today.subtract(i, "day").format("YYYY-MM-DD");
         promises.push(fetchQCSummary(date));
@@ -27,12 +43,11 @@ router.get("/summary/7days/:stationCode", async (req, res) => {
 
       dailySummaries.forEach((dayResult, index) => {
         const date = today.subtract(index + 1, "day");
-        let status = "No Data"; // Status default
+        let status = "No Data";
 
         if (dayResult.status === 'fulfilled' && dayResult.value) {
           const stationData = dayResult.value.find(s => s.code === stationCode);
           if (stationData) {
-            // Konversi dari 'Baik' -> 'Good', dst.
             switch (stationData.result) {
               case "Baik":
                 status = "Good";
@@ -44,7 +59,7 @@ router.get("/summary/7days/:stationCode", async (req, res) => {
                 status = "Poor";
                 break;
               default:
-                status = "No Data"; // Termasuk 'Mati' atau lainnya
+                status = "No Data";
                 break;
             }
           }
@@ -53,12 +68,11 @@ router.get("/summary/7days/:stationCode", async (req, res) => {
         }
         
         results.push({
-          date: date.format('DD-MMM'), // Format tanggal seperti '13-Sep'
+          date: date.format('DD-MMM'),
           status: status,
         });
       });
 
-      // Hasilnya sudah dari H-7 ke H-1, jadi kita urutkan kembali
       return results.reverse();
     });
 
@@ -70,8 +84,6 @@ router.get("/summary/7days/:stationCode", async (req, res) => {
   }
 });
 
-
-// --- KODE LAMA (TIDAK BERUBAH) ---
 
 // Ambil data QC untuk 7 hari terakhir
 router.get("/data/detail/7days/:stationId", async (req, res) => {

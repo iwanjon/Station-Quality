@@ -8,7 +8,7 @@ import ChartSlide from "./ChartSlide";
 // Tipe data yang dibutuhkan
 type FormattedLatencyData = {
   date: string;
-  latency: number;
+  latency: number | null; // Latency bisa null jika tidak ada data
 };
 const CHANNELS = ["SHE", "SHN", "SHZ"];
 
@@ -29,13 +29,19 @@ const LazyLatencyChart = ({ stationCode }: { stationCode?: string }) => {
         const requests = CHANNELS.map(ch => axiosServer.get(`/api/metadata/latency/${stationCode}/${ch}`));
         const responses = await Promise.all(requests);
         const allLatencyData: Record<string, FormattedLatencyData[]> = {};
+
         responses.forEach((response, index) => {
           const channel = CHANNELS[index];
           const rawData = response.data;
-          allLatencyData[channel] = Object.entries(rawData).map(([ts, val]) => ({
-            date: dayjs(ts).format('YYYY-MM-DD HH:mm'),
-            latency: val as number,
-          }));
+
+          if (Object.keys(rawData).length > 0) {
+            allLatencyData[channel] = Object.entries(rawData).map(([ts, val]) => ({
+              date: dayjs(ts).format('YYYY-MM-DD HH:mm'),
+              latency: val === null || val === undefined ? null : (val as number),
+            }));
+          } else {
+            allLatencyData[channel] = []; // Set array kosong jika tidak ada data
+          }
         });
         setLatencyData(allLatencyData);
       } catch (err) { console.error("Error fetching latency data:", err); }
@@ -47,7 +53,6 @@ const LazyLatencyChart = ({ stationCode }: { stationCode?: string }) => {
     }
   }, [inView, stationCode, isLoading]);
 
-  // --- DESAIN BARU: Grid 3 kolom seperti RMS/Spikes ---
   return (
     <div ref={ref} className="bg-white p-4 sm:p-6 rounded-2xl shadow-md mt-8">
       <h2 className="text-xl font-bold mb-4 text-gray-800">Latency per Channel</h2>
@@ -65,6 +70,14 @@ const LazyLatencyChart = ({ stationCode }: { stationCode?: string }) => {
                   titlePrefix="Latency"
                   data={latencyData[ch] || []}
                   lines={[{ dataKey: "latency", stroke: ["#8b5cf6", "#ec4899", "#f97316"][idx] }]}
+                  yAxisProps={{ 
+                    domain: [0, 600], // Batas atas 10 menit (600 detik)
+                  }}
+                  referenceLines={[{ 
+                    y: 180, // Nilai 3 menit (180 detik)
+                    label: "", 
+                    stroke: "black" 
+                  }]}
                 />
               </div>
             ))}

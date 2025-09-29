@@ -1,15 +1,60 @@
+// services/externalApi.js
 import axios from 'axios';
 import getRedisClient from '../config/redisClient.js';
 
 const API_BASE_URL = process.env.API_BASE_URL;
 const API_KEY = process.env.API_KEY;
 
-// TTL (Time-To-Live) default untuk cache dalam detik (1 jam)
 const DEFAULT_CACHE_TTL = 3600; 
 
 console.log("🌍 API_BASE_URL:", process.env.API_BASE_URL);
 console.log("🔑 API_KEY:", process.env.API_KEY);
 
+// [FUNGSI BARU] Ambil data detail site quality control
+export async function fetchQCSiteDetail(code) {
+  const cacheKey = `qc:sitedetail:${code}`;
+  const redisClient = getRedisClient();
+
+  if (redisClient) {
+    try {
+      const cachedData = await redisClient.get(cacheKey);
+      if (cachedData) {
+        console.log(`📦 QC Site Detail dari cache untuk: ${code}`);
+        return JSON.parse(cachedData);
+      }
+    } catch (err) {
+      console.warn(`⚠️ Gagal mengambil dari cache Redis (QCSiteDetail): ${err.message}`);
+    }
+  }
+
+  try {
+    const url = `${API_BASE_URL}/qc/site/detail/${code}`;
+    console.log("🔎 Fetching QC Site Detail from:", url);
+    const response = await axios.get(url, {
+      headers: { 
+        Authorization: `Bearer ${API_KEY}`,
+        Accept: "application/json"
+      },
+    });
+
+    if (redisClient) {
+      try {
+        // Cache data untuk 1 hari karena data site jarang berubah
+        await redisClient.setEx(cacheKey, 86400, JSON.stringify(response.data));
+      } catch (err) {
+        console.warn(`⚠️ Gagal menyimpan ke cache Redis (QCSiteDetail): ${err.message}`);
+      }
+    }
+    return response.data;
+  } catch (err) {
+    if (err.response) {
+      console.error("❌ API Error:", err.response.status, err.response.data);
+    } else {
+      console.error("❌ Request setup error:", err.message);
+    }
+    throw err;
+  }
+}
 
 export async function fetchQCDetail(stationId, date) {
   const cacheKey = `qc:detail:${stationId}:${date}`;
@@ -197,7 +242,6 @@ export async function fetchSLMONLastStatus() {
   }
 }
 
-// --- FUNGSI UNTUK GAMBAR (TIDAK DICACHE DI REDIS) karna Redis tidak efisien untuk menyimpan data biner seperti gambar. ---
 export async function fetchPsdImage(date_str, code, channel) {
   try {
     const url = `${API_BASE_URL}/qc/data/psd/${date_str}/${code}/${channel}`;
@@ -228,7 +272,6 @@ export async function fetchSignalImage(date_str, code, channel) {
     });
     return response;
   } catch (err) {
-    // ... (error handling tidak berubah)
     throw err;
   }
 }

@@ -2,17 +2,9 @@
 
 import React from "react";
 import {
-  LineChart,
-  Line,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
+  LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine // [DIUBAH] Impor ReferenceLine
 } from "recharts";
 import CardContainer from "./Card";
-
-// FIX: Impor tipe AxisDomain dari recharts
 import type { AxisDomain } from "recharts/types/util/types";
 
 // Definisikan tipe untuk data yang diterima
@@ -27,6 +19,13 @@ type LineConfig = {
   stroke: string;
 };
 
+// [BARU] Definisikan tipe untuk konfigurasi garis batas
+type ReferenceLineConfig = {
+  y: number;
+  label: string;
+  stroke: string;
+};
+
 // Definisikan tipe untuk properti (props) komponen
 interface ChartSlideProps {
   channel: string;
@@ -34,11 +33,12 @@ interface ChartSlideProps {
   data: QCData[];
   lines: LineConfig[];
   yAxisProps?: {
-    // FIX: Gunakan tipe AxisDomain yang diimpor
     domain?: AxisDomain;
     width?: number;
+    tickCount?: number; // Tambahkan tickCount untuk kontrol kepadatan tick
   };
   height?: number;
+  referenceLines?: ReferenceLineConfig[]; // [BARU] Tambahkan prop untuk garis batas
 }
 
 const ChartSlide: React.FC<ChartSlideProps> = ({
@@ -48,6 +48,7 @@ const ChartSlide: React.FC<ChartSlideProps> = ({
   lines,
   yAxisProps = {},
   height = 240,
+  referenceLines, // [BARU] Ambil prop baru
 }) => {
   return (
     <CardContainer>
@@ -57,20 +58,17 @@ const ChartSlide: React.FC<ChartSlideProps> = ({
       <div style={{ width: "100%", height: height }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
-            {/* Elemen Seragam */}
             <CartesianGrid stroke="#e5e7eb" strokeDasharray="5 5" />
             <XAxis dataKey="date" tick={{ fontSize: 12 }} />
             <Tooltip wrapperStyle={{ fontSize: "13px", zIndex: 1000 }} />
 
-            {/* Sumbu Y yang dapat dikustomisasi */}
             <YAxis
-              // Sekarang tipe domain sudah cocok dan tidak akan error lagi
               domain={yAxisProps.domain || ["auto", "auto"]}
               tick={{ fontSize: 12 }}
               width={yAxisProps.width || 56}
+              tickCount={yAxisProps.tickCount}
             />
 
-            {/* Render semua garis secara dinamis */}
             {lines.map((line) => (
               <Line
                 key={line.dataKey as string}
@@ -81,6 +79,18 @@ const ChartSlide: React.FC<ChartSlideProps> = ({
                 isAnimationActive={false}
               />
             ))}
+
+            {/* [BARU] Render garis batas jika ada */}
+            {referenceLines && referenceLines.map((line, index) => (
+              <ReferenceLine
+                key={`ref-${index}`}
+                y={line.y}
+                label={{ value: line.label, position: "insideTopRight", fill: line.stroke, fontSize: 11 }}
+                stroke={line.stroke}
+                strokeDasharray="4 4"
+              />
+            ))}
+            
           </LineChart>
         </ResponsiveContainer>
       </div>

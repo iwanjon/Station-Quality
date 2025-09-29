@@ -27,7 +27,6 @@ type QCData = {
   lp_percentage?: number;
 };
 
-// [PENAMBAHAN] Tipe data baru untuk summary
 type SummaryDataItem = {
   date: string;
   status: string;
@@ -51,7 +50,6 @@ const getStatusColor = (status: string) => {
 };
 
 const CHANNELS = ["E", "N", "Z"];
-// [PENAMBAHAN] Channel lengkap untuk mencocokkan dengan data summary
 const CHANNELS_FULL = ["SHE", "SHN", "SHZ"];
 
 
@@ -60,8 +58,6 @@ const StationDetail = () => {
   const navigate = useNavigate();
 
   const [qcData, setQcData] = useState<QCData[]>([]);
-  
-  // [PENAMBAHAN] State baru untuk data summary
   const [summaryData, setSummaryData] = useState<Record<string, SummaryDataItem[]>>({
     SHE: [],
     SHN: [],
@@ -73,7 +69,6 @@ const StationDetail = () => {
   const [error, setError] = useState<string | null>(null);
   const [stationList, setStationList] = useState<string[]>([]);
 
-  // Ambil daftar kode stasiun dari database (tidak berubah)
   useEffect(() => {
     axiosServer
       .get("/api/stasiun")
@@ -88,11 +83,9 @@ const StationDetail = () => {
     window.scrollTo(0, 0);
   }, []);
   
-  // [MODIFIKASI] useEffect utama digabung untuk mengambil data QC dan Summary
   useEffect(() => {
     if (!stationCode) return;
 
-    // Fungsi untuk mengambil data time series (grafik utama)
     const fetchQcData = async () => {
       setLoading(true);
       setError(null);
@@ -124,13 +117,10 @@ const StationDetail = () => {
       }
     };
 
-    // [PENAMBAHAN] Fungsi baru untuk mengambil data summary
     const fetchSummaryData = async () => {
       setLoadingSummary(true);
       try {
         const res = await axiosServer.get(`/api/qc/summary/7days/${stationCode}`);
-        // Asumsi data yang diterima sudah dalam format yang benar [{date, status}]
-        // Kita set data yang sama untuk ketiga channel
         setSummaryData({
           SHE: res.data,
           SHN: res.data,
@@ -138,7 +128,6 @@ const StationDetail = () => {
         });
       } catch (err) {
         console.error("Gagal memuat data summary:", err);
-        // Jika gagal, set summary ke array kosong
         setSummaryData({ SHE: [], SHN: [], SHZ: [] });
       } finally {
         setLoadingSummary(false);
@@ -146,7 +135,7 @@ const StationDetail = () => {
     };
 
     fetchQcData();
-    fetchSummaryData(); // Panggil fungsi baru
+    fetchSummaryData();
 
   }, [stationCode]);
 
@@ -201,7 +190,7 @@ const StationDetail = () => {
             <button
               type="button"
               className="bg-gray-200 text-gray-800 font-bold px-4 py-2 rounded-lg hover:bg-gray-300"
-              onClick={() => { /* nanti bisa diisi navigasi, sekarang tetap '#' */ }}
+              onClick={() => navigate('/dashboard')}
             >
               Station
             </button>
@@ -282,7 +271,7 @@ const StationDetail = () => {
           )}
         </div>
 
-        {/* --- Bagian Grafik (Tidak Berubah) --- */}
+        {/* --- Bagian Grafik --- */}
 
         {/* RMS */}
         <ChartGridSection title="RMS">
@@ -317,7 +306,22 @@ const StationDetail = () => {
           ))}
         </ChartGridSection>
 
-        {/* Spikes */}
+        {/* [BARU] Grafik Gaps dengan threshold 24 */}
+        <ChartGridSection title="Gaps">
+          {CHANNELS.map((ch) => (
+            <div key={`gaps-${ch}`}>
+              <ChartSlide
+                channel={ch}
+                titlePrefix="Gaps"
+                data={groupedByChannel[ch]}
+                lines={[{ dataKey: "num_gap", stroke: "#f97316" }]}
+                yAxisProps={{ domain: [0, 24], tickCount: 7 }}
+              />
+            </div>
+          ))}
+        </ChartGridSection>
+
+        {/* [DIUBAH] Grafik Spikes dengan threshold 24 */}
         <ChartGridSection title="Spikes">
           {CHANNELS.map((ch) => (
             <div key={`spikes-${ch}`}>
@@ -326,6 +330,7 @@ const StationDetail = () => {
                 titlePrefix="Spikes"
                 data={groupedByChannel[ch]}
                 lines={[{ dataKey: "num_spikes", stroke: "#ef4444" }]}
+                yAxisProps={{ domain: [0, 24], tickCount: 7 }}
               />
             </div>
           ))}
