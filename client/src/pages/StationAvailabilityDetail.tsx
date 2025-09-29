@@ -228,20 +228,6 @@ const StationAvailabilityDetail = () => {
     });
   };
 
-  const getAvailabilityColor = (value: number | null) => {
-    if (value === null) return "#gray";
-    if (value >= 95) return "#16a34a"; // green
-    if (value >= 80) return "#ca8a04"; // yellow
-    return "#dc2626"; // red
-  };
-
-  const getAvailabilityStatus = (value: number | null) => {
-    if (value === null) return "No Data";
-    if (value >= 95) return "Excellent";
-    if (value >= 80) return "Good";
-    return "Poor";
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-gray-50">
@@ -349,40 +335,6 @@ const StationAvailabilityDetail = () => {
               </div>
               <div className="h-80 flex items-center justify-center">
                 <p className="text-gray-500">No data available for selected month</p>
-              </div>
-            </div>
-
-            {/* Empty Data Table */}
-            <div className="bg-white p-6 rounded-xl shadow">
-              <h2 className="text-xl font-semibold text-gray-700 mb-4">
-                Daily Availability Data
-              </h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Day
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Availability
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    <tr>
-                      <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                        No data available
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
               </div>
             </div>
           </div>
@@ -512,71 +464,6 @@ const StationAvailabilityDetail = () => {
                   />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Daily Data Table */}
-          <div className="bg-white p-4 rounded-xl shadow">
-            <h2 className="text-xl font-semibold text-gray-700 mb-4">
-              Daily Availability Data
-            </h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Day
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Availability
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {dailyData.map((day, index) => (
-                    <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {day.formattedDate}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {day.dayOfWeek}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {day.availability !== null ? (
-                            <span
-                              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                              style={{
-                                backgroundColor: `${getAvailabilityColor(day.availability)}20`,
-                                color: getAvailabilityColor(day.availability)
-                              }}
-                            >
-                              {day.availability}%
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">No Data</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <span
-                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                            style={{
-                              backgroundColor: `${getAvailabilityColor(day.availability)}20`,
-                              color: getAvailabilityColor(day.availability)
-                            }}
-                          >
-                            {getAvailabilityStatus(day.availability)}
-                          </span>
-                        </td>
-                      </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
           </div>
         </div>
