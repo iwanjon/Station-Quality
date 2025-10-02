@@ -9,14 +9,12 @@ interface StationHistory {
   stasiun_id: number;
   kode_stasiun: string;
   net: string;
-  SHE: number | null;
-  SHN: number | null;
-  SHZ: number | null;
-  data_logger: string | null;
+  channel: string | null;
+  digitizer_name: string | null;
   total_gain: number | null;
   input_unit: string | null;
   sampling_rate: number | null;
-  sensor_type: string | null;
+  sensor_name: string | null;
   start_date: string | null;
   end_date: string | null;
   PAZ: number | null;
@@ -30,6 +28,7 @@ const StationHistory = () => {
   const [historyData, setHistoryData] = useState<StationHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedChannel, setSelectedChannel] = useState<string>('all');
 
   useEffect(() => {
     const fetchStationHistory = async () => {
@@ -69,6 +68,14 @@ const StationHistory = () => {
       minute: '2-digit'
     });
   };
+
+  // Get unique channels for filter
+  const uniqueChannels = Array.from(new Set(historyData.map(item => item.channel).filter(Boolean))).sort();
+
+  // Filter data based on selected channel
+  const filteredData = selectedChannel === 'all' 
+    ? historyData 
+    : historyData.filter(item => item.channel === selectedChannel);
 
   if (loading) {
     return (
@@ -123,12 +130,36 @@ const StationHistory = () => {
             </div>
 
             <div className="bg-white rounded-xl shadow p-6">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Station History: {stationCode}
-              </h1>
-              <p className="text-gray-600">
-                Complete equipment history and configuration changes for station {stationCode}
-              </p>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                    Station History: {stationCode}
+                  </h1>
+                  <p className="text-gray-600">
+                    Complete equipment history and configuration changes for station {stationCode}
+                  </p>
+                </div>
+                
+                {/* Channel Filter */}
+                <div className="flex items-center gap-2">
+                  <label htmlFor="channel-filter" className="text-sm font-medium text-gray-700">
+                    Filter by Channel:
+                  </label>
+                  <select
+                    id="channel-filter"
+                    value={selectedChannel}
+                    onChange={(e) => setSelectedChannel(e.target.value)}
+                    className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                  >
+                    <option value="all">All Channels</option>
+                    {uniqueChannels.map(channel => (
+                      <option key={channel!} value={channel!}>
+                        {channel}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -136,7 +167,12 @@ const StationHistory = () => {
           <div className="bg-white rounded-xl shadow overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-xl font-semibold text-gray-900">
-                Equipment History Records ({historyData.length} entries)
+                Equipment History Records ({filteredData.length} entries)
+                {selectedChannel !== 'all' && (
+                  <span className="text-sm font-normal text-gray-600 ml-2">
+                    - Filtered by Channel: {selectedChannel}
+                  </span>
+                )}
               </h2>
             </div>
 
@@ -148,19 +184,13 @@ const StationHistory = () => {
                       Created At
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      SHE
+                      Channel
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      SHN
+                      Sensor Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      SHZ
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Sensor Type
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Data Logger
+                      Digitizer Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Total Gain
@@ -186,32 +216,29 @@ const StationHistory = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {historyData.length === 0 ? (
+                  {filteredData.length === 0 ? (
                     <tr>
-                      <td colSpan={13} className="px-6 py-4 text-center text-gray-500">
-                        No history data available for this station
+                      <td colSpan={11} className="px-6 py-4 text-center text-gray-500">
+                        {selectedChannel === 'all' 
+                          ? 'No history data available for this station'
+                          : `No history data available for channel ${selectedChannel}`
+                        }
                       </td>
                     </tr>
                   ) : (
-                    historyData.map((history, index) => (
+                    filteredData.map((history, index) => (
                       <tr key={history.history_id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {formatDate(history.created_at)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {history.SHE || '-'}
+                          {history.channel || '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {history.SHN || '-'}
+                          {history.sensor_name || '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {history.SHZ || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {history.sensor_type || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {history.data_logger || '-'}
+                          {history.digitizer_name || '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {history.total_gain || '-'}

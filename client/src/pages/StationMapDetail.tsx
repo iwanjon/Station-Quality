@@ -28,17 +28,15 @@ interface StationHistory {
   stasiun_id: number;
   kode_stasiun: string;
   net: string;
-  SHE: number | null;
-  SHN: number | null;
-  SHZ: number | null;
-  data_logger: string | null;
+  channel: string;
+  sensor_name: string | null;
+  digitizer_name: string | null;
   total_gain: number | null;
   input_unit: string | null;
   sampling_rate: number | null;
-  sensor_type: string | null;
   start_date: string | null;
   end_date: string | null;
-  PAZ: number | null;
+  paz: Record<string, unknown> | null;
   status: boolean;
   created_at: string;
 }
@@ -500,8 +498,8 @@ const StationMapDetail = () => {
                 <thead>
                   <tr className="bg-gray-50">
                     <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Channel</th>
-                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Sensor Type</th>
-                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Data Logger</th>
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Sensor Name</th>
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Digitizer Name</th>
                     <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Total Gain</th>
                     <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Input Unit</th>
                     <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Sampling Rate</th>
@@ -525,17 +523,14 @@ const StationMapDetail = () => {
                     // Group by channel and show latest record for each channel
                     ['SHE', 'SHN', 'SHZ'].map((channel) => {
                       const channelData = stationHistory
-                        .filter((history: StationHistory) => {
-                          // Check if this history record has data for this channel
-                          return history[channel as keyof StationHistory] !== null && history[channel as keyof StationHistory] !== undefined;
-                        })
+                        .filter((history: StationHistory) => history.channel === channel)
                         .sort((a: StationHistory, b: StationHistory) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
 
                       return (
                         <tr key={channel} className="border-t border-gray-200">
                           <td className="px-3 py-2 font-medium text-blue-600">{channel}</td>
-                          <td className="px-3 py-2">{channelData?.sensor_type || '-'}</td>
-                          <td className="px-3 py-2">{channelData?.data_logger || '-'}</td>
+                          <td className="px-3 py-2">{channelData?.sensor_name || '-'}</td>
+                          <td className="px-3 py-2">{channelData?.digitizer_name || '-'}</td>
                           <td className="px-3 py-2">{channelData?.total_gain || '-'}</td>
                           <td className="px-3 py-2">{channelData?.input_unit || '-'}</td>
                           <td className="px-3 py-2">{channelData?.sampling_rate || '-'}</td>
