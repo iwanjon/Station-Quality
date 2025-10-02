@@ -1,6 +1,6 @@
 INSERT INTO `stasiun` (
   `net`, `kode_stasiun`, `lintang`, `bujur`, `elevasi`,
-  `lokasi`, `provinsi_id`, `upt`, `status`, `tahun_instalasi`,
+  `lokasi`, `provinsi_id`, `upt_id`, `status`, `tahun_instalasi`,
   `jaringan_id`, `prioritas`, `keterangan`, `accelerometer`, `digitizer_komunikasi`, `tipe_shelter`,
   `lokasi_shelter`, `penjaga_shelter`, `kondisi_shelter`, `penggantian_terakhir_alat`
 ) VALUES 

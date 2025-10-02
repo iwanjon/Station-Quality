@@ -2,73 +2,119 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import axiosInstance from "../utilities/AxiosServer";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
-interface StationData {
-  timestamp: string;
-  availability: number | null;
-  note?: string;
+// Configuration for availability ranges, colors, and labels
+// Easily modify ranges, colors, and labels here - changes will apply to both chart and table
+const AVAILABILITY_CONFIG = {
+  ranges: [
+    {
+      key: '> 97%',
+      label: '> 97%',
+      min: 97.01,
+      max: 100,
+      chartColor: '#16a34a',
+      legendColor: 'bg-green-600',
+      tableColor: 'text-green-600'
+    },
+    {
+      key: '90-97%',
+      label: '90-97%',
+      min: 90,
+      max: 97,
+      chartColor: '#ffff00',
+      legendColor: 'bg-yellow-200',
+      tableColor: 'text-yellow-600'
+    },
+    {
+      key: '1-89%',
+      label: '1-89%',
+      min: 0.01,
+      max: 89.99,
+      chartColor: '#ff7f00',
+      legendColor: 'bg-orange-400',
+      tableColor: 'text-orange-400'
+    },
+    {
+      key: '0%',
+      label: '0%',
+      min: 0,
+      max: 0,
+      chartColor: '#ff0000',
+      legendColor: 'bg-red-500',
+      tableColor: 'text-red-500'
+    }
+  ]
+};
+
+// Helper function to get chart color for a value
+function getChartColorForValue(value: number | null): string {
+  if (value === null || value === undefined) {
+    return AVAILABILITY_CONFIG.ranges[3].chartColor; // 0%
+  }
+
+  for (const range of AVAILABILITY_CONFIG.ranges) {
+    if (value >= range.min && value <= range.max) {
+      return range.chartColor;
+    }
+  }
+
+  return AVAILABILITY_CONFIG.ranges[3].chartColor; // fallback
 }
 
 interface Station {
   kode_stasiun: string;
 }
 
-interface APIResponse {
-  success: boolean;
-  message: string;
-  cached: boolean;
-  cache_key: string;
-  meta: {
-    stationCode: string;
-    totalRecords: number;
-    dateRange: {
-      start_date: string;
-      end_date: string;
-    };
-  };
-  data: Record<string, StationData[]>;
-}
-
-interface DailyDataPoint {
+interface ChartDataPoint {
   date: string;
-  availability: number | null;
-  formattedDate: string;
-  dayOfWeek: string;
+  availability: number;
+  day: number;
+  color: string;
 }
 
-const DAYS_OF_WEEK = [
-  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
-];
+interface AvailabilityRecord {
+  timestamp: string;
+  availability: number | null;
+  note?: string;
+}
 
 const StationAvailabilityDetail = () => {
   const { stationCode } = useParams<{ stationCode: string }>();
   const navigate = useNavigate();
-  const [dailyData, setDailyData] = useState<DailyDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stations, setStations] = useState<Station[]>([]);
   const [stationsLoading, setStationsLoading] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    const today = new Date();
-    return {
-      year: today.getFullYear(),
-      month: today.getMonth() // 0-based
-    };
-  });
-  const [stats, setStats] = useState({
-    totalDays: 0,
-    availableDays: 0,
-    averageAvailability: 0,
-    minAvailability: 0,
-    maxAvailability: 0
-  });
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   const handleStationSelect = (selectedStationCode: string) => {
     setDropdownOpen(false);
     navigate(`/station-availability/${selectedStationCode}`);
+  };
+
+  const handlePreviousMonth = () => {
+    setSelectedMonth(prev => {
+      if (prev === 0) {
+        setSelectedYear(year => year - 1);
+        return 11;
+      }
+      return prev - 1;
+    });
+  };
+
+  const handleNextMonth = () => {
+    setSelectedMonth(prev => {
+      if (prev === 11) {
+        setSelectedYear(year => year + 1);
+        return 0;
+      }
+      return prev + 1;
+    });
   };
 
   const getCurrentStationName = () => {
@@ -86,8 +132,7 @@ const StationAvailabilityDetail = () => {
         }));
         setStations(stationList);
       }
-    } catch (error) {
-      console.error('Error fetching stations:', error);
+    } catch {
       // Fallback: create station from current stationCode
       const fallbackStation: Station = {
         kode_stasiun: stationCode!
@@ -98,42 +143,19 @@ const StationAvailabilityDetail = () => {
     }
   }, [stationCode]);
 
-  const getMonthName = (month: number) => {
-    const monthNames = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
-    ];
-    return monthNames[month];
-  };
-
-  const fetchStationData = useCallback(async () => {
+  const fetchCurrentMonthData = useCallback(async () => {
     if (!stationCode) return;
 
     setLoading(true);
     setError(null);
-    // Reset stats when fetching new data
-    setStats({
-      totalDays: 0,
-      availableDays: 0,
-      averageAvailability: 0,
-      minAvailability: 0,
-      maxAvailability: 0
-    });
 
     try {
-      // Get data dari awal bulan hingga akhir bulan yang dipilih
-      const startDate = new Date(selectedMonth.year, selectedMonth.month, 1); // Awal bulan
-      
-      // Hitung akhir bulan dengan benar - hari terakhir dari bulan yang dipilih
-      const endDate = new Date(selectedMonth.year, selectedMonth.month + 1, 0); // Akhir bulan
-      
-      // Jika bulan yang dipilih adalah bulan saat ini, gunakan hari ini sebagai end date
-      const today = new Date();
-      const isCurrentMonth = selectedMonth.year === today.getFullYear() && selectedMonth.month === today.getMonth();
-      const actualEndDate = isCurrentMonth ? today : endDate;
-      
-      const start_date = startDate.toISOString().split('T')[0];
-      const end_date = actualEndDate.toISOString().split('T')[0];
+      const startDate = new Date(selectedYear, selectedMonth, 1);
+      const endDate = new Date(selectedYear, selectedMonth + 1, 0); // Last day of selected month
+
+      // Use local date formatting to avoid timezone issues
+      const start_date = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
+      const end_date = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
 
       const response = await axiosInstance.get(`/api/availability/${stationCode}`, {
         params: {
@@ -142,60 +164,62 @@ const StationAvailabilityDetail = () => {
         },
       });
 
-      const apiResponse: APIResponse = response.data;
+      if (response.data.success && response.data.data && response.data.data[stationCode]) {
+        const stationData = response.data.data[stationCode];
 
-      if (apiResponse.success && apiResponse.data[stationCode]) {
-        const stationData = apiResponse.data[stationCode];
+        // Create a map of existing data by day
+        const dataByDay: { [key: number]: number | null } = {};
+        stationData.forEach((record: AvailabilityRecord) => {
+          const date = new Date(record.timestamp);
+          const day = date.getDate();
 
-        // Fetch station codes from the new API endpoint
-        fetchStations();
-
-        // Create data points directly from API response, filtered for selected month only
-        const allDaysInMonth: DailyDataPoint[] = stationData
-          .filter((record) => {
-            const date = new Date(record.timestamp);
-            return date.getFullYear() === selectedMonth.year && date.getMonth() === selectedMonth.month;
-          })
-          .map((record) => {
-            const date = new Date(record.timestamp);
-            const dayOfMonth = date.getDate();
-            
-            return {
-              date: record.timestamp.split('T')[0], // Use API timestamp date directly
-              availability: record.availability,
-              formattedDate: `${getMonthName(selectedMonth.month).slice(0, 3)} ${dayOfMonth}`,
-              dayOfWeek: DAYS_OF_WEEK[date.getDay()]
-            };
-          });
-
-        // Sort data by date to ensure chronological order
-        allDaysInMonth.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-        setDailyData(allDaysInMonth);
-
-        // Calculate statistics based on complete month data
-        const validData = allDaysInMonth.filter(d => d.availability !== null);
-        const availabilityValues = validData.map(d => d.availability!);
-
-        setStats({
-          totalDays: allDaysInMonth.length,
-          availableDays: validData.length,
-          averageAvailability: availabilityValues.length > 0
-            ? Math.round((availabilityValues.reduce((sum, val) => sum + val, 0) / availabilityValues.length) * 100) / 100
-            : 0,
-          minAvailability: availabilityValues.length > 0 ? Math.min(...availabilityValues) : 0,
-          maxAvailability: availabilityValues.length > 0 ? Math.max(...availabilityValues) : 0
+          dataByDay[day] = record.availability;
         });
+
+        // Get number of days in selected month with validation
+        const getDaysInMonth = (year: number, month: number): number => {
+          // Validate month range (0-11)
+          if (month < 0 || month > 11) {
+            return 31; // fallback to maximum days
+          }
+          // Validate year range (reasonable range)
+          if (year < 2000 || year > 2100) {
+            return 31; // fallback
+          }
+          return new Date(year, month + 1, 0).getDate();
+        };
+
+        const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
+
+        // Create chart data points for all days in the month
+        const chartPoints: ChartDataPoint[] = [];
+
+        for (let day = 1; day <= daysInMonth; day++) {
+          const date = new Date(selectedYear, selectedMonth, day);
+          const availability = dataByDay[day] !== undefined ? dataByDay[day]! : 0; // Use 0 for missing data
+          const dateString = date.toISOString().split('T')[0];
+
+          chartPoints.push({
+            date: dateString,
+            availability: availability,
+            day: day,
+            color: getChartColorForValue(availability)
+          });
+        }
+
+        setChartData(chartPoints);
       } else {
-        setError("Station data not found");
+        setError("No data available for selected month");
+        setChartData([]);
       }
-    } catch (err) {
-      console.error("Error fetching station data:", err);
-      setError("Failed to load station data");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Failed to load current month data: ${errorMessage}`);
+      setChartData([]);
     } finally {
       setLoading(false);
     }
-  }, [stationCode, selectedMonth, fetchStations]);
+  }, [stationCode, selectedMonth, selectedYear]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -215,18 +239,15 @@ const StationAvailabilityDetail = () => {
       return;
     }
 
-    fetchStationData();
-  }, [stationCode, fetchStationData]);
+    fetchStations();
+    fetchCurrentMonthData();
+  }, [stationCode, fetchStations, fetchCurrentMonthData]);
 
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    setSelectedMonth(prev => {
-      const newDate = new Date(prev.year, prev.month + (direction === 'next' ? 1 : -1), 1);
-      return {
-        year: newDate.getFullYear(),
-        month: newDate.getMonth()
-      };
-    });
-  };
+  useEffect(() => {
+    if (stationCode) {
+      fetchCurrentMonthData();
+    }
+  }, [selectedMonth, selectedYear, fetchCurrentMonthData, stationCode]);
 
   if (loading) {
     return (
@@ -261,7 +282,7 @@ const StationAvailabilityDetail = () => {
                     </span>
                     <ChevronDown size={14} className={`text-gray-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
-                  
+
                   {dropdownOpen && (
                     <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-10 min-w-[180px] max-h-48 overflow-y-auto">
                       {stations.map((station) => (
@@ -309,32 +330,11 @@ const StationAvailabilityDetail = () => {
               <p className="text-red-600 text-sm">{error}</p>
             </div>
 
-            {/* Chart Section with Navigation */}
-            <div className="bg-white p-4 rounded-xl shadow mb-4">
-              <div className="flex items-center justify-center gap-4 mb-4">
-                <button
-                  onClick={() => navigateMonth('prev')}
-                  className="flex items-center gap-1 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-md text-sm font-medium transition-colors"
-                >
-                  <ChevronLeft size={16} />
-                  Previous
-                </button>
-
-                <h2 className="text-xl font-semibold text-gray-700 min-w-[200px] text-center">
-                  {getMonthName(selectedMonth.month)} {selectedMonth.year}
-                </h2>
-
-                <button
-                  onClick={() => navigateMonth('next')}
-                  disabled={selectedMonth.year === new Date().getFullYear() && selectedMonth.month === new Date().getMonth()}
-                  className="flex items-center gap-1 px-3 py-1 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 rounded-md text-sm font-medium transition-colors"
-                >
-                  Next
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-              <div className="h-80 flex items-center justify-center">
-                <p className="text-gray-500">No data available for selected month</p>
+            <div className="bg-white p-6 rounded-xl shadow">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Station Information</h2>
+              <div className="text-center py-12">
+                <p className="text-gray-500">Station availability data will be displayed here</p>
+                <p className="text-sm text-gray-400 mt-2">Chart functionality has been removed</p>
               </div>
             </div>
           </div>
@@ -363,7 +363,7 @@ const StationAvailabilityDetail = () => {
                     </span>
                     <ChevronDown size={14} className={`text-gray-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
-                  
+
                   {dropdownOpen && (
                     <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-10 min-w-[180px] max-h-48 overflow-y-auto">
                       {stations.map((station) => (
@@ -380,90 +380,88 @@ const StationAvailabilityDetail = () => {
                 </div>
               </div>
 
-              {/* Compact Statistics */}
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 flex-1 lg:ml-6">
-                <div className="text-center">
-                  <div className="text-xs text-gray-500 uppercase tracking-wide">Total Days</div>
-                  <div className="text-lg font-bold text-gray-900">{stats.totalDays}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xs text-gray-500 uppercase tracking-wide">Available</div>
-                  <div className="text-lg font-bold text-green-600">{stats.availableDays}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xs text-gray-500 uppercase tracking-wide">Average</div>
-                  <div className="text-lg font-bold text-blue-600">{stats.averageAvailability}%</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xs text-gray-500 uppercase tracking-wide">Min</div>
-                  <div className="text-lg font-bold text-orange-600">{stats.minAvailability}%</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xs text-gray-500 uppercase tracking-wide">Max</div>
-                  <div className="text-lg font-bold text-purple-600">{stats.maxAvailability}%</div>
-                </div>
-              </div>
+              <button
+                onClick={() => navigate('/station-availability')}
+                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                Back to Station Availability
+              </button>
             </div>
           </div>
 
           {/* Chart Section */}
           <div className="bg-white p-4 rounded-xl shadow mb-4">
-            <div className="flex items-center justify-center gap-4 mb-4">
-              <button
-                onClick={() => navigateMonth('prev')}
-                className="flex items-center gap-1 px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-md text-sm font-medium transition-colors"
-              >
-                <ChevronLeft size={16} />
-                Previous
-              </button>
-              
-              <h2 className="text-xl font-semibold text-gray-700 min-w-[200px] text-center">
-                {getMonthName(selectedMonth.month)} {selectedMonth.year}
-              </h2>
-              
-              <button
-                onClick={() => navigateMonth('next')}
-                disabled={selectedMonth.year === new Date().getFullYear() && selectedMonth.month === new Date().getMonth()}
-                className="flex items-center gap-1 px-3 py-1 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 rounded-md text-sm font-medium transition-colors"
-              >
-                Next
-                <ChevronRight size={16} />
-              </button>
+            <div className="flex items-center justify-center mb-4">
+              <div className="flex items-center gap-3 bg-gray-50 rounded-lg px-4 py-2">
+                <button
+                  onClick={handlePreviousMonth}
+                  className="p-1 hover:bg-gray-200 rounded transition-colors"
+                  title="Previous Month"
+                >
+                  <ChevronDown size={16} className="text-gray-600 rotate-90" />
+                </button>
+                <span className="text-lg font-semibold text-gray-800 min-w-[140px] text-center">
+                  {new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </span>
+                <button
+                  onClick={handleNextMonth}
+                  className="p-1 hover:bg-gray-200 rounded transition-colors"
+                  title="Next Month"
+                >
+                  <ChevronDown size={16} className="text-gray-600 -rotate-90" />
+                </button>
+              </div>
             </div>
             <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={dailyData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="formattedDate"
-                    fontSize={10}
-                    angle={-45}
-                    textAnchor="end"
-                    height={60}
-                    interval={0} // Changed from 0 to 1 to show every other label
-                  />
-                  <YAxis
-                    domain={[0, 100]}
-                    label={{ value: 'Availability (%)', angle: -90, position: 'insideLeft' }}
-                    fontSize={12}
-                  />
-                  <Tooltip
-                    formatter={(value: number) => [
-                      value !== null ? `${value}%` : 'No Data',
-                      'Availability'
-                    ]}
-                    labelFormatter={(label: string) => `Date: ${label}`}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="availability"
-                    stroke="#2563eb"
-                    strokeWidth={2}
-                    dot={{ fill: '#2563eb', strokeWidth: 2, r: 4 }}
-                    connectNulls={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="date"
+                      fontSize={12}
+                      label={{ value: 'Date', position: 'insideBottom', offset: -5 }}
+                    />
+                    <YAxis
+                      domain={[0, 100]}
+                      label={{ value: 'Availability (%)', angle: -90, position: 'insideLeft' }}
+                      fontSize={12}
+                    />
+                    <Tooltip
+                      formatter={(value: number) => [
+                        value > 0 ? `${value}%` : 'No Data',
+                        'Availability'
+                      ]}
+                      labelFormatter={(label: string) => `${label}`}
+                    />
+                    <Bar
+                      dataKey="availability"
+                      stroke="#1d4ed8"
+                      strokeWidth={1}
+                    >
+                      {chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center">
+                    <p className="text-gray-500">No data available for current month</p>
+                    <p className="text-sm text-gray-400 mt-2">Data will appear as it becomes available</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* Legend */}
+            <div className="flex justify-center gap-6 mt-4 text-sm">
+              {AVAILABILITY_CONFIG.ranges.map(range => (
+                <div key={range.key} className="flex items-center gap-2">
+                  <div className={`w-4 h-4 ${range.legendColor} rounded`}></div>
+                  <span>{range.label}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>

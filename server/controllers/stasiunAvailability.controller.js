@@ -127,8 +127,7 @@ export const getAllStationAvailability = async (req, res) => {
       if (channelKeys.length === 0) {
         return {
           timestamp: recordData.timestamp,
-          availability: null,
-          note: "No valid channels found (N, E, Z)"
+          availability: null
         };
       }
 
@@ -164,8 +163,7 @@ export const getAllStationAvailability = async (req, res) => {
       if (!apiStationSet.has(dbStationCode)) {
         filteredData[dbStationCode] = [{
           timestamp: start_date,
-          availability: null,
-          note: "Data not available in API for this date range"
+          availability: null
         }];
         missingInApiCount++;
         totalRecords += 1;
@@ -349,8 +347,7 @@ export const getStationAvailabilityByCode = async (req, res) => {
       if (channelKeys.length === 0) {
         return {
           timestamp: recordData.timestamp,
-          availability: null,
-          note: "No valid channels found (N, E, Z)"
+          availability: null
         };
       }
 
@@ -362,8 +359,7 @@ export const getStationAvailabilityByCode = async (req, res) => {
 
       return {
         timestamp: recordData.timestamp,
-        availability: Math.round(average * 100) / 100,
-        channels: channelKeys // Optional: untuk debugging
+        availability: Math.round(average * 100) / 100
       };
     };
 
@@ -376,8 +372,7 @@ export const getStationAvailabilityByCode = async (req, res) => {
       // Jika tidak ada data dari API, buat entry null
       processedData = [{
         timestamp: start_date,
-        availability: null,
-        note: "Data not available in API for this date range"
+        availability: null
       }];
       totalRecords = 1;
       console.log(`⚠️ No data available for station ${stationCode}, created null entry`);
