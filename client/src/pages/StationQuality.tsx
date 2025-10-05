@@ -18,6 +18,15 @@ import dayjs from "dayjs";
 // Registrasi elemen-elemen Chart.js
 ChartJS.register(ArcElement, Tooltip, Legend);
 
+const STATUS_CONFIG: { [key: string]: { label: string; color: string; textColor: string } } = {
+  "Baik": { label: "Baik", color: "#14b8a6", textColor: "text-white" },
+  "Cukup Baik": { label: "Cukup Baik", color: "#fb923c", textColor: "text-white" },
+  "Buruk": { label: "Buruk", color: "#ef4444", textColor: "text-white" },
+  "Mati": { label: "Mati", color: "#374151", textColor: "text-white" },
+  "No Data": { label: "No Data", color: "#374151", textColor: "text-white" },
+  "default": { label: "N/A", color: "#9ca3af", textColor: "text-white" },
+};
+
 // Interface data QC Summary
 interface QCSummary {
   code: string;
@@ -82,26 +91,18 @@ const triangleIcon = (color: string) =>
     iconAnchor: [7, 14],
   });
 
-// Fungsi pewarnaan berdasarkan result untuk peta (tidak berubah)
+// [DIUBAH] Fungsi pewarnaan sekarang menggunakan STATUS_CONFIG
 const getColorByResult = (result: string | null): string => {
-  switch (result) {
-    case "Baik": return "#14b8a6";       // Good - teal
-    case "Cukup Baik": return "#fb923c"; // Fair - orange
-    case "Buruk": return "#ef4444";       // Bad - red
-    case "No Data": return "#818cf8";     // No Data - indigo
-    case "Mati": return "#374151";       // Mati - gray
-    default: return "#979797";
-  }
+  return STATUS_CONFIG[result || "default"]?.color || STATUS_CONFIG.default.color;
 };
 
-// MapLegend (tidak berubah)
+// [DIUBAH] MapLegend: label Inggris konsisten dengan tabel & donut
 const MapLegend = () => {
   const legendItems = [
-    { color: "#14b8a6", label: "Baik" },
-    { color: "#fb923c", label: "Cukup Baik" },
-    { color: "#ef4444", label: "Buruk" },
-    { color: "#818cf8", label: "No Data" },
-    { color: "#374151", label: "Mati" },
+    { label: "Good", color: STATUS_CONFIG["Baik"].color },
+    { label: "Fair", color: STATUS_CONFIG["Cukup Baik"].color },
+    { label: "Poor", color: STATUS_CONFIG["Buruk"].color },
+    { label: "No Data", color: STATUS_CONFIG["Mati"].color }, // Gabungkan
   ];
 
   return (
@@ -127,6 +128,15 @@ const MapLegend = () => {
   );
 };
 
+// [DIUBAH] Fungsi mapping result ke kategori dashboard (hanya ada 4 kategori)
+const getDashboardCategory = (result: string | null): "GOOD" | "FAIR" | "POOR" | "NO DATA" => {
+  if (result === "Baik") return "GOOD";
+  if (result === "Cukup Baik") return "FAIR";
+  if (result === "Buruk") return "POOR";
+  return "NO DATA"; // "Mati" dan "No Data" masuk ke sini
+};
+
+
 // Fungsi getStatusText untuk tabel (tidak berubah)
 const getStatusText = (result: string | null, quality: number | null): string => {
   if (result === 'Mati') return 'Mati';
@@ -137,26 +147,29 @@ const getStatusText = (result: string | null, quality: number | null): string =>
   return 'Buruk';
 };
 
-// Komponen untuk Grafik Donat (Diperbaiki)
+// Fungsi mapping result ke kategori dashboard
+// const getDashboardCategory = (result: string | null): "GOOD" | "FAIR" | "BAD" | "NO DATA" => {
+//   if (result === "Baik") return "GOOD";
+//   if (result === "Cukup Baik") return "FAIR";
+//   if (result === "Buruk") return "BAD";
+//   if (result === "Mati") return "NO DATA";
+//   return "NO DATA";
+// };
+
+// Komponen untuk Grafik Donat
 const QualityDonutChart = ({ data }: { data: StasiunDenganSummary[] }) => {
   const chartData = useMemo(() => {
-    // Kategori dan warna disamakan persis dengan legenda peta
+    // [DIUBAH] Warna untuk NO DATA sekarang hitam/gelap
     const categories: { [key: string]: { count: number; color: string } } = {
-      'Baik': { count: 0, color: '#14b8a6' },
-      'Cukup Baik': { count: 0, color: '#fb923c' },
-      'Buruk': { count: 0, color: '#ef4444' },
-      'No Data': { count: 0, color: '#818cf8' },
-      'Mati': { count: 0, color: '#374151' },
+      "GOOD": { count: 0, color: STATUS_CONFIG["Baik"].color },
+      "FAIR": { count: 0, color: STATUS_CONFIG["Cukup Baik"].color },
+      "POOR": { count: 0, color: STATUS_CONFIG["Buruk"].color },
+      "NO DATA": { count: 0, color: STATUS_CONFIG["No Data"].color },
     };
 
     data.forEach(station => {
-      const status = station.result;
-      if (status && categories[status]) {
-        categories[status].count++;
-      } else {
-        // Jika status null atau tidak terdaftar, masukkan ke 'No Data'
-        categories['No Data'].count++;
-      }
+      const cat = getDashboardCategory(station.result);
+      categories[cat].count++;
     });
 
     return Object.entries(categories).map(([label, { count, color }]) => ({
@@ -178,6 +191,7 @@ const QualityDonutChart = ({ data }: { data: StasiunDenganSummary[] }) => {
       },
     ],
   };
+
 
   const options = {
     responsive: true,
@@ -201,6 +215,7 @@ const QualityDonutChart = ({ data }: { data: StasiunDenganSummary[] }) => {
 const StationQuality = () => {
   const [stationData, setStationData] = useState<StationMetadata[]>([]);
   const [qcSummaryData, setQcSummaryData] = useState<QCSummary[]>([]);
+  const [siteQualityMap, setSiteQualityMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<Record<string, any>>({});
   const [filterConfig, setFilterConfig] = useState<Record<string, FilterConfig>>({});
@@ -229,6 +244,24 @@ const StationQuality = () => {
     }
   };
 
+  // Ambil site_quality untuk semua stasiun
+  const fetchAllSiteQuality = async (stationCodes: string[]) => {
+    const map: Record<string, string> = {};
+    await Promise.all(
+      stationCodes.map(async (code) => {
+        try {
+          const res = await axiosServer.get(`/api/qc/site/detail/${code}`);
+          if (res.data && res.data[0] && res.data[0].site_quality) {
+            map[code] = res.data[0].site_quality;
+          }
+        } catch {
+          map[code] = "-";
+        }
+      })
+    );
+    setSiteQualityMap(map);
+  };
+
   useEffect(() => {
     const savedFilters = localStorage.getItem('stationQualityFilters');
     if (savedFilters) {
@@ -239,8 +272,10 @@ const StationQuality = () => {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('stationQualityFilters', JSON.stringify(filters));
     if (stationData.length > 0) {
+      const codes = stationData.map(s => s.kode_stasiun);
+      fetchAllSiteQuality(codes);
+
       const getUniqueOptions = (key: keyof StationMetadata): string[] => {
         const allValues = stationData.map(item => item[key]);
         return [...new Set(allValues)].filter(Boolean).sort() as string[];
@@ -303,7 +338,8 @@ const StationQuality = () => {
   const handleDownloadCSV = () => {
     const dataToDownload = filteredData.map(item => ({
       ...item,
-      summary_kualitas: getStatusText(item.result, item.quality_percentage),
+      // summary_kualitas: getStatusText(item.result, item.quality_percentage),
+      summary_kualitas: item.result,
       persentase_kualitas: item.quality_percentage !== null ? `${item.quality_percentage.toFixed(1)}%` : 'N/A',
     }));
     if (dataToDownload.length === 0) return;
@@ -329,30 +365,38 @@ const StationQuality = () => {
     { accessorKey: "stasiun_id", header: "No" },
     { accessorKey: "kode_stasiun", header: "Kode Stasiun" },
     { accessorKey: "lokasi", header: "Lokasi" },
-    { accessorKey: "jaringan", header: "Jaringan" },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => {
-        const status = row.original.status;
-        const colorClass = status === "Aktif" ? "text-red-600" : "text-green-600";
-        return <span className={`font-semibold ${colorClass}`}>{status}</span>;
-      },
-    },
+    { accessorKey: "provinsi", header: "Province" }, // Tambahkan kolom province di sebelah lokasi
+    { accessorKey: "jaringan", header: "Group" },
     { accessorKey: "prioritas", header: "Prioritas" },
     { accessorKey: "upt_penanggung_jawab", header: "UPT" },
     {
       id: "summary",
       header: "Summary Kualitas",
       cell: ({ row }) => {
-        const { result, quality_percentage } = row.original;
-        if (quality_percentage === undefined || quality_percentage === null) {
-          return <span className="text-gray-500">-</span>;
-        }
+        // Konversi result Indonesia ke label Inggris untuk StatusBadge
+        const { result } = row.original;
+        let label = "-";
+        if (result === "Baik") label = "Good";
+        else if (result === "Cukup Baik") label = "Fair";
+        else if (result === "Buruk") label = "Poor";
+        else if (result === "Mati" || result === null) label = "No Data";
         return (
           <div className="flex flex-col justify-center">
-            <StatusBadge value={getStatusText(result, quality_percentage)} />
+            <StatusBadge value={label} />
           </div>
+        );
+      },
+    },
+    {
+      id: "site_quality",
+      header: "Site Quality",
+      cell: ({ row }) => {
+        const code = row.original.kode_stasiun;
+        const siteQuality = siteQualityMap[code] || "-";
+        return (
+          <span className="block w-full py-2 rounded-full text-lg font-bold text-center bg-blue-50 text-blue-800">
+            {siteQuality}
+          </span>
         );
       },
     },

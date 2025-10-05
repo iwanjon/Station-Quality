@@ -358,17 +358,51 @@ const StationDetail = () => {
         {/* Latency Chart */}
         <LazyLatencyChart stationCode={stationCode} />
 
-        {/* % Above NHNM & Linear Dead Channel */}
-        <ChartGridSection title="% Above NHNM & Linear Dead Channel">
+        {/* % Below NLNM & % Above NHNM */}
+        <ChartGridSection title="% Below NLNM & % Above NHNM">
           {CHANNELS.map((ch) => (
-            <div key={`nhnm-ldc-${ch}`}>
+            <div key={`nlnm-nhnm-${ch}`}>
               <ChartSlide
                 channel={ch}
-                titlePrefix={`% Above NHNM & Linear Dead - SH${ch}`}
+                titlePrefix={`% Below NLNM & % Above NHNM - SH${ch}`}
                 data={groupedByChannel[ch]}
                 lines={[
-                  { dataKey: "perc_above_nhnm", stroke: "#6366f1", },
-                  { dataKey: "linear_dead_channel", stroke: "#ef4444", },
+                  { dataKey: "perc_below_nlnm", stroke: "#10b981" },
+                  { dataKey: "perc_above_nhnm", stroke: "#ef4444" },
+                ]}
+                yAxisProps={{ domain: [0, 100] }}
+              />
+            </div>
+          ))}
+        </ChartGridSection>
+
+        {/* Linear Dead Channel */}
+        <ChartGridSection title="Linear Dead Channel">
+          {CHANNELS.map((ch) => (
+            <div key={`ldc-${ch}`}>
+              <ChartSlide
+                channel={ch}
+                titlePrefix={`Linear Dead Channel - SH${ch}`}
+                data={groupedByChannel[ch]}
+                lines={[
+                  { dataKey: "linear_dead_channel", stroke: "#6366f1" },
+                ]}
+                yAxisProps={{ domain: [0, "auto"] }}
+              />
+            </div>
+          ))}
+        </ChartGridSection>
+
+        {/* GSN Dead Channel */}
+        <ChartGridSection title="GSN Dead Channel">
+          {CHANNELS.map((ch) => (
+            <div key={`gsn-${ch}`}>
+              <ChartSlide
+                channel={ch}
+                titlePrefix={`GSN Dead Channel - SH${ch}`}
+                data={groupedByChannel[ch]}
+                lines={[
+                  { dataKey: "gsn_dead_channel", stroke: "#f59e0b" },
                 ]}
                 yAxisProps={{ domain: [0, "auto"] }}
               />

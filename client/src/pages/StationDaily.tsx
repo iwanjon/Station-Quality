@@ -5,10 +5,9 @@ import axiosServer from '../utilities/AxiosServer';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import DataTable from "../components/DataTable";
 import dayjs from "dayjs";
 
-// [BARU] Interface untuk data stasiun yang lebih lengkap
+// Interface untuk data stasiun yang lebih lengkap
 interface StationData {
   stasiun_id: number;
   kode_stasiun: string;
@@ -227,6 +226,22 @@ const StationDaily = () => {
   const signalCharts = chartsData.filter(c => c.type === "signal");
   const psdCharts = chartsData.filter(c => c.type === "psd");
 
+  const simpleTableColumns = [
+    { accessorKey: "channel", header: "Channel" },
+    { accessorKey: "rms", header: "RMS" },
+    { accessorKey: "amplitude_ratio", header: "Amp. Ratio" },
+    { accessorKey: "num_gap", header: "Gaps" },
+    { accessorKey: "num_overlap", header: "Overlaps" },
+    { accessorKey: "num_spikes", header: "Spikes" },
+    { accessorKey: "linear_dead_channel", header: "Linear Dead" },
+    { accessorKey: "gsn_dead_channel", header: "GSN Dead" },
+    { accessorKey: "sp_percentage", header: "% Short Period" },
+    { accessorKey: "bw_percentage", header: "% Body Wave" },
+    { accessorKey: "lp_percentage", header: "% Long Period" },
+    { accessorKey: "perc_below_nlnm", header: "% Below NLNM" },
+    { accessorKey: "perc_above_nhnm", header: "% Above NHNM" },
+  ];
+
   return (
     <MainLayout>
       <div className="p-4 sm:p-6 space-y-8 bg-gray-50 min-h-screen">
@@ -257,7 +272,7 @@ const StationDaily = () => {
         </header>
         <main className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-2xl shadow-md space-y-4">
-            {/* [DIUBAH] Tampilkan data stasiun secara dinamis dari state stationMeta */}
+            {/* Tampilkan data stasiun secara dinamis dari state stationMeta */}
             <div>
               {stationMeta ? (
                 <dl>
@@ -335,7 +350,43 @@ const StationDaily = () => {
           {loadingTable ? (
             <div className="text-center text-gray-500 py-8">Memuat data...</div>
           ) : (
-            <DataTable columns={columns} data={tableData} />
+            <div className="overflow-x-auto">
+              <table className="min-w-full border border-gray-300 text-center">
+                <thead className="bg-gray-100">
+                  <tr>
+                    {simpleTableColumns.map((col) => (
+                      <th
+                        key={col.accessorKey}
+                        className="border p-2 text-sm font-semibold"
+                      >
+                        {col.header}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {tableData && tableData.length > 0 ? (
+                    tableData.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50">
+                        {simpleTableColumns.map((col) => (
+                          <td key={col.accessorKey} className="border p-2 text-sm">
+                            {row && row[col.accessorKey] !== undefined && row[col.accessorKey] !== null
+                              ? row[col.accessorKey]
+                              : "-"}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={simpleTableColumns.length} className="text-center p-4 text-gray-500">
+                        No data available
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       </div>
