@@ -6,7 +6,7 @@ import dayjs from "dayjs";
 
 const router = Router();
 
-// [ENDPOINT BARU] Ambil data detail site quality control per stasiun
+// Ambil data detail site quality control per stasiun
 router.get("/site/detail/:code", async (req, res) => {
   const { code } = req.params;
   const cacheKey = `qc-sitedetail:${code}`;
@@ -15,10 +15,15 @@ router.get("/site/detail/:code", async (req, res) => {
     const data = await cached(cacheKey, 86400, () => // Cache untuk 1 hari
       fetchQCSiteDetail(code)
     );
+    // Selalu kembalikan status 200 dan array dengan site_quality "-" jika data tidak ada
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      return res.status(200).json([{ code, site_quality: "-" }]);
+    }
     res.json(data);
   } catch (err) {
     console.error(`Error in /site/detail/${code}:`, err);
-    res.status(500).json({ error: "Failed to fetch QC site detail" });
+    // Jika error, tetap kembalikan array dengan site_quality "-"
+    res.status(200).json([{ code, site_quality: "-" }]);
   }
 });
 
