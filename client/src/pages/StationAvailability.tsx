@@ -260,8 +260,19 @@ const StationAvailability = () => {
     const firstDayOfRange = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
     const lastDayOfRange = new Date(selectedMonth.endYear, selectedMonth.endMonth + 1, 0);
 
-    const start_date = firstDayOfRange.toISOString().split('T')[0];
-    const end_date = lastDayOfRange.toISOString().split('T')[0];
+    // Avoid timezone conversion issues by using local date components
+    const start_date = `${firstDayOfRange.getFullYear()}-${String(firstDayOfRange.getMonth() + 1).padStart(2, '0')}-${String(firstDayOfRange.getDate()).padStart(2, '0')}`;
+    const end_date = `${lastDayOfRange.getFullYear()}-${String(lastDayOfRange.getMonth() + 1).padStart(2, '0')}-${String(lastDayOfRange.getDate()).padStart(2, '0')}`;
+
+    console.log('API Request Debug:', {
+      endpoint: '/api/availability',
+      params: { start_date, end_date },
+      selectedMonth,
+      firstDayOfRange: firstDayOfRange.toISOString(),
+      lastDayOfRange: lastDayOfRange.toISOString(),
+      timezoneOffset: firstDayOfRange.getTimezoneOffset(),
+      localDates: { start_date, end_date }
+    });
 
     axiosInstance
       .get("/api/availability", {

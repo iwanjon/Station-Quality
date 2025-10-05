@@ -169,9 +169,12 @@ const StationAvailabilityDetail = () => {
 
         // Create a map of existing data by day
         const dataByDay: { [key: number]: number | null } = {};
+
         stationData.forEach((record: AvailabilityRecord) => {
-          const date = new Date(record.timestamp);
-          const day = date.getDate();
+          // Extract day from date string directly to avoid timezone issues
+          const dateString = record.timestamp.split('T')[0]; // Get YYYY-MM-DD part only
+          const dateParts = dateString.split('-');
+          const day = parseInt(dateParts[2]); // Get day from YYYY-MM-DD
 
           dataByDay[day] = record.availability;
         });
@@ -195,9 +198,12 @@ const StationAvailabilityDetail = () => {
         const chartPoints: ChartDataPoint[] = [];
 
         for (let day = 1; day <= daysInMonth; day++) {
-          const date = new Date(selectedYear, selectedMonth, day);
+          // Use string formatting to avoid timezone issues (same as API data parsing)
+          const monthStr = String(selectedMonth + 1).padStart(2, '0');
+          const dayStr = String(day).padStart(2, '0');
+          const dateString = `${selectedYear}-${monthStr}-${dayStr}`;
+
           const availability = dataByDay[day] !== undefined ? dataByDay[day]! : 0; // Use 0 for missing data
-          const dateString = date.toISOString().split('T')[0];
 
           chartPoints.push({
             date: dateString,
@@ -419,7 +425,20 @@ const StationAvailabilityDetail = () => {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="date"
-                      fontSize={12}
+                      fontSize={10}
+                      interval={0}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                      tickFormatter={(value) => {
+                        // value is date string like "2025-10-01"
+                        const dateStr = value as string;
+                        const date = new Date(dateStr + 'T00:00:00'); // Add time to ensure proper parsing
+                        return date.toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: '2-digit'
+                        });
+                      }}
                       label={{ value: 'Date', position: 'insideBottom', offset: -5 }}
                     />
                     <YAxis
@@ -432,7 +451,15 @@ const StationAvailabilityDetail = () => {
                         value > 0 ? `${value}%` : 'No Data',
                         'Availability'
                       ]}
-                      labelFormatter={(label: string) => `${label}`}
+                      labelFormatter={(label: string) => {
+                        // label is date string like "2025-10-01"
+                        const date = new Date(label + 'T00:00:00');
+                        return date.toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        });
+                      }}
                     />
                     <Bar
                       dataKey="availability"
