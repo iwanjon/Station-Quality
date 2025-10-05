@@ -1,18 +1,44 @@
 FROM node:lts-alpine
 
-WORKDIR /app
+# Mengatur direktori kerja di dalam container
+WORKDIR /usr/src/app
 
-# Install dependencies
+# Salin file package.json dan package-lock.json terlebih dahulu
 COPY package*.json ./
-RUN npm install
 
-# Install nodemon global
-RUN npm install 
+# Install dependensi yang dibutuhkan untuk produksi
+RUN npm install --omit=dev
 
+# Salin semua file proyek ke dalam direktori kerja
 COPY . .
 
+# Expose port yang digunakan oleh aplikasi
 EXPOSE 5000
 
-# Jalankan backend dengan nodemon
-CMD [ "npm", "run", "dev" ]
-# CMD ["nodemon", "--legacy-watch", "server.js"]
+# Install PM2 secara global di dalam container
+RUN npm install -g pm2
+
+# [PERUBAHAN UTAMA] Jalankan aplikasi menggunakan PM2
+# Perintah ini akan membaca ecosystem.config.js dan menjalankan kedua proses (server & scheduler)
+CMD ["pm2-runtime", "start", "ecosystem.config.js"]
+
+# FROM node:lts-alpine
+
+# WORKDIR /app
+
+# # Install dependencies
+# COPY package*.json ./
+
+
+# # Install nodemon global
+# RUN npm install 
+
+# COPY . .
+
+# EXPOSE 5000
+
+# RUN npm install -g pm2
+
+# # Jalankan backend dengan nodemon
+# CMD [ "npm", "run", "dev" ]
+# # CMD ["nodemon", "--legacy-watch", "server.js"]

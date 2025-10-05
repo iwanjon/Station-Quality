@@ -56,6 +56,12 @@ interface QCSummary {
   primaryColor: string;
 }
 
+interface StackedBarData {
+  date: string;
+  ON: number;
+  OFF: number;
+}
+
 // --- FUNGSI HELPER (TIDAK BERUBAH) ---
 const triangleIcon = (color: string) =>
   L.divIcon({
@@ -151,19 +157,19 @@ const QUALITY_LABELS = [
 ];
 
 // Dummy data untuk 7 hari terakhir (mulai dari kemarin, urut mundur)
-const getLast7Days = () => {
-  const days = [];
-  for (let i = 6; i >= 0; i--) {
-    days.push(dayjs().subtract(i + 1, "day").format("YYYY-MM-DD"));
-  }
-  return days;
-};
+// const getLast7Days = () => {
+//   const days = [];
+//   for (let i = 6; i >= 0; i--) {
+//     days.push(dayjs().subtract(i + 1, "day").format("YYYY-MM-DD"));
+//   }
+//   return days;
+// };
 
-const dummyStackedBarData = getLast7Days().map((date, idx) => ({
-  date,
-  ON: Math.floor(400 + Math.random() * 100),   // Dummy: 400-500 ON
-  OFF: Math.floor(50 + Math.random() * 50),    // Dummy: 50-100 OFF
-}));
+// const dummyStackedBarData = getLast7Days().map((date, idx) => ({
+//   date,
+//   ON: Math.floor(400 + Math.random() * 100),   // Dummy: 400-500 ON
+//   OFF: Math.floor(50 + Math.random() * 50),    // Dummy: 50-100 OFF
+// }));
 
 const Dashboard = () => {
   const [combinedData, setCombinedData] = useState<QCSummary[]>([]);
@@ -171,6 +177,7 @@ const Dashboard = () => {
   const [totalStationCount, setTotalStationCount] = useState<number>(0);
   const [registeredCount, setRegisteredCount] = useState<number>(0);
   const [inactiveCount, setInactiveCount] = useState<number>(0);
+  const [stackedBarData, setStackedBarData] = useState<StackedBarData[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -198,7 +205,6 @@ const Dashboard = () => {
 
         const finalData = qcData.map((station) => {
           const slmonStation = slmonMap.get(station.code);
-
           const allLatencyStrings: string[] = [];
           let primaryLatencyValue: number | null = null;
           let primaryColorValue: string = "#979797";
@@ -254,14 +260,27 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-  // Hitung ON/OFF berdasarkan latensi
-  const totalOn = combinedData.filter(
-    (s) => s.primaryLatency !== null && s.primaryLatency < 86400 && s.result !== "Mati"
-  ).length;
-  const totalOff = combinedData.filter(
-    (s) => s.primaryLatency === null || s.primaryLatency >= 86400 || s.result === "Mati"
-  ).length;
+  useEffect(() => {
+    const fetchStackedBarData = async () => {
+      try {
+        const res = await axiosServer.get<StackedBarData[]>('/api/latency/history/7days');
+        // Format tanggal agar lebih pendek untuk label chart
+        const formattedData = res.data.map(item => ({
+          ...item,
+          date: dayjs(item.date).format('DD MMM') // Contoh: '05 Oct'
+        }));
+        setStackedBarData(formattedData);
+      } catch (error) {
+        console.error('Gagal mengambil data untuk stacked bar chart:', error);
+      }
+    };
+    
+    fetchStackedBarData();
+  }, []);
 
+  // Hitung ON/OFF berdasarkan latensi
+  const totalOn = combinedData.filter((s) => s.primaryLatency !== null && s.primaryLatency < 86400 && s.result !== "Mati").length;
+  const totalOff = combinedData.filter((s) => s.primaryLatency === null || s.primaryLatency >= 86400 || s.result === "Mati").length;
   // Kalkulasi panel status tidak diubah
   const goodCount = combinedData.filter((s) => s.result === "Baik").length;
   const fairCount = combinedData.filter((s) => s.result === "Cukup Baik").length;
@@ -271,10 +290,7 @@ const Dashboard = () => {
   ).length;
 
   // --- AVAILABILITY PIECHART LOGIC ---
-  const [availabilityPieData, setAvailabilityPieData] = useState<
-    { name: string; value: number }[]
-  >([]);
-
+  const [availabilityPieData, setAvailabilityPieData] = useState<{ name: string; value: number }[]>([]);
   useEffect(() => {
     // Fetch availability data for yesterday
     const fetchAvailability = async () => {
@@ -431,31 +447,19 @@ const Dashboard = () => {
             </div>
           </div>
             {/* STACKED BAR CHART: ON/OFF 7 HARI */}
-            <div
-              className="bg-white rounded-xl p-4 mt-2 flex flex-col items-center border border-gray-300 shadow-md"
-              style={{
-                minHeight: 180,
-                maxHeight: 220,
-                height: 215, // Lebih kecil dari tinggi map (600px)
-              }}
-            >
-              <h2 className="text-base font-bold mb-2 text-gray-700">
-                Stasiun ON/OFF 7 Hari Terakhir
-              </h2>
-              <RechartsResponsiveContainer width="100%" height={120}>
-                <BarChart
-                  data={dummyStackedBarData}
-                  margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
-                >
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <RechartsTooltip />
-                  <Legend verticalAlign="top" height={30} />
-                  <Bar dataKey="ON" stackId="a" fill="#16a34a" name="ON" />
-                  <Bar dataKey="OFF" stackId="a" fill="#ef4444" name="OFF" />
-                </BarChart>
-              </RechartsResponsiveContainer>
-            </div>
+          <div className="bg-white rounded-xl p-4 mt-4 flex flex-col items-center border border-gray-300 shadow-md" style={{ minHeight: 220 }}>
+            <h2 className="text-base font-bold mb-2 text-gray-700">Stasiun ON/OFF 7 Hari Terakhir</h2>
+            <RechartsResponsiveContainer width="100%" height={180}>
+              <BarChart data={stackedBarData} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <RechartsTooltip />
+                <Legend verticalAlign="top" height={30} />
+                <Bar dataKey="ON" stackId="a" fill="#16a34a" name="ON" />
+                <Bar dataKey="OFF" stackId="a" fill="#ef4444" name="OFF" />
+              </BarChart>
+            </RechartsResponsiveContainer>
+          </div> 
         </div>
       </div>
 

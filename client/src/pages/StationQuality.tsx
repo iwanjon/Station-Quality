@@ -136,50 +136,6 @@ const getDashboardCategory = (result: string | null): "GOOD" | "FAIR" | "POOR" |
   return "NO DATA"; // "Mati" dan "No Data" masuk ke sini
 };
 
-// Fungsi pewarnaan berdasarkan result untuk peta (tidak berubah)
-// const getColorByResult = (result: string | null): string => {
-//   switch (result) {
-//     case "Baik": return "#14b8a6";       // Good - teal
-//     case "Cukup Baik": return "#fb923c"; // Fair - orange
-//     case "Buruk": return "#ef4444";       // Bad - red
-//     case "No Data": return "#818cf8";     // No Data - indigo
-//     case "Mati": return "#374151";       // Mati - gray
-//     default: return "#979797";
-//   }
-// };
-
-// MapLegend (tidak berubah)
-// const MapLegend = () => {
-//   const legendItems = [
-//     { color: "#14b8a6", label: "Baik" },
-//     { color: "#fb923c", label: "Cukup Baik" },
-//     { color: "#ef4444", label: "Buruk" },
-//     { color: "#818cf8", label: "No Data" },
-//     { color: "#374151", label: "Mati" },
-//   ];
-
-//   return (
-//     <div className="absolute bottom-5 left-5 z-[1000] bg-white/70 backdrop-blur-sm p-3 rounded-lg shadow-lg">
-//       <h3 className="font-bold mb-2 text-sm">Keterangan</h3>
-//       <ul>
-//         {legendItems.map((item) => (
-//           <li key={item.label} className="flex items-center mb-1 text-xs">
-//             <span
-//               className="w-3 h-3 inline-block mr-2"
-//               style={{
-//                 width: 0, height: 0,
-//                 borderLeft: '6px solid transparent',
-//                 borderRight: '6px solid transparent',
-//                 borderBottom: `12px solid ${item.color}`,
-//               }}
-//             ></span>
-//             {item.label}
-//           </li>
-//         ))}
-//       </ul>
-//     </div>
-//   );
-// };
 
 // Fungsi getStatusText untuk tabel (tidak berubah)
 const getStatusText = (result: string | null, quality: number | null): string => {
@@ -236,40 +192,6 @@ const QualityDonutChart = ({ data }: { data: StasiunDenganSummary[] }) => {
     ],
   };
 
-// Komponen untuk Grafik Donat (hanya GOOD, FAIR, BAD, NO DATA)
-// const QualityDonutChart = ({ data }: { data: StasiunDenganSummary[] }) => {
-//   const chartData = useMemo(() => {
-//     const categories: { [key: string]: { count: number; color: string } } = {
-//       "GOOD": { count: 0, color: "#14b8a6" },
-//       "FAIR": { count: 0, color: "#fb923c" },
-//       "BAD": { count: 0, color: "#ef4444" },
-//       "NO DATA": { count: 0, color: "#818cf8" },
-//     };
-
-//     data.forEach(station => {
-//       const cat = getDashboardCategory(station.result);
-//       categories[cat].count++;
-//     });
-
-//     return Object.entries(categories).map(([label, { count, color }]) => ({
-//       label: `${label} (${count})`,
-//       count,
-//       color,
-//     }));
-//   }, [data]);
-
-//   const dataForChart = {
-//     labels: chartData.map(d => d.label),
-//     datasets: [
-//       {
-//         label: 'Jumlah Stasiun',
-//         data: chartData.map(d => d.count),
-//         backgroundColor: chartData.map(d => d.color),
-//         borderColor: '#ffffff',
-//         borderWidth: 2,
-//       },
-//     ],
-//   };
 
   const options = {
     responsive: true,

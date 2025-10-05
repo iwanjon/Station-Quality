@@ -6,7 +6,7 @@ import dayjs from "dayjs";
 
 const router = Router();
 
-// Ambil data detail site quality control per stasiun
+// Endpoint: Returns detailed site quality control data for a specific station code; returns an array with site_quality "-" if no data is found.
 router.get("/site/detail/:code", async (req, res) => {
   const { code } = req.params;
   const cacheKey = `qc-sitedetail:${code}`;
@@ -22,8 +22,8 @@ router.get("/site/detail/:code", async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error(`Error in /site/detail/${code}:`, err);
-    // Jika error, tetap kembalikan array dengan site_quality "-"
-    res.status(200).json([{ code, site_quality: "-" }]);
+    // Jika error, kembalikan status 500 dan array dengan site_quality "-"
+    res.status(500).json([{ code, site_quality: "-" }]);
   }
 });
 
