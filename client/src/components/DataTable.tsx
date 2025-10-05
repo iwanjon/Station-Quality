@@ -10,9 +10,9 @@ import {
   type ColumnDef,
 } from "@tanstack/react-table";
 
-export interface DataTableProps<T> {
-  columns: ColumnDef<T, any>[];
-  data: T[];
+export interface DataTableProps<TData> {
+  columns: (ColumnDef<TData> & { size?: number })[];
+  data: TData[];
   globalFilter?: string;
   setGlobalFilter?: (value: string) => void;
 }
@@ -62,12 +62,12 @@ const SortIcon = ({
   );
 };
 
-function DataTable<T extends object>({
+function DataTable<TData extends object>({
   columns,
   data,
   globalFilter: globalFilterProp,
   setGlobalFilter: setGlobalFilterProp,
-}: DataTableProps<T>) {
+}: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   // Gunakan state internal hanya jika prop tidak diberikan
   const [internalGlobalFilter, setInternalGlobalFilter] = React.useState<string>("");
@@ -112,7 +112,7 @@ function DataTable<T extends object>({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full border border-gray-300 text-center">
+        <table className="min-w-full border border-gray-300 text-center table-fixed">
           <thead className="bg-gray-100">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
@@ -123,6 +123,9 @@ function DataTable<T extends object>({
                     className={`border p-2 text-sm font-semibold select-none ${
                       header.column.getCanSort() ? "cursor-pointer" : ""
                     }`}
+                    style={{
+                      width: (header.column.columnDef as ColumnDef<TData> & { size?: number }).size ? `${(header.column.columnDef as ColumnDef<TData> & { size?: number }).size}px` : 'auto'
+                    }}
                     onClick={
                       header.column.getCanSort()
                         ? header.column.getToggleSortingHandler()

@@ -7,7 +7,7 @@ CREATE TABLE `stasiun` (
   `elevasi` float,
   `lokasi` varchar(255),
   `provinsi_id` integer,
-  `upt` integer,
+  `upt_id` integer,
   `status` ENUM ('aktif', 'nonaktif'),
   `tahun_instalasi` integer,
   `jaringan_id` integer,

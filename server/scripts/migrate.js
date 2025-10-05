@@ -23,8 +23,13 @@ async function createDatabase() {
   const dbName = process.env.MYSQL_NAME || 'station_quality_control';
   
   try {
-    await connection.execute(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
-    console.log(`✅ Database '${dbName}' ready`);
+    // Drop database if exists to ensure clean setup
+    await connection.execute(`DROP DATABASE IF EXISTS \`${dbName}\``);
+    console.log(`🗑️ Dropped existing database '${dbName}' if it existed`);
+    
+    // Create fresh database
+    await connection.execute(`CREATE DATABASE \`${dbName}\``);
+    console.log(`✅ Database '${dbName}' created successfully`);
   } catch (error) {
     console.error('❌ Error creating database:', error.message);
     throw error;
