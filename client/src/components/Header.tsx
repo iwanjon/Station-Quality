@@ -23,7 +23,6 @@ const Header = () => {
     if (timeZone === 'UTC') {
       return `${timeString} UTC`;
     } else {
-      // Get timezone abbreviation
       const timeZoneName = date.toLocaleTimeString('id-ID', {
         timeZone: timeZone,
         timeZoneName: 'short'
@@ -36,18 +35,22 @@ const Header = () => {
   const localTime = formatTime(currentTime);
 
   return (
-    <header className="bg-white shadow-md sticky top-0 z-50">
-      <div className="max-w-7xl">
-        <div className="flex h-12">
-          <div className="flex items-center space-x-4 text-xl text-gray-600 px-3 py-1 rounded-lg font-semibold">
-            <span>{utcTime}</span>
-            <span>|</span>
-            <span>{localTime}</span>                                                                                         
+    <>
+      <header className="bg-white shadow-md fixed top-0 w-full z-50">
+        <div className="max-w-7xl">
+          <div className="flex h-12">
+            <div className="flex items-center space-x-4 text-xl text-gray-600 px-3 py-1 rounded-lg font-semibold">
+              <span>{utcTime}</span>
+              <span>|</span>
+              <span>{localTime}</span>
+            </div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
+      <div className="h-12" />
+    </>
   );
 };
 
 export default Header;
+
