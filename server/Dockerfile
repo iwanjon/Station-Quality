@@ -18,9 +18,10 @@ EXPOSE 5000
 # Install PM2 secara global di dalam container
 RUN npm install -g pm2
 
-# [PERUBAHAN UTAMA] Jalankan aplikasi menggunakan PM2
+# Jalankan aplikasi menggunakan PM2
 # Perintah ini akan membaca ecosystem.config.js dan menjalankan kedua proses (server & scheduler)
 CMD ["pm2-runtime", "start", "ecosystem.config.js"]
+
 
 # FROM node:lts-alpine
 
