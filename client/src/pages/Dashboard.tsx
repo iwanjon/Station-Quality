@@ -91,44 +91,69 @@ const parseLatencyToSeconds = (latencyString?: string | null): number | null => 
   return value;
 };
 
+// Fungsi penentuan kategori warna segitiga (sinkron dengan map)
+const getTriangleColorCategory = (station: QCSummary): string => {
+  // Semua latency NA atau status Mati = hitam
+  const allNA = station.latencyStrings.length === 6 && station.latencyStrings.every(l => l && l.toUpperCase() === "NA");
+  if (allNA || station.result === "Mati") return "black";
+
+  // Semua latency >= 1 hari = hitam
+  const validLatencies = station.latencyStrings
+    .map(parseLatencyToSeconds)
+    .filter((v) => v !== null) as number[];
+  if (
+    validLatencies.length === 6 &&
+    validLatencies.every((v) => v >= 86400)
+  ) {
+    return "black";
+  }
+
+  // Kategori warna dari primaryColor
+  if (station.primaryColor === "green") return "teal";
+  if (station.primaryColor === "yellow") return "yellow";
+  if (station.primaryColor === "orange") return "orange";
+  if (station.primaryColor === "red") return "red";
+
+  // Abu-abu jika latency terkecil < 1 hari
+  if (validLatencies.length > 0 && Math.min(...validLatencies) < 86400) return "gray";
+
+  // Default abu-abu
+  return "gray";
+};
+
+// Fungsi penentuan warna segitiga (hex)
+const getTriangleColor = (station: QCSummary) => {
+  const cat = getTriangleColorCategory(station);
+  switch (cat) {
+    case "black": return "#222";
+    case "teal": return "#16a34a";
+    case "yellow": return "#facc15";
+    case "orange": return "#fb923c";
+    case "red": return "#ef4444";
+    case "gray": return "#979797";
+    default: return "#979797";
+  }
+};
+
+// Sinkronisasi legend dengan warna segitiga di map
 const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummary[]; totalStationCount: number }) => {
-  // Untuk setiap stasiun, cek semua latencyStrings (latency1-6)
   const countByCategory = {
-    "<10s": 0,
-    "<1m": 0,
-    "<3m": 0,
-    "<30m": 0,
-    "<1d": 0,
-    ">1d/Off": 0,
+    "<10s": 0, // teal
+    "<1m": 0,  // yellow
+    "<3m": 0,  // orange
+    "<30m": 0, // red
+    "<1d": 0,  // gray
+    ">1d/Off": 0, // black
   };
 
   stationData.forEach((s) => {
-    // Jika SEMUA latencyStrings adalah "NA" (atau array kosong), masukkan ke hitam
-    const allNA = !s.latencyStrings || s.latencyStrings.length === 0 || s.latencyStrings.every(l => !l || l.toUpperCase() === "NA");
-    if (allNA) {
-      countByCategory[">1d/Off"]++;
-      return;
-    }
-    const validLatencies = (s.latencyStrings || [])
-      .map(parseLatencyToSeconds)
-      .filter((v) => v !== null) as number[];
-    const minLatency = validLatencies.length > 0 ? Math.min(...validLatencies) : null;
-
-    if (minLatency === null) {
-      countByCategory[">1d/Off"]++;
-    } else if (minLatency < 10) {
-      countByCategory["<10s"]++;
-    } else if (minLatency < 60) {
-      countByCategory["<1m"]++;
-    } else if (minLatency < 180) {
-      countByCategory["<3m"]++;
-    } else if (minLatency < 1800) {
-      countByCategory["<30m"]++;
-    } else if (minLatency < 86400) {
-      countByCategory["<1d"]++;
-    } else {
-      countByCategory[">1d/Off"]++;
-    }
+    const cat = getTriangleColorCategory(s);
+    if (cat === "black") countByCategory[">1d/Off"]++;
+    else if (cat === "teal") countByCategory["<10s"]++;
+    else if (cat === "yellow") countByCategory["<1m"]++;
+    else if (cat === "orange") countByCategory["<3m"]++;
+    else if (cat === "red") countByCategory["<30m"]++;
+    else if (cat === "gray") countByCategory["<1d"]++;
   });
 
   const summary = [
@@ -374,7 +399,11 @@ const Dashboard = () => {
               >
                 <TileLayer attribution='&copy; <a href="https://osm.org/copyright">OSM</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 {combinedData.map((s, idx) => (
-                  <Marker key={idx} position={[s.geometry.coordinates[1], s.geometry.coordinates[0]]} icon={triangleIcon(s.primaryColor)}>
+                  <Marker
+                    key={idx}
+                    position={[s.geometry.coordinates[1], s.geometry.coordinates[0]]}
+                    icon={triangleIcon(getTriangleColor(s))}
+                  >
                     <Popup>
                       <b>Stasiun: {s.code}</b>
                       <br />

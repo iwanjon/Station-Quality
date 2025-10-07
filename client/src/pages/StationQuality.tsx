@@ -10,7 +10,7 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import CardContainer from "../components/Card.tsx";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import axiosServer from "../utilities/AxiosServer.tsx";
 import StatusBadge from "../components/StatusBadge";
 import dayjs from "dayjs";
@@ -405,12 +405,12 @@ const StationQuality = () => {
       id: "detail",
       header: "Detail Stasiun",
       cell: ({ row }) => (
-        <button
-          onClick={() => navigate(`/station/${row.original.kode_stasiun}`)}
-          className="bg-black text-white rounded-lg px-3 py-1 hover:bg-gray-800"
+        <Link
+          to={`/station/${row.original.kode_stasiun}`}
+          className="text-blue-600 hover:underline text-sm font-medium"
         >
-          <span className="text-sm">Lihat Detail</span>
-        </button>
+          Detail
+        </Link>
       ),
     },
   ];
@@ -418,7 +418,8 @@ const StationQuality = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <MainLayout className="flex-1 p-4 ml-15">
-        <h1 className="bg-gray-100 rounded-xl text-center text-2xl font-bold my-2 mx-16 py-1">
+        {/* Judul serupa dashboard */}
+        <h1 className="text-left text-2xl font-bold mt-0 mb-2 ml-1">
           Stasiun Quality
         </h1>
 
@@ -470,7 +471,7 @@ const StationQuality = () => {
             />
             <button
               onClick={handleDownloadCSV}
-              className="bg-black text-white rounded-lg px-3 py-1 hover:bg-gray-800 transition duration-300 text-sm"
+              className="bg-green-600  text-white rounded-lg px-3 py-1 hover:bg-green-700 transition duration-300 text-sm"
             >
               Export CSV
             </button>
