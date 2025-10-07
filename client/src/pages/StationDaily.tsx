@@ -270,50 +270,90 @@ const StationDaily = () => {
             </div>
           </div>
         </header>
-        <main className="grid grid-cols-1 lg:grid-cols-5 gap-2">
-          <div className="bg-white p-1 rounded-lg shadow space-y-2 lg:col-span-2">
-            {/* Deskripsi stasiun lebih kecil dan lebih lebar */}
+        <main className="grid grid-cols-1 lg:grid-cols-7 gap-2">
+          {/* Station Information & Site Quality diperbesar */}
+          <div className="bg-white p-2 rounded-lg shadow-md space-y-4 lg:col-span-3 ml-2">
+            {/* Station Information */}
             <div>
-              {stationMeta ? (
-                <dl>
-                  <InfoItem label="Station Code" value={stationMeta.kode_stasiun} />
-                  <InfoItem label="Group" value={stationMeta.jaringan} />
-                  <InfoItem label="Priority" value={stationMeta.prioritas} />
-                  <InfoItem label="Location" value={stationMeta.lokasi} />
-                  <InfoItem label="Province" value={stationMeta.provinsi} />
-                  <InfoItem label="UPT" value={stationMeta.upt_penanggung_jawab} />
-                </dl>
-              ) : (
-                <p className="text-gray-500 text-xs">Memuat info stasiun...</p>
-              )}
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-sm font-bold text-gray-800">Station Information</h2>
+              </div>
+              <table className="w-full border border-gray-300 text-xs">
+                <tbody>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300 w-1/2">Station Code</td>
+                    <td className="px-2 py-1">{stationMeta?.kode_stasiun ?? '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Group</td>
+                    <td className="px-2 py-1">{stationMeta?.jaringan ?? '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Priority</td>
+                    <td className="px-2 py-1">{stationMeta?.prioritas ?? '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Location</td>
+                    <td className="px-2 py-1">{stationMeta?.lokasi ?? '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Province</td>
+                    <td className="px-2 py-1">{stationMeta?.provinsi ?? '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">UPT</td>
+                    <td className="px-2 py-1">{stationMeta?.upt_penanggung_jawab ?? '-'}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-            <hr className="my-2"/>
+            {/* Site Quality Analysis */}
             <div>
-              <h2 className="text-xs font-bold mb-1 text-gray-800">Site Quality Analysis</h2>
-              {loadingSiteQuality ? (
-                <p className="text-gray-500 text-xs">Memuat data...</p>
-              ) : siteQualityData ? (
-                <dl>
-                  <InfoItem label="Score" value={siteQualityData.score} />
-                  <InfoItem label="Geology" value={siteQualityData.geology} />
-                  <InfoItem label="VS30" value={siteQualityData.vs30} />
-                  <InfoItem label="Photovoltaic" value={siteQualityData.photovoltaic} />
-                  <InfoItem label="HVSR" value={siteQualityData.hvsr} />
-                  <InfoItem label="PSD" value={siteQualityData.psd.toFixed(2)} />
-                </dl>
-              ) : (
-                <p className="text-red-500 text-xs">Data tidak tersedia.</p>
-              )}
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-sm font-bold text-gray-800">Site Quality Analysis</h2>
+              </div>
+              <table className="w-full border border-gray-300 text-xs">
+                <tbody>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300 w-1/2">Score</td>
+                    <td className="px-2 py-1">{siteQualityData?.score ?? '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Geology</td>
+                    <td className="px-2 py-1">{siteQualityData?.geology ?? '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">VS30</td>
+                    <td className="px-2 py-1">{siteQualityData?.vs30 ?? '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Photovoltaic</td>
+                    <td className="px-2 py-1">{siteQualityData?.photovoltaic ?? '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">HVSR</td>
+                    <td className="px-2 py-1">{siteQualityData?.hvsr ?? '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">PSD</td>
+                    <td className="px-2 py-1">{siteQualityData?.psd ?? '-'}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
-          <div className="bg-white p-1 rounded-lg shadow lg:col-span-3 flex flex-col">
-            <div className="w-full h-full rounded min-h-[340px] flex-1">
+          {/* Map diperkecil */}
+          <div className="bg-white p-2 rounded-lg shadow-md lg:col-span-4 flex flex-col">
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="text-sm font-bold text-gray-800">Station Location Map</h2>
+            </div>
+            <div className="w-full h-full rounded min-h-[180px] flex-1">
               {stationMeta && stationMeta.lintang && stationMeta.bujur ? (
                 <MapContainer
                   center={[stationMeta.lintang, stationMeta.bujur]}
                   zoom={16}
-                  className="w-full h-[340px] rounded"
-                  style={{ minHeight: 340, height: "100%" }}
+                  className="w-full h-[180px] rounded"
+                  style={{ minHeight: 180, height: "100%" }}
                 >
                   <ResetMapView center={[stationMeta.lintang, stationMeta.bujur]} zoom={16} />
                   <TileLayer attribution='&copy; <a href="https://osm.org/copyright">OSM</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/>
@@ -322,7 +362,7 @@ const StationDaily = () => {
                   </Marker>
                 </MapContainer>
               ) : (
-                <div className="w-full h-[340px] bg-gray-200 flex items-center justify-center rounded">
+                <div className="w-full h-[180px] bg-gray-200 flex items-center justify-center rounded">
                   <p className="text-gray-500 text-xs">[Peta tidak tersedia]</p>
                 </div>
               )}

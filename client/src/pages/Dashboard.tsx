@@ -103,6 +103,7 @@ const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummary[
   };
 
   stationData.forEach((s) => {
+    // Jika SEMUA latencyStrings adalah "NA" (atau array kosong), masukkan ke hitam
     const allNA = !s.latencyStrings || s.latencyStrings.length === 0 || s.latencyStrings.every(l => !l || l.toUpperCase() === "NA");
     if (allNA) {
       countByCategory[">1d/Off"]++;
@@ -360,17 +361,16 @@ const Dashboard = () => {
   return (
     <MainLayout>
       <h1 className="text-left text-2xl font-bold mt-0 mb-2 ml-1">Dashboard</h1>
-      {/* [DIUBAH] Lebar kolom disesuaikan menjadi 2/3 dan 1/3 */}
       <div className="flex flex-col lg:flex-row gap-3">
         {/* BAGIAN KIRI: PETA */}
         <div className="lg:w-2/3 w-full">
-          <div className="bg-white rounded-lg shadow p-1 h-[350px]">
-            <div className="relative w-full h-full">
+          <div className="bg-white rounded-lg shadow p-1 h-[395px]">
+            <div className="relative w-full h-full px-2 pb-2 pt-1">
               <MapContainer
                 center={[-2.5, 118]}
                 zoom={5}
                 className="w-full h-full rounded-md"
-                style={{ minHeight: 320, maxHeight: 350 }}
+                style={{ minHeight: 375, maxHeight: 393, margin: "0.06rem" }}
               >
                 <TileLayer attribution='&copy; <a href="https://osm.org/copyright">OSM</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 {combinedData.map((s, idx) => (
