@@ -301,7 +301,7 @@ export const updateStasiunByCode = async (req, res) => {
                 s.updated_at
             FROM stasiun s
             LEFT JOIN jaringan j ON s.jaringan_id = j.jaringan_id
-            LEFT JOIN upt u ON s.upt = u.upt_id
+            LEFT JOIN upt u ON s.upt_id = u.upt_id
             LEFT JOIN provinsi p ON s.provinsi_id = p.provinsi_id
             WHERE s.kode_stasiun = ?
         `, [code]);
