@@ -10,7 +10,7 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import CardContainer from "../components/Card.tsx";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import axiosServer from "../utilities/AxiosServer.tsx";
 import StatusBadge from "../components/StatusBadge";
 import dayjs from "dayjs";
@@ -394,7 +394,8 @@ const StationQuality = () => {
         const code = row.original.kode_stasiun;
         const siteQuality = siteQualityMap[code] || "-";
         return (
-          <span className="block w-full py-2 rounded-full text-lg font-bold text-center bg-blue-50 text-blue-800">
+          // <span className="block w-full py-2 rounded-full text-lg font-bold text-center bg-blue-50 text-blue-800">
+            <span className="block w-full py-1 rounded-sm text-[11px] font-bold text-center bg-blue-50 text-blue-800">
             {siteQuality}
           </span>
         );
@@ -404,36 +405,36 @@ const StationQuality = () => {
       id: "detail",
       header: "Detail Stasiun",
       cell: ({ row }) => (
-        <button
-          onClick={() => navigate(`/station/${row.original.kode_stasiun}`)}
-          className="bg-black text-white rounded-lg px-3 py-1 hover:bg-gray-800"
+        <Link
+          to={`/station/${row.original.kode_stasiun}`}
+          className="text-blue-600 hover:underline text-sm font-medium"
         >
-          <span className="text-sm">Lihat Detail</span>
-        </button>
+          Detail
+        </Link>
       ),
     },
   ];
 
   return (
     <div className="min-h-screen flex flex-col">
-      <MainLayout className="flex-1 p-8 ml-16">
-        <h1 className="bg-gray-100 rounded-2xl text-center text-3xl font-bold my-4 mx-48 py-2">
+      <MainLayout className="flex-1 p-4 ml-15">
+        {/* Judul serupa dashboard */}
+        <h1 className="text-left text-2xl font-bold mt-0 mb-2 ml-1">
           Stasiun Quality
         </h1>
 
-        <CardContainer className="mb-6">
-          <div className="flex flex-col lg:flex-row gap-6">
-
+        <CardContainer className="mb-4 p-3">
+          <div className="flex flex-col lg:flex-row gap-3">
             {/* Kolom Grafik Donat */}
-            <div className="lg:w-1/3 w-full h-[500px] flex flex-col items-center justify-center p-4">
-               <h2 className="text-xl font-bold mb-4">Ringkasan Status Stasiun</h2>
-               <div className="w-full h-full max-w-sm">
-                 <QualityDonutChart data={dataStasiunLengkap} />
-               </div>
+            <div className="lg:w-1/3 w-full h-[320px] flex flex-col items-center justify-center p-2">
+              <h2 className="text-lg font-bold mb-2">Ringkasan Status Stasiun</h2>
+              <div className="w-full h-full max-w-xs">
+                <QualityDonutChart data={dataStasiunLengkap} />
+              </div>
             </div>
 
             {/* Kolom Peta */}
-            <div className="lg:w-2/3 w-full h-[500px] relative">
+            <div className="lg:w-2/3 w-full h-[320px] relative">
               <MapContainer center={[-2.5, 118]} zoom={5} className="w-full h-full rounded-lg">
                 <TileLayer
                   attribution='&copy; <a href="https://osm.org/copyright">OSM</a>'
@@ -461,8 +462,8 @@ const StationQuality = () => {
           </div>
         </CardContainer>
         
-        <CardContainer>
-          <div className="flex justify-between items-center mb-6">
+        <CardContainer className="p-3">
+          <div className="flex justify-between items-center mb-4">
             <TableFilters
               filters={filters}
               setFilters={setFilters}
@@ -470,7 +471,7 @@ const StationQuality = () => {
             />
             <button
               onClick={handleDownloadCSV}
-              className="bg-black text-white rounded-lg px-4 py-2 hover:bg-gray-800 transition duration-300"
+              className="bg-green-600  text-white rounded-lg px-3 py-1 hover:bg-green-700 transition duration-300 text-sm"
             >
               Export CSV
             </button>

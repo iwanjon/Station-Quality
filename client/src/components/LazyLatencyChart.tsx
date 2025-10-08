@@ -54,12 +54,12 @@ const LazyLatencyChart = ({ stationCode }: { stationCode?: string }) => {
   }, [inView, stationCode, isLoading]);
 
   return (
-    <div ref={ref} className="bg-white p-4 sm:p-6 rounded-2xl shadow-md mt-8">
-      <h2 className="text-xl font-bold mb-4 text-gray-800">Latency per Channel</h2>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div ref={ref} className="bg-white p-3 rounded-xl shadow mb-4">
+      <h2 className="text-lg font-bold mb-2 text-gray-800">Latency per Channel</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         {isLoading
           ? Array.from({ length: 3 }).map((_, idx) => (
-              <div key={idx} className="rounded-lg bg-gray-100 h-[260px] flex items-center justify-center text-gray-500 font-medium">
+              <div key={idx} className="rounded-lg bg-gray-100 h-[180px] flex items-center justify-center text-gray-500 font-medium text-xs">
                 Memuat data latensi...
               </div>
             ))
@@ -70,14 +70,9 @@ const LazyLatencyChart = ({ stationCode }: { stationCode?: string }) => {
                   titlePrefix="Latency"
                   data={latencyData[ch] || []}
                   lines={[{ dataKey: "latency", stroke: ["#8b5cf6", "#ec4899", "#f97316"][idx] }]}
-                  yAxisProps={{ 
-                    domain: [0, 600], // Batas atas 10 menit (600 detik)
-                  }}
-                  referenceLines={[{ 
-                    y: 180, // Nilai 3 menit (180 detik)
-                    label: "", 
-                    stroke: "black" 
-                  }]}
+                  yAxisProps={{ domain: [0, 600] }}
+                  referenceLines={[{ y: 180, label: "", stroke: "black" }]}
+                  height={180} // Ukuran chart disamakan dengan StationQuality
                 />
               </div>
             ))}

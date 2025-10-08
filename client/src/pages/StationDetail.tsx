@@ -52,7 +52,6 @@ const getStatusColor = (status: string) => {
 const CHANNELS = ["E", "N", "Z"];
 const CHANNELS_FULL = ["SHE", "SHN", "SHZ"];
 
-
 const StationDetail = () => {
   const { stationCode } = useParams<{ stationCode: string }>();
   const navigate = useNavigate();
@@ -155,9 +154,9 @@ const StationDetail = () => {
     title: string;
     children: React.ReactNode;
   }) => (
-    <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-md">
-      <h2 className="text-xl font-bold mb-4 text-gray-800">{title}</h2>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">{children}</div>
+    <div className="bg-white p-2 sm:p-3 rounded-xl shadow mb-4">
+      <h2 className="text-lg font-bold mb-2 text-gray-800">{title}</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">{children}</div>
     </div>
   );
 
@@ -183,13 +182,13 @@ const StationDetail = () => {
 
   return (
     <MainLayout>
-      <div className="p-4 sm:p-6 space-y-8 bg-gray-50 min-h-screen">
-        {/* --- Bagian Header Halaman --- */}
-        <div className="flex justify-between items-start mb-6">
-          <div className="flex items-center space-x-3">
+      <div className="p-2 sm:p-3 space-y-4 bg-gray-50 min-h-screen">
+        {/* --- Header --- */}
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex items-center space-x-2">
             <button
               type="button"
-              className="bg-gray-200 text-gray-800 font-bold px-4 py-2 rounded-lg hover:bg-gray-300"
+              className="bg-gray-200 text-gray-800 font-bold px-3 py-1.5 rounded-md hover:bg-gray-300 text-xs"
               onClick={() => navigate('/dashboard')}
             >
               Station
@@ -202,7 +201,8 @@ const StationDetail = () => {
                   navigate(`/station/${newStationCode}`);
                 }
               }}
-              className="p-2 border rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 font-bold"
+              className="p-1 border rounded shadow-sm focus:ring-indigo-500 focus:border-indigo-500 font-bold text-xs"
+              style={{ minWidth: 80 }}
             >
               {stationList.map((station) => (
                 <option key={station} value={station}>
@@ -211,11 +211,10 @@ const StationDetail = () => {
               ))}
             </select>
           </div>
-
           <div className="flex flex-col items-end">
-            <div className="flex space-x-1 rounded-lg bg-gray-200 p-1">
+            <div className="flex space-x-1 rounded bg-gray-200 p-0.5">
               <button
-                className="px-4 py-1 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-300"
+                className="px-2 py-0.5 rounded text-xs font-medium text-gray-700 hover:bg-gray-300"
                 onClick={() => {
                   if (stationCode) {
                     navigate(`/station-daily/${stationCode}`);
@@ -224,46 +223,49 @@ const StationDetail = () => {
               >
                 Daily
               </button>
-              <button className="px-4 py-1 rounded-md text-sm font-medium bg-white shadow text-blue-600">
+              <button className="px-2 py-0.5 rounded text-xs font-medium bg-white shadow text-blue-600">
                 Time Series
               </button>
             </div>
-            <div className="mt-2 px-4 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">
+            <div className="mt-1 px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-semibold rounded-full">
               Last 7 Days
             </div>
           </div>
         </div>
 
-        {/* --- Bagian Summary (Menggunakan data dinamis) --- */}
-        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-md">
-          <h2 className="text-xl font-bold mb-4 text-gray-800">Summary</h2>
+        {/* --- Summary Section --- */}
+        <div className="bg-white p-1 sm:p-2 rounded-lg shadow mb-2">
+          <h2 className="text-base font-bold mb-1 text-gray-800">Summary</h2>
           {loadingSummary ? (
-             <div className="text-center text-gray-500">Memuat summary...</div>
+            <div className="text-center text-gray-500 text-xs">Memuat summary...</div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               {CHANNELS_FULL.map((channel) => (
-                <div key={channel}>
-                  <h3 className="text-lg font-semibold text-center mb-2">
-                    {channel}
-                  </h3>
-                  <div className="flex justify-between space-x-1 min-h-[70px]">
-                    {summaryData[channel]?.length > 0 ? (
-                      summaryData[channel].map((item) => (
+                <div key={channel} className="flex flex-col items-center">
+                  <h3 className="text-sm font-semibold text-center mb-1">{channel}</h3>
+                  <div className="inline-flex flex-col items-center">
+                    <div className="flex">
+                      {summaryData[channel]?.map((item) => (
                         <div
                           key={item.date}
-                          className={`flex-1 p-2 rounded-md text-center text-xs font-bold ${getStatusColor(
-                            item.status
-                          )}`}
+                          className={`flex flex-col items-center justify-center px-2 py-0.5 border border-gray-200 border-b-0 first:rounded-tl last:rounded-tr text-[11px] font-bold ${getStatusColor(item.status)}`}
+                          style={{ minWidth: 48 }}
                         >
-                          <p>{item.status}</p>
-                          <p className="font-normal mt-1">{item.date}</p>
+                          <span>{item.status}</span>
                         </div>
-                      ))
-                    ) : (
-                      <div className="w-full flex items-center justify-center text-gray-400 text-sm">
-                        Data tidak tersedia
-                      </div>
-                    )}
+                      ))}
+                    </div>
+                    <div className="flex">
+                      {summaryData[channel]?.map((item) => (
+                        <div
+                          key={item.date + "-date"}
+                          className="flex items-center justify-center px-2 py-0.5 border border-gray-200 border-t-0 first:rounded-bl last:rounded-br text-[10px] bg-white"
+                          style={{ minWidth: 48 }}
+                        >
+                          <span>{item.date}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -271,9 +273,7 @@ const StationDetail = () => {
           )}
         </div>
 
-        {/* --- Bagian Grafik --- */}
-
-        {/* RMS */}
+        {/* --- Time Series Chart Sections --- */}
         <ChartGridSection title="RMS">
           {CHANNELS.map((ch) => (
             <div key={`rms-${ch}`}>
@@ -282,12 +282,12 @@ const StationDetail = () => {
                 titlePrefix={`RMS - SH${ch}`}
                 data={groupedByChannel[ch]}
                 lines={[{ dataKey: "rms", stroke: "#6366f1" }]}
+                height={180} // <--- Perkecil tinggi chart
               />
             </div>
           ))}
         </ChartGridSection>
 
-        {/* Amplitude */}
         <ChartGridSection title="Amplitude Ratio per Channel">
           {CHANNELS.map((ch, idx) => (
             <div key={`amp-${ch}`}>
@@ -301,12 +301,12 @@ const StationDetail = () => {
                     stroke: ["#10b981", "#3b82f6", "#f59e0b"][idx],
                   },
                 ]}
+                height={180}
               />
             </div>
           ))}
         </ChartGridSection>
 
-        {/* [BARU] Grafik Gaps dengan threshold 24 */}
         <ChartGridSection title="Gaps">
           {CHANNELS.map((ch) => (
             <div key={`gaps-${ch}`}>
@@ -316,12 +316,12 @@ const StationDetail = () => {
                 data={groupedByChannel[ch]}
                 lines={[{ dataKey: "num_gap", stroke: "#f97316" }]}
                 yAxisProps={{ domain: [0, 24], tickCount: 7 }}
+                height={180}
               />
             </div>
           ))}
         </ChartGridSection>
 
-        {/* [DIUBAH] Grafik Spikes dengan threshold 24 */}
         <ChartGridSection title="Spikes">
           {CHANNELS.map((ch) => (
             <div key={`spikes-${ch}`}>
@@ -331,12 +331,12 @@ const StationDetail = () => {
                 data={groupedByChannel[ch]}
                 lines={[{ dataKey: "num_spikes", stroke: "#ef4444" }]}
                 yAxisProps={{ domain: [0, 24], tickCount: 7 }}
+                height={180}
               />
             </div>
           ))}
         </ChartGridSection>
 
-        {/* SP / BW / LP */}
         <ChartGridSection title="SP / BW / LP Percentage">
           {CHANNELS.map((ch) => (
             <div key={`sbl-${ch}`}>
@@ -350,15 +350,14 @@ const StationDetail = () => {
                   { dataKey: "lp_percentage", stroke: "#f59e0b" },
                 ]}
                 yAxisProps={{ domain: [50, 120] }}
+                height={180}
               />
             </div>
           ))}
         </ChartGridSection>
 
-        {/* Latency Chart */}
         <LazyLatencyChart stationCode={stationCode} />
 
-        {/* % Below NLNM & % Above NHNM */}
         <ChartGridSection title="% Below NLNM & % Above NHNM">
           {CHANNELS.map((ch) => (
             <div key={`nlnm-nhnm-${ch}`}>
@@ -371,12 +370,12 @@ const StationDetail = () => {
                   { dataKey: "perc_above_nhnm", stroke: "#ef4444" },
                 ]}
                 yAxisProps={{ domain: [0, 100] }}
+                height={180}
               />
             </div>
           ))}
         </ChartGridSection>
 
-        {/* Linear Dead Channel */}
         <ChartGridSection title="Linear Dead Channel">
           {CHANNELS.map((ch) => (
             <div key={`ldc-${ch}`}>
@@ -388,12 +387,12 @@ const StationDetail = () => {
                   { dataKey: "linear_dead_channel", stroke: "#6366f1" },
                 ]}
                 yAxisProps={{ domain: [0, "auto"] }}
+                height={180}
               />
             </div>
           ))}
         </ChartGridSection>
 
-        {/* GSN Dead Channel */}
         <ChartGridSection title="GSN Dead Channel">
           {CHANNELS.map((ch) => (
             <div key={`gsn-${ch}`}>
@@ -405,6 +404,7 @@ const StationDetail = () => {
                   { dataKey: "gsn_dead_channel", stroke: "#f59e0b" },
                 ]}
                 yAxisProps={{ domain: [0, "auto"] }}
+                height={180}
               />
             </div>
           ))}
@@ -489,8 +489,8 @@ export default StationDetail;
 //     };
 
 //     if (stationCode) {
-//       fetchQcData();
-//     }
+//       fetchQcData();
+//     }
 //   }, [stationCode]);
 
 //   const groupedByChannel = CHANNELS.reduce<Record<string, QCData[]>>(

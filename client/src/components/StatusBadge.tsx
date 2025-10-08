@@ -16,7 +16,7 @@ const styleMap: Record<string, string> = {
 
 const StatusBadge: React.FC<Props> = ({ value }) => (
   <span
-    className={`inline-block w-full px-2.5 py-2 rounded-full text-lg font-bold text-center ${
+    className={`inline-block w-full px-2 py-1 rounded text-xs font-semibold text-center ${
       styleMap[value] || "bg-gray-100 text-gray-800"
     }`}
     style={{

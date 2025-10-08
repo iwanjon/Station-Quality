@@ -11,6 +11,9 @@ import {
   StatusOnlineIcon,
 } from '@heroicons/react/outline'
 
+// Import logo image
+import logoBMKG from '../assets/logo_bmkg.png'
+
 interface NavItem {
   label: string
   to: string
@@ -26,25 +29,30 @@ const navItems: NavItem[] = [
 ]
 
 const Sidebar: React.FC = () => {
-  const [open, setOpen] = useState(false)   // start collapsed
+  const [open, setOpen] = useState(false)
   const { pathname } = useLocation()
 
   return (
     <motion.aside
       animate={{ width: open ? 240 : 64 }}
       transition={{ type: 'tween', duration: 0.25 }}
-      // className="fixed left-0 top-12 bottom-0 z-50 h-screen bg-gray-800 text-gray-200 shadow-lg overflow-hidden flex flex-col"
       className="fixed left-0 top-12 bottom-0 z-[9999] h-screen bg-gray-800 text-gray-200 shadow-lg overflow-hidden flex flex-col"
     >
       {/* HEADER: logo + burger, with a tooltip when collapsed */}
       <div className="relative group flex items-center h-20 px-4 border-b border-gray-700">
-        {/* Logo */}
-        <div className="h-12 w-12 bg-gray-600 rounded-full" />
+        {/* Logo BMKG hanya muncul jika sidebar dibuka */}
+        {open && (
+          <img
+            src={logoBMKG}
+            alt="BMKG Logo"
+            className="h-12 w-12 rounded-full object-cover bg-gray-600"
+          />
+        )}
 
         {/* Burger */}
         <button
           onClick={() => setOpen(o => !o)}
-          className="ml-auto p-2 rounded hover:bg-gray-700 focus:outline-none"
+          className={`ml-auto p-2 rounded hover:bg-gray-700 focus:outline-none ${open ? '' : 'mx-auto'}`}
           aria-label={open ? 'Close menu' : 'Open menu'}
         >
           <MenuIcon className="h-6 w-6" />
