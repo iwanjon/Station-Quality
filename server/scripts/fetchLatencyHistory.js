@@ -1,9 +1,11 @@
+// fetchLatencyHistory.js
+
 import axios from 'axios';
-import pool from '../config/database.js'; // [DIUBAH] Impor koneksi database yang benar
+import pool from '../config/database.js';
 import dayjs from 'dayjs';
 
 /**
- * Helper untuk mengubah string latensi (misal: "10s") menjadi detik (integer).
+ * Helper untuk mengubah string latensi menjadi detik.
  */
 const parseLatencyToSeconds = (latencyString) => {
   if (!latencyString || typeof latencyString !== 'string' || latencyString.toUpperCase() === 'NA') {
@@ -11,13 +13,16 @@ const parseLatencyToSeconds = (latencyString) => {
   }
   const value = parseFloat(latencyString);
   if (isNaN(value)) return null;
+  
+  if (latencyString.endsWith('h')) return value * 3600; // <-- Perbaikan di sini
   if (latencyString.endsWith('d')) return value * 24 * 60 * 60;
   if (latencyString.endsWith('m')) return value * 60;
-  return value;
+
+  return value; // Dianggap detik jika tidak ada satuan
 };
 
 /**
- * Fungsi utama untuk menjalankan tugas: mengambil data dan menyimpannya ke database.
+ * Fungsi utama untuk mengambil data dan menyimpannya ke database.
  */
 export async function runLatencyTask() {
   console.log(`[${dayjs().format('YYYY-MM-DD HH:mm:ss')}] 🚀 Memulai tugas pengambilan data latensi...`);
@@ -30,9 +35,7 @@ export async function runLatencyTask() {
       console.log('🟡 Tidak ada data latensi yang ditemukan dari API.');
       return;
     }
-
-    // Menyiapkan data untuk 'batch insert' menggunakan mysql2/promise
-    // Kita perlu array berisi array dari values, sesuai urutan kolom
+    
     const columns = [
       'sta', 'ipaddr', 'net', 'time_from_api', 
       'latency1', 'latency2', 'latency3', 'latency4', 'latency5', 'latency6',
@@ -62,16 +65,13 @@ export async function runLatencyTask() {
         coords && coords[1] ? parseFloat(coords[1]) : null,
       ];
     });
-
-    // Query untuk memasukkan banyak data sekaligus
+    
     const sql = `INSERT INTO latency_history (${columns.join(', ')}) VALUES ?`;
     await pool.query(sql, [dataToInsert]);
 
     console.log(`[${dayjs().format('YYYY-MM-DD HH:mm:ss')}] ✅ Berhasil menyimpan ${dataToInsert.length} data latensi ke database.`);
 
   } catch (error) {
-    // Tampilkan error yang lebih detail
     console.error(`[${dayjs().format('YYYY-MM-DD HH:mm:ss')}] ❌ Gagal menjalankan tugas:`, error);
   }
 }
-
