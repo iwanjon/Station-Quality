@@ -10,6 +10,7 @@ import stasiunRoutes from './routes/stasiun.routes.js';
 import stasiunHistoryRoutes from './routes/stasiunHistory.routes.js';
 import pool, { testConnection } from './config/database.js';
 import latencyHistoryRoutes from './routes/latencyHistory.routes.js'; 
+import 'dotenv/config';
 
 const app = express();
 app.use(json());

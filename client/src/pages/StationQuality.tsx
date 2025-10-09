@@ -96,7 +96,6 @@ const getColorByResult = (result: string | null): string => {
   return STATUS_CONFIG[result || "default"]?.color || STATUS_CONFIG.default.color;
 };
 
-// [DIUBAH] MapLegend: label Inggris konsisten dengan tabel & donut
 const MapLegend = () => {
   const legendItems = [
     { label: "Good", color: STATUS_CONFIG["Baik"].color },
@@ -128,24 +127,24 @@ const MapLegend = () => {
   );
 };
 
-// [DIUBAH] Fungsi mapping result ke kategori dashboard (hanya ada 4 kategori)
-const getDashboardCategory = (result: string | null): "GOOD" | "FAIR" | "POOR" | "NO DATA" => {
-  if (result === "Baik") return "GOOD";
-  if (result === "Cukup Baik") return "FAIR";
-  if (result === "Buruk") return "POOR";
-  return "NO DATA"; // "Mati" dan "No Data" masuk ke sini
-};
+
+// const getDashboardCategory = (result: string | null): "GOOD" | "FAIR" | "POOR" | "NO DATA" => {
+//   if (result === "Baik") return "GOOD";
+//   if (result === "Cukup Baik") return "FAIR";
+//   if (result === "Buruk") return "POOR";
+//   return "NO DATA"; // "Mati" dan "No Data" masuk ke sini
+// };
 
 
 // Fungsi getStatusText untuk tabel (tidak berubah)
-const getStatusText = (result: string | null, quality: number | null): string => {
-  if (result === 'Mati') return 'Mati';
-  if (quality === null) return 'No Data';
-  if (quality >= 80) return 'Sangat Baik';
-  if (quality >= 60) return 'Baik';
-  if (quality >= 40) return 'Cukup';
-  return 'Buruk';
-};
+// const getStatusText = (result: string | null, quality: number | null): string => {
+//   if (result === 'Mati') return 'Mati';
+//   if (quality === null) return 'No Data';
+//   if (quality >= 80) return 'Sangat Baik';
+//   if (quality >= 60) return 'Baik';
+//   if (quality >= 40) return 'Cukup';
+//   return 'Buruk';
+// };
 
 // Fungsi mapping result ke kategori dashboard
 // const getDashboardCategory = (result: string | null): "GOOD" | "FAIR" | "BAD" | "NO DATA" => {
@@ -159,7 +158,6 @@ const getStatusText = (result: string | null, quality: number | null): string =>
 // Komponen untuk Grafik Donat
 const QualityDonutChart = ({ data }: { data: StasiunDenganSummary[] }) => {
   const chartData = useMemo(() => {
-    // [DIUBAH] Warna untuk NO DATA sekarang hitam/gelap
     const categories: { [key: string]: { count: number; color: string } } = {
       "GOOD": { count: 0, color: STATUS_CONFIG["Baik"].color },
       "FAIR": { count: 0, color: STATUS_CONFIG["Cukup Baik"].color },
@@ -167,10 +165,23 @@ const QualityDonutChart = ({ data }: { data: StasiunDenganSummary[] }) => {
       "NO DATA": { count: 0, color: STATUS_CONFIG["No Data"].color },
     };
 
+    // Debug/insight: hitung semua nilai result mentah untuk verifikasi
+    const rawCounts: Record<string, number> = {};
+    let ignoredNonMapped = 0;
+
     data.forEach(station => {
-      const cat = getDashboardCategory(station.result);
-      categories[cat].count++;
+      const r = station.result ?? "null";
+      rawCounts[r] = (rawCounts[r] || 0) + 1;
+
+      if (r === "Baik") categories["GOOD"].count++;
+      else if (r === "Cukup Baik") categories["FAIR"].count++;
+      else if (r === "Buruk") categories["POOR"].count++;
+      else if (r === "Mati") categories["NO DATA"].count++; 
+      else ignoredNonMapped++; 
     });
+
+    // Tampilkan ringkasan singkat di console untuk debugging (bisa dihapus nanti)
+    console.debug("QualityDonutChart - raw result breakdown:", rawCounts, "ignoredNonMapped:", ignoredNonMapped);
 
     return Object.entries(categories).map(([label, { count, color }]) => ({
       label: `${label} (${count})`,

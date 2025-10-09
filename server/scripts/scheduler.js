@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import cron from 'node-cron';
 import { runLatencyTask } from './fetchLatencyHistory.js';
 import dayjs from 'dayjs';
@@ -14,6 +15,5 @@ cron.schedule('0 7 * * *', () => {
   timezone: "Asia/Jakarta" // Penting untuk memastikan waktu sesuai WIB
 });
 
-// (Opsional) Jalankan tugas sekali saat scheduler pertama kali dijalankan untuk testing
 console.log(`\n[${dayjs().format('YYYY-MM-DD HH:mm:ss')}] 🚀 Menjalankan tugas untuk pertama kali (testing)...`);
 runLatencyTask();
