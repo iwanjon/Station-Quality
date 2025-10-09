@@ -131,7 +131,6 @@ const getTriangleColor = (station: QCSummary): string => {
   return "#979797"; // Gray
 };
 
-// --- LEGEND BARU ---
 // Komponen legend yang telah disinkronkan dengan logika warna baru.
 const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummary[]; totalStationCount: number }) => {
   const countByCategory = {
@@ -215,8 +214,7 @@ const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummary[
 const InfoCard = ({ title, children }: { title: string; children?: React.ReactNode }) => (
   <div className="bg-white rounded-xl shadow p-4 min-h-[300px] flex flex-col">
     <h2 className="text-lg font-bold border-b pb-2 mb-4">{title}</h2>
-    {/* <div className="flex-grow flex items-center justify-center text-gray-400"> */}
-        <div className="flex-grow flex flex-col items-center justify-center w-full">
+    <div className="flex-grow flex flex-col items-center justify-center w-full">
       {children ? children : <p>Konten untuk {title} akan ditampilkan di sini.</p>}
     </div>
   </div>
@@ -249,72 +247,66 @@ const Dashboard = () => {
   const [inactiveCount, setInactiveCount] = useState<number>(0);
   const [stackedBarData, setStackedBarData] = useState<StackedBarData[]>([]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
-        const [qcResponse, slmonResponse, stasiunResponse] = await Promise.all([
-          axiosServer.get<Omit<QCSummary, "latencyStrings" | "primaryLatency" | "primaryColor">[]>(`/api/qc/summary/${yesterday}`),
-          axiosServer.get<SlmonFeatureCollection>("/api/dashboard/slmon/laststatus"),
-          axiosServer.get<any[]>("/api/stasiun"),
-        ]);
+  // 1. Logika fetch data utama dibungkus dalam satu fungsi
+  const fetchData = async () => {
+    try {
+      const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
+      const [qcResponse, slmonResponse, stasiunResponse] = await Promise.all([
+        axiosServer.get<Omit<QCSummary, "latencyStrings" | "primaryLatency" | "primaryColor">[]>(`/api/qc/summary/${yesterday}`),
+        axiosServer.get<SlmonFeatureCollection>("/api/dashboard/slmon/laststatus"),
+        axiosServer.get<any[]>("/api/stasiun"),
+      ]);
 
-        setTotalStationCount(slmonResponse.data.features.length);
-        const stasiunData = stasiunResponse.data || [];
-        setRegisteredCount(stasiunData.filter((s) => s.status === "aktif").length);
-        setInactiveCount(stasiunData.filter((s) => s.status === "nonaktif").length);
+      setTotalStationCount(slmonResponse.data.features.length);
+      const stasiunData = stasiunResponse.data || [];
+      setRegisteredCount(stasiunData.filter((s) => s.status === "aktif").length);
+      setInactiveCount(stasiunData.filter((s) => s.status === "nonaktif").length);
 
-        const qcData = qcResponse.data;
-        const slmonData = slmonResponse.data.features;
-        const slmonMap = new Map(slmonData.map((item) => [item.properties.sta, item]));
+      const qcData = qcResponse.data;
+      const slmonData = slmonResponse.data.features;
+      const slmonMap = new Map(slmonData.map((item) => [item.properties.sta, item]));
 
-        const finalData = qcData.map((station) => {
-          const slmonStation = slmonMap.get(station.code);
-          const allLatencyStrings: string[] = [];
-          let primaryLatencyValue: number | null = null;
-          let primaryColorValue: string = "#979797";
-
-          if (slmonStation) {
-            for (let i = 1; i <= 6; i++) {
-              const latencyKey = `latency${i}` as keyof typeof slmonStation.properties;
-              const latencyValue = slmonStation.properties[latencyKey] || "N/A";
-              allLatencyStrings.push(latencyValue);
-            }
-            const latencyCandidates = [
-              { seconds: parseLatencyToSeconds(slmonStation.properties.latency1), color: slmonStation.properties.color1 },
-              { seconds: parseLatencyToSeconds(slmonStation.properties.latency2), color: slmonStation.properties.color2 },
-              { seconds: parseLatencyToSeconds(slmonStation.properties.latency3), color: slmonStation.properties.color3 },
-            ];
-            const validLatencies = latencyCandidates.filter((lat) => lat.seconds !== null);
-            if (validLatencies.length > 0) {
-              const minLatency = validLatencies.reduce((min, current) =>
-                current.seconds! < min.seconds! ? current : min
-              );
-              primaryLatencyValue = minLatency.seconds;
-              if (typeof minLatency.color === 'string') {
-                primaryColorValue = minLatency.color;
-              }
-            }
+      const finalData = qcData.map((station) => {
+        const slmonStation = slmonMap.get(station.code);
+        const allLatencyStrings: string[] = [];
+        
+        if (slmonStation) {
+          for (let i = 1; i <= 6; i++) {
+            const latencyKey = `latency${i}` as keyof typeof slmonStation.properties;
+            const latencyValue = slmonStation.properties[latencyKey] || "N/A";
+            allLatencyStrings.push(latencyValue);
           }
+        }
 
-          return {
-            ...station,
-            latencyStrings: allLatencyStrings,
-            primaryLatency: primaryLatencyValue,
-            primaryColor: primaryColorValue,
-          };
-        });
+        return {
+          ...station,
+          latencyStrings: allLatencyStrings,
+          primaryLatency: null,
+          primaryColor: '',
+        };
+      });
 
-        setCombinedData(finalData);
-      } catch (err) {
-        console.error("Gagal memuat atau menggabungkan data:", err);
-      } finally {
+      setCombinedData(finalData);
+    } catch (err) {
+      console.error("Gagal memuat atau menggabungkan data:", err);
+    } finally {
+      // Hanya set isLoading ke false pada pemanggilan pertama kali
+      if (isLoading) {
         setIsLoading(false);
       }
-    };
+    }
+  };
 
-    fetchData();
-  }, []);
+  //useEffect untuk polling data utama
+  useEffect(() => {
+    fetchData(); // Panggil data saat komponen pertama kali dimuat
+
+    // Set interval untuk memanggil ulang fetchData setiap 10 detik
+    const intervalId = setInterval(fetchData, 10000);
+
+    // Membersihkan interval saat komponen di-unmount
+    return () => clearInterval(intervalId);
+  }, []); // Dependensi kosong agar hanya berjalan sekali saat mount
 
   useEffect(() => {
     const fetchStackedBarData = async () => {
@@ -333,14 +325,17 @@ const Dashboard = () => {
     fetchStackedBarData();
   }, []);
 
-  const totalOn = combinedData.filter((s) => s.primaryLatency !== null && s.primaryLatency < 86400 && s.result !== "Mati").length;
-  const totalOff = combinedData.filter((s) => s.primaryLatency === null || s.primaryLatency >= 86400 || s.result === "Mati").length;
+  // --- PERBAIKAN LOGIKA ON/OFF ---
+  const totalOff = combinedData.filter(s => getTriangleColor(s) === "#222222").length;
+  const totalOn = combinedData.length - totalOff;
+
   const goodCount = combinedData.filter((s) => s.result === "Baik").length;
   const fairCount = combinedData.filter((s) => s.result === "Cukup Baik").length;
   const poorCount = combinedData.filter((s) => s.result === "Buruk").length;
   const noDataCount = combinedData.filter((s) => s.result === "No Data" || s.result === "Mati").length;
 
   const [availabilityPieData, setAvailabilityPieData] = useState<{ name: string; value: number }[]>([]);
+  // useEffect untuk data Availability (TIDAK BERUBAH)
   useEffect(() => {
     const fetchAvailability = async () => {
       try {
@@ -377,6 +372,7 @@ const Dashboard = () => {
   }, []);
 
   const [qualityPieData, setQualityPieData] = useState<{ name: string; value: number }[]>([]);
+  // useEffect untuk data Quality (TIDAK BERUBAH)
   useEffect(() => {
     const fetchQuality = async () => {
       try {
