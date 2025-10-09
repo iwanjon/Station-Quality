@@ -5,10 +5,10 @@ CREATE TABLE `provinsi` (
 
 CREATE TABLE `upt` (
   `upt_id` integer PRIMARY KEY AUTO_INCREMENT,
-  `nama_upt` varchar(255) NOT NULL
+  `nama_upt` text NOT NULL
 );
 
 CREATE TABLE `jaringan` (
   `jaringan_id` integer PRIMARY KEY AUTO_INCREMENT,
-  `nama_jaringan` varchar(255) NOT NULL
+  `nama_jaringan` text NOT NULL
 );

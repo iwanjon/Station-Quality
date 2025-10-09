@@ -19,6 +19,10 @@ CREATE TABLE `stasiun` (
   `lokasi_shelter` varchar(30),
   `penjaga_shelter` varchar(10),
   `kondisi_shelter` varchar(20),
+  `assets_shelter` text,
+  `conditions_shelter` text,
+  `access_shelter` text,
+  `photo_shelter` text,
   `penggantian_terakhir_alat` datetime,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
