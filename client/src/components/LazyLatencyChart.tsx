@@ -35,12 +35,15 @@ const LazyLatencyChart = ({ stationCode }: { stationCode?: string }) => {
           const rawData = response.data;
 
           if (Object.keys(rawData).length > 0) {
-            allLatencyData[channel] = Object.entries(rawData).map(([ts, val]) => ({
-              date: dayjs(ts).format('YYYY-MM-DD HH:mm'),
-              latency: val === null || val === undefined ? null : (val as number),
-            }));
+            allLatencyData[channel] = Object.entries(rawData)
+              .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+              .map(([ts, val]) => ({
+                // Format tanggal di sini tidak diubah, karena formatter akan menanganinya
+                date: dayjs(ts).format('YYYY-MM-DD HH:mm'),
+                latency: val === null || val === undefined ? null : (val as number),
+              }));
           } else {
-            allLatencyData[channel] = []; // Set array kosong jika tidak ada data
+            allLatencyData[channel] = [];
           }
         });
         setLatencyData(allLatencyData);
@@ -52,6 +55,16 @@ const LazyLatencyChart = ({ stationCode }: { stationCode?: string }) => {
       fetchLatencyData();
     }
   }, [inView, stationCode, isLoading]);
+  
+  // --- KONFIGURASI BARU UNTUK X-AXIS ---
+  const xAxisConfig = {
+    // Format tanggal diubah menjadi 'DD-MMM'
+    tickFormatter: (tickItem: string) => dayjs(tickItem).format("DD-MMM"),
+    angle: -45,
+    textAnchor: "end",
+    height: 50,
+    interval: 'preserveStartEnd', // Opsi agar label tidak terlalu padat
+  };
 
   return (
     <div ref={ref} className="bg-white p-3 rounded-xl shadow mb-4">
@@ -72,7 +85,8 @@ const LazyLatencyChart = ({ stationCode }: { stationCode?: string }) => {
                   lines={[{ dataKey: "latency", stroke: ["#8b5cf6", "#ec4899", "#f97316"][idx] }]}
                   yAxisProps={{ domain: [0, 600] }}
                   referenceLines={[{ y: 180, label: "", stroke: "black" }]}
-                  height={180} // Ukuran chart disamakan dengan StationQuality
+                  height={180}
+                  xAxisProps={xAxisConfig} // <-- PROP BARU DITERUSKAN
                 />
               </div>
             ))}

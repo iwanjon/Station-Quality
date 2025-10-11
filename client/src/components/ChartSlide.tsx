@@ -2,7 +2,7 @@
 
 import React from "react";
 import {
-  LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine // [DIUBAH] Impor ReferenceLine
+  LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine
 } from "recharts";
 import CardContainer from "./Card";
 import type { AxisDomain } from "recharts/types/util/types";
@@ -19,7 +19,7 @@ type LineConfig = {
   stroke: string;
 };
 
-// [BARU] Definisikan tipe untuk konfigurasi garis batas
+// Definisikan tipe untuk konfigurasi garis batas
 type ReferenceLineConfig = {
   y: number;
   label: string;
@@ -35,10 +35,11 @@ interface ChartSlideProps {
   yAxisProps?: {
     domain?: AxisDomain;
     width?: number;
-    tickCount?: number; // Tambahkan tickCount untuk kontrol kepadatan tick
+    tickCount?: number;
   };
   height?: number;
-  referenceLines?: ReferenceLineConfig[]; // [BARU] Tambahkan prop untuk garis batas
+  referenceLines?: ReferenceLineConfig[];
+  xAxisProps?: any; // <-- [LANGKAH 1] Tambahkan prop baru di sini
 }
 
 const ChartSlide: React.FC<ChartSlideProps> = ({
@@ -48,7 +49,8 @@ const ChartSlide: React.FC<ChartSlideProps> = ({
   lines,
   yAxisProps = {},
   height = 240,
-  referenceLines, // [BARU] Ambil prop baru
+  referenceLines,
+  xAxisProps = {}, // <-- [LANGKAH 2] Terima prop baru, dengan default objek kosong
 }) => {
   return (
     <CardContainer>
@@ -59,7 +61,14 @@ const ChartSlide: React.FC<ChartSlideProps> = ({
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
             <CartesianGrid stroke="#e5e7eb" strokeDasharray="5 5" />
-            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+            
+            {/*-- [LANGKAH 3] Terapkan prop baru ke komponen XAxis --*/}
+            <XAxis 
+              dataKey="date" 
+              tick={{ fontSize: 10 }} // Atur font dasar
+              {...xAxisProps} // Terapkan semua konfigurasi dari parent (angle, formatter, dll)
+            />
+
             <Tooltip wrapperStyle={{ fontSize: "13px", zIndex: 1000 }} />
 
             <YAxis
@@ -79,8 +88,7 @@ const ChartSlide: React.FC<ChartSlideProps> = ({
                 isAnimationActive={false}
               />
             ))}
-
-            {/* [BARU] Render garis batas jika ada */}
+            
             {referenceLines && referenceLines.map((line, index) => (
               <ReferenceLine
                 key={`ref-${index}`}

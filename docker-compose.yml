@@ -27,25 +27,17 @@ services:
     command: npm run dev
     ports:
       - "5000:5000"
+    env_file:
+      - ./server/.env
     environment:
-      # Redis (koneksi ke service redis-cache)
       REDIS_URL: redis://redis-cache:6379
-
-      # API eksternal (swagger)
       API_BASE_URL: http://103.169.3.72:2107/api
       API_KEY: DEBUG-BYPASS-TOKEN-2107
-
-      MYSQL_HOST: db
-      MYSQL_USER: root
-      MYSQL_PASS: admin  
-      MYSQL_NAME: station_quality_control
-
       DB_MIGRATE: "true"
       DB_SEED: "true"
     depends_on:
       - redis-cache
       - db
-      # - db   # aktifkan kalau pakai MySQL container
     volumes:
       - ./server:/app
       - /app/node_modules

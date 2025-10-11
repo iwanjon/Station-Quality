@@ -1,37 +1,46 @@
+// latencyHistory.route.js
+
 import { Router } from 'express';
-import pool from '../config/database.js'; // [DIUBAH] Menggunakan koneksi pool yang benar
+import pool from '../config/database.js';
 import dayjs from 'dayjs';
 
 const router = Router();
 
-// Endpoint untuk mengambil agregat ON/OFF 7 hari terakhir
 router.get('/7days', async (req, res) => {
   try {
     const sevenDaysAgo = dayjs().subtract(7, 'day').format('YYYY-MM-DD');
 
-    // [DIUBAH] Query sekarang menggunakan SQL mentah dengan mysql2/promise
+    // --- Kueri SQL BARU yang Akurat ---
+    // Logika ini sekarang sama persis dengan aturan di frontend:
+    // OFF jika latency1 adalah NULL ATAU nilai terkecil dari (lat1, lat2, lat3) >= 1 hari.
+    // ON adalah kebalikannya.
     const sql = `
       SELECT
         DATE(recorded_at) as date,
-        SUM(CASE WHEN latency1 < 86400 AND latency2 < 86400 AND latency3 < 86400 THEN 1 ELSE 0 END) as count_on,
-        SUM(CASE WHEN latency1 >= 86400 OR latency2 >= 86400 OR latency3 >= 86400 OR latency1 IS NULL OR latency2 IS NULL OR latency3 IS NULL THEN 1 ELSE 0 END) as count_off
+        SUM(CASE
+          WHEN NOT (latency1 IS NULL OR LEAST(latency1, latency2, latency3) >= 86400) THEN 1
+          ELSE 0
+        END) as 'ON',
+        SUM(CASE
+          WHEN (latency1 IS NULL OR LEAST(latency1, latency2, latency3) >= 86400) THEN 1
+          ELSE 0
+        END) as 'OFF'
       FROM
         latency_history
       WHERE
-        recorded_at >= ?
+        DATE(recorded_at) >= ?
       GROUP BY
-        date
+        DATE(recorded_at)
       ORDER BY
         date ASC;
     `;
 
     const [results] = await pool.query(sql, [sevenDaysAgo]);
 
-    // Format data agar sesuai dengan kebutuhan chart
     const formattedResults = results.map(row => ({
       date: dayjs(row.date).format('YYYY-MM-DD'),
-      ON: Number(row.count_on) || 0,
-      OFF: Number(row.count_off) || 0,
+      ON: Number(row.ON) || 0,
+      OFF: Number(row.OFF) || 0,
     }));
     
     res.json(formattedResults);
@@ -42,4 +51,3 @@ router.get('/7days', async (req, res) => {
 });
 
 export default router;
-
