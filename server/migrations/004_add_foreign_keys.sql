@@ -5,7 +5,7 @@ ON DELETE SET NULL ON UPDATE CASCADE;
 
 ALTER TABLE `stasiun` 
 ADD CONSTRAINT `fk_stasiun_upt` 
-FOREIGN KEY (`upt`) REFERENCES `upt` (`upt_id`)
+FOREIGN KEY (`upt_id`) REFERENCES `upt` (`upt_id`)
 ON DELETE SET NULL ON UPDATE CASCADE;
 
 ALTER TABLE `stasiun` 

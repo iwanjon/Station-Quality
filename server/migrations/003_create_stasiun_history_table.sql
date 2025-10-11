@@ -1,24 +1,27 @@
 CREATE TABLE `stasiun_history` (
   `history_id` integer PRIMARY KEY AUTO_INCREMENT,
   `stasiun_id` integer,
-  `SHE` float,
-  `SHN` float,
-  `SHZ` float,
-  `data_logger` text,
-  `total_gain` float,
+  `status` boolean DEFAULT false,
+  `channel` varchar(10),
+  `sensor_name` text,
+  `digitizer_name` text,
+  `total_gain` integer,
   `input_unit` varchar(10),
-  `sampling_rate` float,
-  `sensor_type` text,
   `start_date` datetime,
   `end_date` datetime,
-  `PAZ` float,
-  `status` boolean DEFAULT true,
-  `created_at` datetime DEFAULT CURRENT_TIMESTAMP
+  `latitude` float,
+  `longitude` float,
+  `elevation` float,
+  `sampling_rate` float,
+  `paz` json,
+  `response_path` text,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`stasiun_id`) REFERENCES `stasiun`(`stasiun_id`) ON DELETE SET NULL
 );
 
 CREATE TABLE `availability` (
   `availability_id` integer PRIMARY KEY AUTO_INCREMENT,
   `stasiun_id` integer,
   `tanggal` datetime,
-  `nilai_availability` integer
+  `nilai_availability` float
 );

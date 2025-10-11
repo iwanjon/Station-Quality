@@ -5,10 +5,9 @@ import axiosServer from '../utilities/AxiosServer';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import DataTable from "../components/DataTable";
 import dayjs from "dayjs";
 
-// [BARU] Interface untuk data stasiun yang lebih lengkap
+// Interface untuk data stasiun yang lebih lengkap
 interface StationData {
   stasiun_id: number;
   kode_stasiun: string;
@@ -188,7 +187,7 @@ const StationDaily = () => {
   };
 
   const InfoItem = ({ label, value }: { label: string, value: string | number | null }) => (
-    <div className="flex justify-between border-b border-gray-200 py-2 text-sm">
+    <div className="flex justify-between border-b border-gray-200 py-1 text-xs">
       <dt className="font-medium text-gray-600">{label}</dt>
       <dd className="text-gray-900 font-semibold text-right">{value ?? '-'}</dd>
     </div>
@@ -205,15 +204,15 @@ const StationDaily = () => {
   ];
   
   const ChartGridSection = ({ title, children }: { title: string; children: React.ReactNode; }) => (
-    <div className="mb-8">
-      <h2 className="text-xl font-bold mb-4 text-gray-800">{title}</h2>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">{children}</div>
+    <div className="mb-4 bg-white p-2 rounded-lg shadow">
+      <h2 className="text-base font-bold mb-2 text-gray-800">{title}</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">{children}</div>
     </div>
   );
 
   const ImagePanel = ({ children }: { children: React.ReactNode; }) => (
     <div className="flex flex-col items-center w-full h-full">
-      <div className="w-full h-[320px] flex items-center justify-center bg-gray-50 rounded-lg border border-gray-400/30 shadow-lg shadow-gray-400/20">
+      <div className="w-full h-[180px] flex items-center justify-center bg-gray-50 rounded-md border border-gray-300 shadow">
         {children}
       </div>
     </div>
@@ -227,17 +226,33 @@ const StationDaily = () => {
   const signalCharts = chartsData.filter(c => c.type === "signal");
   const psdCharts = chartsData.filter(c => c.type === "psd");
 
+  const simpleTableColumns = [
+    { accessorKey: "channel", header: "Channel" },
+    { accessorKey: "rms", header: "RMS" },
+    { accessorKey: "amplitude_ratio", header: "Amp. Ratio" },
+    { accessorKey: "num_gap", header: "Gaps" },
+    { accessorKey: "num_overlap", header: "Overlaps" },
+    { accessorKey: "num_spikes", header: "Spikes" },
+    { accessorKey: "linear_dead_channel", header: "Linear Dead" },
+    { accessorKey: "gsn_dead_channel", header: "GSN Dead" },
+    { accessorKey: "sp_percentage", header: "% Short Period" },
+    { accessorKey: "bw_percentage", header: "% Body Wave" },
+    { accessorKey: "lp_percentage", header: "% Long Period" },
+    { accessorKey: "perc_below_nlnm", header: "% Below NLNM" },
+    { accessorKey: "perc_above_nhnm", header: "% Above NHNM" },
+  ];
+
   return (
     <MainLayout>
-      <div className="p-4 sm:p-6 space-y-8 bg-gray-50 min-h-screen">
-        <header className="flex justify-between items-start">
-          <div className="flex items-center space-x-3">
-            <Link to="/dashboard" className="bg-gray-200 text-gray-800 font-bold px-4 py-2 rounded-lg hover:bg-gray-300">Station</Link>
-            <select value={selectedStation} onChange={handleStationChange} className="p-2 border rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-lg font-bold">
+      <div className="p-2 sm:p-3 space-y-4 bg-gray-50 min-h-screen">
+        <header className="flex justify-between items-start mb-2">
+          <div className="flex items-center space-x-2">
+            <Link to="/dashboard" className="bg-gray-200 text-gray-800 font-bold px-3 py-1 rounded hover:bg-gray-300 text-xs">Station</Link>
+            <select value={selectedStation} onChange={handleStationChange} className="p-1 border rounded shadow-sm focus:ring-indigo-500 focus:border-indigo-500 font-bold text-xs min-w-[80px]">
               {stationList.map((station) => (<option key={station} value={station}>{station}</option>))}
             </select>
             {!loadingSiteQuality && siteQualityData && (
-              <div className={`px-4 py-2 rounded-full text-md font-semibold ${
+              <div className={`px-2 py-1 rounded text-xs font-semibold ${
                 siteQualityData.site_quality === 'Very Good' || siteQualityData.site_quality === 'Good' ? 'bg-green-100 text-green-800' :
                 siteQualityData.site_quality === 'Fair' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
               }`}>
@@ -246,60 +261,111 @@ const StationDaily = () => {
             )}
           </div>
           <div className="flex flex-col items-end">
-            <div className="flex space-x-1 rounded-lg bg-gray-200 p-1">
-              <button className="px-4 py-1 rounded-md text-sm font-medium bg-white shadow text-blue-600">Daily</button>
-              <Link to={`/station/${selectedStation}`} className="px-4 py-1 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-300">Time Series</Link>
+            <div className="flex space-x-1 rounded bg-gray-200 p-0.5">
+              <button className="px-2 py-0.5 rounded text-xs font-medium bg-white shadow text-blue-600">Daily</button>
+              <Link to={`/station/${selectedStation}`} className="px-2 py-0.5 rounded text-xs font-medium text-gray-700 hover:bg-gray-300">Time Series</Link>
             </div>
-            <div className="mt-2">
-              <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-semibold rounded-lg border-none focus:ring-2 focus:ring-blue-500"/>
+            <div className="mt-1">
+              <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-semibold rounded border-none focus:ring-2 focus:ring-blue-500"/>
             </div>
           </div>
         </header>
-        <main className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-2xl shadow-md space-y-4">
-            {/* [DIUBAH] Tampilkan data stasiun secara dinamis dari state stationMeta */}
+        <main className="grid grid-cols-1 lg:grid-cols-7 gap-2">
+          {/* Station Information & Site Quality diperbesar */}
+          <div className="bg-white p-2 rounded-lg shadow-md space-y-4 lg:col-span-3 ml-2">
+            {/* Station Information */}
             <div>
-              {stationMeta ? (
-                <dl>
-                  <InfoItem label="Station Code" value={stationMeta.kode_stasiun} />
-                  <InfoItem label="Group" value={stationMeta.jaringan} />
-                  <InfoItem label="Priority" value={stationMeta.prioritas} />
-                  <InfoItem label="Location" value={stationMeta.lokasi} />
-                  <InfoItem label="Province" value={stationMeta.provinsi} />
-                  <InfoItem label="UPT" value={stationMeta.upt_penanggung_jawab} />
-                </dl>
-              ) : (
-                <p className="text-gray-500">Memuat info stasiun...</p>
-              )}
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-sm font-bold text-gray-800">Station Information</h2>
+              </div>
+              <table className="w-full border border-gray-300 text-xs">
+                <tbody>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300 w-1/2">Station Code</td>
+                    <td className="px-2 py-1">{stationMeta?.kode_stasiun ?? '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Group</td>
+                    <td className="px-2 py-1">{stationMeta?.jaringan ?? '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Priority</td>
+                    <td className="px-2 py-1">{stationMeta?.prioritas ?? '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Location</td>
+                    <td className="px-2 py-1">{stationMeta?.lokasi ?? '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Province</td>
+                    <td className="px-2 py-1">{stationMeta?.provinsi ?? '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">UPT</td>
+                    <td className="px-2 py-1">{stationMeta?.upt_penanggung_jawab ?? '-'}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-            <hr className="my-4"/>
+            {/* Site Quality Analysis */}
             <div>
-              <h2 className="text-lg font-bold mb-2 text-gray-800">Site Quality Analysis</h2>
-              {loadingSiteQuality ? (
-                <p className="text-gray-500">Memuat data...</p>
-              ) : siteQualityData ? (
-                <dl>
-                  <InfoItem label="Score" value={siteQualityData.score} />
-                  <InfoItem label="Geology" value={siteQualityData.geology} />
-                  <InfoItem label="VS30" value={siteQualityData.vs30} />
-                  <InfoItem label="Photovoltaic" value={siteQualityData.photovoltaic} />
-                  <InfoItem label="HVSR" value={siteQualityData.hvsr} />
-                  <InfoItem label="PSD" value={siteQualityData.psd.toFixed(2)} />
-                </dl>
-              ) : (
-                <p className="text-red-500">Data tidak tersedia.</p>
-              )}
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-sm font-bold text-gray-800">Site Quality Analysis</h2>
+              </div>
+              <table className="w-full border border-gray-300 text-xs">
+                <tbody>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300 w-1/2">Score</td>
+                    <td className="px-2 py-1">{siteQualityData?.score ?? '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Geology</td>
+                    <td className="px-2 py-1">{siteQualityData?.geology ?? '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">VS30</td>
+                    <td className="px-2 py-1">{siteQualityData?.vs30 ?? '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Photovoltaic</td>
+                    <td className="px-2 py-1">{siteQualityData?.photovoltaic ?? '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">HVSR</td>
+                    <td className="px-2 py-1">{siteQualityData?.hvsr ?? '-'}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">PSD</td>
+                    <td className="px-2 py-1">{siteQualityData?.psd ?? '-'}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-2xl shadow-md lg:col-span-2">
-            <div className="w-full h-full rounded-lg min-h-[500px]">
+          {/* Map diperkecil */}
+          <div className="bg-white p-2 rounded-lg shadow-md lg:col-span-4 flex flex-col">
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="text-sm font-bold text-gray-800">Station Location Map</h2>
+            </div>
+            <div className="w-full h-full rounded min-h-[180px] flex-1">
               {stationMeta && stationMeta.lintang && stationMeta.bujur ? (
-                <MapContainer center={[stationMeta.lintang, stationMeta.bujur]} zoom={16} className="w-full h-[500px] rounded-lg">
+                <MapContainer
+                  center={[stationMeta.lintang, stationMeta.bujur]}
+                  zoom={16}
+                  className="w-full h-[180px] rounded"
+                  style={{ minHeight: 180, height: "100%" }}
+                >
                   <ResetMapView center={[stationMeta.lintang, stationMeta.bujur]} zoom={16} />
                   <TileLayer attribution='&copy; <a href="https://osm.org/copyright">OSM</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/>
-                  <Marker position={[stationMeta.lintang, stationMeta.bujur]} icon={triangleIcon(getColorByResult(null))}><Popup><b>Stasiun: {stationMeta.kode_stasiun}</b></Popup></Marker>
+                  <Marker position={[stationMeta.lintang, stationMeta.bujur]} icon={triangleIcon(getColorByResult(null))}>
+                    <Popup><b>Stasiun: {stationMeta.kode_stasiun}</b></Popup>
+                  </Marker>
                 </MapContainer>
-              ) : (<div className="w-full h-[500px] bg-gray-200 flex items-center justify-center rounded-lg"><p className="text-gray-500">[Peta tidak tersedia]</p></div>)}
+              ) : (
+                <div className="w-full h-[180px] bg-gray-200 flex items-center justify-center rounded">
+                  <p className="text-gray-500 text-xs">[Peta tidak tersedia]</p>
+                </div>
+              )}
             </div>
           </div>
         </main>
@@ -311,7 +377,7 @@ const StationDaily = () => {
               <ImagePanel key={`${chart.type}-${chart.channel}`}>
                 {selectedStation && selectedDate ? (
                   <ImageLoader srcUrl={imageUrlPath} alt={`Signal for ${selectedStation} on ${selectedDate} channel ${chart.channel}`} />
-                ) : (<p className="text-gray-400">Pilih stasiun dan tanggal.</p>)}
+                ) : (<p className="text-gray-400 text-xs">Pilih stasiun dan tanggal.</p>)}
               </ImagePanel>
             );
           })}
@@ -324,18 +390,54 @@ const StationDaily = () => {
               <ImagePanel key={`${chart.type}-${chart.channel}`}>
                 {selectedStation && selectedDate ? (
                   <ImageLoader srcUrl={imageUrlPath} alt={`PSD for ${selectedStation} on ${selectedDate} channel ${chart.channel}`} />
-                ) : (<p className="text-gray-400">Pilih stasiun dan tanggal.</p>)}
+                ) : (<p className="text-gray-400 text-xs">Pilih stasiun dan tanggal.</p>)}
               </ImagePanel>
             );
           })}
         </ChartGridSection>
 
-        <section className="bg-white p-6 rounded-2xl shadow-md overflow-x-auto">
-          <h2 className="text-xl font-bold mb-4 text-gray-800">Channel Details</h2>
+        <section className="bg-white p-2 rounded-lg shadow overflow-x-auto">
+          <h2 className="text-base font-bold mb-2 text-gray-800">Channel Details</h2>
           {loadingTable ? (
-            <div className="text-center text-gray-500 py-8">Memuat data...</div>
+            <div className="text-center text-gray-500 py-4 text-xs">Memuat data...</div>
           ) : (
-            <DataTable columns={columns} data={tableData} />
+            <div className="overflow-x-auto">
+              <table className="min-w-full border border-gray-300 text-center">
+                <thead className="bg-gray-100">
+                  <tr>
+                    {simpleTableColumns.map((col) => (
+                      <th
+                        key={col.accessorKey}
+                        className="border p-1 text-xs font-semibold"
+                      >
+                        {col.header}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {tableData && tableData.length > 0 ? (
+                    tableData.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50">
+                        {simpleTableColumns.map((col) => (
+                          <td key={col.accessorKey} className="border p-1 text-xs">
+                            {row && row[col.accessorKey] !== undefined && row[col.accessorKey] !== null
+                              ? row[col.accessorKey]
+                              : "-"}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={simpleTableColumns.length} className="text-center p-2 text-gray-500 text-xs">
+                        No data available
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       </div>

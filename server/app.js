@@ -4,11 +4,13 @@ import dashboardRoutes from './routes/dashboard.routes.js';
 import signalRoutes from "./routes/signal.routes.js";
 import latencyRoutes from "./routes/latency.routes.js";
 import qcRoutes from './routes/qc.routes.js';
-import qcImageRoutes from './routes/qcImage.routes.js'; // <-- 1. Tambahkan import ini
+import qcImageRoutes from './routes/qcImage.routes.js'; 
 import availabilityRoutes from './routes/availability.routes.js';
 import stasiunRoutes from './routes/stasiun.routes.js';
 import stasiunHistoryRoutes from './routes/stasiunHistory.routes.js';
 import pool, { testConnection } from './config/database.js';
+import latencyHistoryRoutes from './routes/latencyHistory.routes.js'; 
+import 'dotenv/config';
 
 const app = express();
 app.use(json());
@@ -29,5 +31,6 @@ app.use('/api/station-history', stasiunHistoryRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use("/api/signal", signalRoutes);
 app.use('/api', latencyRoutes);
+app.use('/api/latency/history', latencyHistoryRoutes);
 
 export default app;

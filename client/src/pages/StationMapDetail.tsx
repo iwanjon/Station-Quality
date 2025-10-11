@@ -28,17 +28,15 @@ interface StationHistory {
   stasiun_id: number;
   kode_stasiun: string;
   net: string;
-  SHE: number | null;
-  SHN: number | null;
-  SHZ: number | null;
-  data_logger: string | null;
+  channel: string;
+  sensor_name: string | null;
+  digitizer_name: string | null;
   total_gain: number | null;
   input_unit: string | null;
   sampling_rate: number | null;
-  sensor_type: string | null;
   start_date: string | null;
   end_date: string | null;
-  PAZ: number | null;
+  paz: Record<string, unknown> | null;
   status: boolean;
   created_at: string;
 }
@@ -126,6 +124,7 @@ const StationMapDetail = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [stationHistory, setStationHistory] = useState<StationHistory[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [showShelterInfo, setShowShelterInfo] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingSection, setEditingSection] = useState<string>('');
 
@@ -377,41 +376,94 @@ const StationMapDetail = () => {
                 {/* Location Information Table */}
                 <div>
                   <div className="flex justify-between items-center mb-3">
-                    <h4 className="text-md font-semibold text-gray-700">Location Information</h4>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setShowShelterInfo(false)}
+                        className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                          !showShelterInfo
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        Location Info
+                      </button>
+                      <button
+                        onClick={() => setShowShelterInfo(true)}
+                        className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                          showShelterInfo
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        Shelter Info
+                      </button>
+                    </div>
                     <button
-                      onClick={() => handleEditClick('location')}
+                      onClick={() => handleEditClick(showShelterInfo ? 'shelter' : 'location')}
                       className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                     >
                       <Edit size={14} />
                       Edit
                     </button>
                   </div>
-                  <table className="w-full border border-gray-300 text-sm">
-                    <tbody>
-                      <tr>
-                        <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300 w-1/2">Address</td>
-                        <td className="px-3 py-2">{station.lokasi}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Province</td>
-                        <td className="px-3 py-2">{station.provinsi}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Status</td>
-                        <td className="px-3 py-2">{station.status}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Priority</td>
-                        <td className="px-3 py-2">{station.prioritas}</td>
-                      </tr>
-                      {station.keterangan && (
+
+                  {!showShelterInfo ? (
+                    <table className="w-full border border-gray-300 text-sm">
+                      <tbody>
                         <tr>
-                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Description</td>
-                          <td className="px-3 py-2">{station.keterangan}</td>
+                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300 w-1/2">Address</td>
+                          <td className="px-3 py-2">{station.lokasi}</td>
                         </tr>
-                      )}
-                    </tbody>
-                  </table>
+                        <tr>
+                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Province</td>
+                          <td className="px-3 py-2">{station.provinsi}</td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Status</td>
+                          <td className="px-3 py-2">{station.status}</td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Priority</td>
+                          <td className="px-3 py-2">{station.prioritas}</td>
+                        </tr>
+                        {station.keterangan && (
+                          <tr>
+                            <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Description</td>
+                            <td className="px-3 py-2">{station.keterangan}</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <table className="w-full border border-gray-300 text-sm">
+                      <tbody>
+                        <tr>
+                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300 w-1/2">Shelter Type</td>
+                          <td className="px-3 py-2">{station.tipe_shelter || '-'}</td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Installation Sensor Type</td>
+                          <td className="px-3 py-2">{station.accelerometer || '-'}</td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Shelter Location</td>
+                          <td className="px-3 py-2">{station.lokasi_shelter || '-'}</td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Shelter Guard</td>
+                          <td className="px-3 py-2">{station.penjaga_shelter || '-'}</td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Communication Equipment</td>
+                          <td className="px-3 py-2">{station.digitizer_komunikasi || '-'}</td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Last Equipment Replacement</td>
+                          <td className="px-3 py-2">{station.penggantian_terakhir_alat || '-'}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               </div>
 
@@ -499,9 +551,10 @@ const StationMapDetail = () => {
               <table className="w-full border border-gray-300 text-sm">
                 <thead>
                   <tr className="bg-gray-50">
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Station Code</th>
                     <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Channel</th>
-                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Sensor Type</th>
-                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Data Logger</th>
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Sensor Name</th>
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Digitizer Name</th>
                     <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Total Gain</th>
                     <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Input Unit</th>
                     <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Sampling Rate</th>
@@ -511,13 +564,13 @@ const StationMapDetail = () => {
                 <tbody>
                   {historyLoading ? (
                     <tr>
-                      <td colSpan={7} className="px-3 py-4 text-center text-gray-500">
+                      <td colSpan={8} className="px-3 py-4 text-center text-gray-500">
                         Loading equipment data...
                       </td>
                     </tr>
                   ) : stationHistory.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-3 py-4 text-center text-gray-500">
+                      <td colSpan={8} className="px-3 py-4 text-center text-gray-500">
                         No equipment history data available
                       </td>
                     </tr>
@@ -525,17 +578,15 @@ const StationMapDetail = () => {
                     // Group by channel and show latest record for each channel
                     ['SHE', 'SHN', 'SHZ'].map((channel) => {
                       const channelData = stationHistory
-                        .filter((history: StationHistory) => {
-                          // Check if this history record has data for this channel
-                          return history[channel as keyof StationHistory] !== null && history[channel as keyof StationHistory] !== undefined;
-                        })
+                        .filter((history: StationHistory) => history.channel === channel)
                         .sort((a: StationHistory, b: StationHistory) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
 
                       return (
                         <tr key={channel} className="border-t border-gray-200">
+                          <td className="px-3 py-2 font-medium text-gray-800">{station.kode_stasiun}</td>
                           <td className="px-3 py-2 font-medium text-blue-600">{channel}</td>
-                          <td className="px-3 py-2">{channelData?.sensor_type || '-'}</td>
-                          <td className="px-3 py-2">{channelData?.data_logger || '-'}</td>
+                          <td className="px-3 py-2">{channelData?.sensor_name || '-'}</td>
+                          <td className="px-3 py-2">{channelData?.digitizer_name || '-'}</td>
                           <td className="px-3 py-2">{channelData?.total_gain || '-'}</td>
                           <td className="px-3 py-2">{channelData?.input_unit || '-'}</td>
                           <td className="px-3 py-2">{channelData?.sampling_rate || '-'}</td>
@@ -611,9 +662,19 @@ const StationMapDetail = () => {
               ? ['lintang', 'bujur', 'elevasi', 'tahun_instalasi', 'jaringan', 'upt_penanggung_jawab']
               : editingSection === 'location'
               ? ['lokasi', 'provinsi', 'status', 'prioritas', 'keterangan']
+              : editingSection === 'shelter'
+              ? ['tipe_shelter', 'accelerometer', 'lokasi_shelter', 'penjaga_shelter', 'digitizer_komunikasi', 'penggantian_terakhir_alat']
               : []
           }
-          title={editingSection === 'site' ? 'Edit Site Information' : 'Edit Location Information'}
+          title={
+            editingSection === 'site'
+              ? 'Edit Site Information'
+              : editingSection === 'location'
+              ? 'Edit Location Information'
+              : editingSection === 'shelter'
+              ? 'Edit Shelter Information'
+              : 'Edit Information'
+          }
         />
       )}
     </div>

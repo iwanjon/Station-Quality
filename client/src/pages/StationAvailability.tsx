@@ -13,6 +13,79 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December"
 ];
 
+// Configuration for availability ranges, colors, and labels
+// Easily modify ranges, colors, and labels here - changes will apply to both chart and table
+const AVAILABILITY_CONFIG = {
+  ranges: [
+    {
+      key: '> 97%',
+      label: '> 97%',
+      min: 97.01,
+      max: 100,
+      chartColor: '#16a34a',
+      legendColor: 'bg-green-600',
+      tableColor: 'text-green-600'
+    },
+    {
+      key: '90-97%',
+      label: '90-97%',
+      min: 90,
+      max: 97,
+      chartColor: '#ffff00',
+      legendColor: 'bg-yellow-200',
+      tableColor: 'text-yellow-600'
+    },
+    {
+      key: '1-89%',
+      label: '1-89%',
+      min: 0.01,
+      max: 89.99,
+      chartColor: '#ff7f00',
+      legendColor: 'bg-orange-400',
+      tableColor: 'text-orange-400'
+    },
+    {
+      key: '0%',
+      label: '0%',
+      min: 0,
+      max: 0,
+      chartColor: '#ff0000',
+      legendColor: 'bg-red-500',
+      tableColor: 'text-red-500'
+    }
+  ]
+};
+
+// Helper function to get availability category for a single value
+function getAvailabilityCategoryForValue(value: number | null): string {
+  if (value === null || value === undefined) {
+    return AVAILABILITY_CONFIG.ranges[3].key; // 0%
+  }
+
+  for (const range of AVAILABILITY_CONFIG.ranges) {
+    if (value >= range.min && value <= range.max) {
+      return range.key;
+    }
+  }
+
+  return AVAILABILITY_CONFIG.ranges[3].key; // fallback to 0%
+}
+
+// Helper function to get table color class for a value
+function getTableColorClass(value: number | null): string {
+  if (value === null || value === undefined) {
+    return `${AVAILABILITY_CONFIG.ranges[3].tableColor} font-semibold`;
+  }
+
+  for (const range of AVAILABILITY_CONFIG.ranges) {
+    if (value >= range.min && value <= range.max) {
+      return `${range.tableColor} font-semibold`;
+    }
+  }
+
+  return `${AVAILABILITY_CONFIG.ranges[3].tableColor} font-semibold`; // fallback
+}
+
 interface StationData {
   timestamp: string;
   availability: number | null;
@@ -64,11 +137,8 @@ interface DateRange {
 
 interface ChartDataPoint {
   month: string;
-  '> 97%': number;
-  '90-97%': number;
-  '1-89%': number;
-  '0%': number;
   counts: Record<string, number>;
+  [key: string]: string | number | Record<string, number>; // Allow dynamic keys for availability ranges
 }
 
 interface ApiInfo {
@@ -82,32 +152,26 @@ function processStationData(apiResponse: APIResponse, selectedRange: DateRange):
   const stations: ProcessedStation[] = [];
   let id = 1;
 
-  // Loop through each station in data
   Object.entries(apiResponse.data).forEach(([stationCode, stationData]) => {
-    // Filter data yang valid (availability tidak null)
     const validData = stationData.filter(record => record.availability !== null);
     const totalDays = stationData.length;
     const availableDays = validData.length;
     const missingDays = totalDays - availableDays;
-    
-    // Group data by month and calculate monthly averages
+
     const monthlyData: Record<string, number | null> = {};
-    
-    // Generate all months in the selected range
+
     const currentDate = new Date(selectedRange.startYear, selectedRange.startMonth, 1);
     const endDate = new Date(selectedRange.endYear, selectedRange.endMonth, 1);
-    
+
     while (currentDate <= endDate) {
       const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-      
-      // Filter data for this month
+
       const monthData = stationData.filter(record => {
         const recordDate = new Date(record.timestamp);
-        return recordDate.getFullYear() === currentDate.getFullYear() && 
+        return recordDate.getFullYear() === currentDate.getFullYear() &&
                recordDate.getMonth() === currentDate.getMonth();
       });
-      
-      // Calculate average for this month
+
       const validMonthData = monthData.filter(record => record.availability !== null);
       if (validMonthData.length > 0) {
         const sum = validMonthData.reduce((acc, record) => acc + (record.availability || 0), 0);
@@ -115,12 +179,9 @@ function processStationData(apiResponse: APIResponse, selectedRange: DateRange):
       } else {
         monthlyData[monthKey] = null;
       }
-      
-      // Next month
+
       currentDate.setMonth(currentDate.getMonth() + 1);
-    }
-    
-    stations.push({
+    }    stations.push({
       id: id++,
       kode: stationCode,
       dailyData: stationData,
@@ -151,20 +212,13 @@ function getAvailabilityCategory(station: Station): string {
   const monthlyValues = Object.values(station.monthlyData).filter(val => val !== null) as number[];
 
   if (monthlyValues.length === 0) {
-    return '0%';
+    return AVAILABILITY_CONFIG.ranges[3].key; // 0%
   }
 
   const overallAverage = monthlyValues.reduce((sum, val) => sum + val, 0) / monthlyValues.length;
 
-  if (overallAverage === 0) {
-    return '0%';
-  } else if (overallAverage >= 0 && overallAverage < 90) {
-    return '1-89  %';
-  } else if (overallAverage >= 90 && overallAverage <= 97) {
-    return '90-97%';
-  } else {
-    return '> 97%';
-  }
+  // Use the helper function to get category for the average value
+  return getAvailabilityCategoryForValue(overallAverage);
 }
 
 const StationAvailability = () => {
@@ -180,7 +234,7 @@ const StationAvailability = () => {
       endYear -= 1;
     }
     // Start: 12 bulan sebelum endMonth
-    let startMonth = endMonth - 12;
+    let startMonth = endMonth - 11;
     let startYear = endYear;
     if (startMonth < 0) {
       startMonth += 12;
@@ -201,16 +255,25 @@ const StationAvailability = () => {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
 
   useEffect(() => {
-    // Fetch data dari API availability baru
     setLoading(true);
-    
-    // Gunakan range bulan yang dipilih
+
     const firstDayOfRange = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
     const lastDayOfRange = new Date(selectedMonth.endYear, selectedMonth.endMonth + 1, 0);
-    
-    const start_date = firstDayOfRange.toISOString().split('T')[0];
-    const end_date = lastDayOfRange.toISOString().split('T')[0];
-    
+
+    // Avoid timezone conversion issues by using local date components
+    const start_date = `${firstDayOfRange.getFullYear()}-${String(firstDayOfRange.getMonth() + 1).padStart(2, '0')}-${String(firstDayOfRange.getDate()).padStart(2, '0')}`;
+    const end_date = `${lastDayOfRange.getFullYear()}-${String(lastDayOfRange.getMonth() + 1).padStart(2, '0')}-${String(lastDayOfRange.getDate()).padStart(2, '0')}`;
+
+    console.log('API Request Debug:', {
+      endpoint: '/api/availability',
+      params: { start_date, end_date },
+      selectedMonth,
+      firstDayOfRange: firstDayOfRange.toISOString(),
+      lastDayOfRange: lastDayOfRange.toISOString(),
+      timezoneOffset: firstDayOfRange.getTimezoneOffset(),
+      localDates: { start_date, end_date }
+    });
+
     axiosInstance
       .get("/api/availability", {
         params: {
@@ -230,59 +293,43 @@ const StationAvailability = () => {
           
           setData(stations);
 
-          // Calculate chart data: station distribution per availability range per month
+          // Calculate chart data
           const chartDataTemp: ChartDataPoint[] = [];
-          
-          // Generate all months in the selected range
+
           const currentDate = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
           const endDate = new Date(selectedMonth.endYear, selectedMonth.endMonth, 1);
-          
+
           while (currentDate <= endDate) {
             const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
             const monthLabel = `${MONTH_NAMES[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
-            
-            // Calculate station distribution based on availability range for this month
-            const distribution = {
-              '> 97%': 0,
-              '90-97%': 0,
-              '1-89%': 0,
-              '0%': 0
-            };
-            
+
+            const distribution: Record<string, number> = {};
+            AVAILABILITY_CONFIG.ranges.forEach(range => {
+              distribution[range.key] = 0;
+            });
+
             stations.forEach(station => {
               const value = station.monthlyData[monthKey];
-              if (value !== null && value !== undefined) {
-                if (value > 97) {
-                  distribution['> 97%']++;
-                } else if (value >= 90 && value <= 97) {
-                  distribution['90-97%']++;
-                } else if (value > 0 && value < 90) {
-                  distribution['1-89%']++;
-                } else {
-                  distribution['0%']++;
-                }
-              } else {
-                // Jika tidak ada data, hitung sebagai 0%
-                distribution['0%']++;
-              }
+              const category = getAvailabilityCategoryForValue(value);
+              distribution[category]++;
             });
             
             // Calculate total stations and convert to percentage
-            const totalStations = distribution['> 97%'] + distribution['90-97%'] + distribution['1-89%'] + distribution['0%'];
-            
-            chartDataTemp.push({
+            const totalStations = Object.values(distribution).reduce((sum, count) => sum + count, 0);
+
+            const chartDataPoint: ChartDataPoint = {
               month: monthLabel,
-              '> 97%': totalStations > 0 ? Math.round((distribution['> 97%'] / totalStations) * 100 * 10) / 10 : 0,
-              '90-97%': totalStations > 0 ? Math.round((distribution['90-97%'] / totalStations) * 100 * 10) / 10 : 0,
-              '1-89%': totalStations > 0 ? Math.round((distribution['1-89%'] / totalStations) * 100 * 10) / 10 : 0,
-              '0%': totalStations > 0 ? Math.round((distribution['0%'] / totalStations) * 100 * 10) / 10 : 0,
-              counts: {
-                '> 97%': distribution['> 97%'],
-                '90-97%': distribution['90-97%'],
-                '1-89%': distribution['1-89%'],
-                '0%': distribution['0%']
-              }
+              counts: { ...distribution }
+            };
+
+            // Add percentage values for each range
+            AVAILABILITY_CONFIG.ranges.forEach(range => {
+              chartDataPoint[range.key] = totalStations > 0
+                ? Math.round((distribution[range.key] / totalStations) * 100 * 10) / 10
+                : 0;
             });
+
+            chartDataTemp.push(chartDataPoint);
             
             // Next month
             currentDate.setMonth(currentDate.getMonth() + 1);
@@ -290,10 +337,9 @@ const StationAvailability = () => {
           
           setChartData(chartDataTemp);
 
-          // Setup filter config
           const uniqueKode = Array.from(new Set(stations.map((s: Station) => s.kode))).sort();
-          const availabilityCategories = ['0%', '1-89%', '90-97%', '> 97%'];
-          
+          const availabilityCategories = AVAILABILITY_CONFIG.ranges.map(range => range.key);
+
           setFilterConfig({
             kode: { label: "Station Code", type: "multi", options: uniqueKode },
             availabilityCategory: { label: "Availability Category", type: "multi", options: availabilityCategories },
@@ -306,12 +352,10 @@ const StationAvailability = () => {
             dateRange: `${apiResponse.meta.dateRange.start_date} to ${apiResponse.meta.dateRange.end_date}`
           });
         } else {
-          console.error("API Error:", apiResponse.message);
           setData([]);
         }
       })
-      .catch((err) => {
-        console.error("Request Error:", err);
+      .catch(() => {
         setData([]);
       })
       .finally(() => setLoading(false));
@@ -320,24 +364,39 @@ const StationAvailability = () => {
   const filteredData = useMemo(() => {
     return data.filter((item) => {
       if (filters.kode.length > 0 && !filters.kode.includes(item.kode)) return false;
-      
-      // Filter by availability category
+
       if (filters.availabilityCategory.length > 0) {
         const category = getAvailabilityCategory(item);
         if (!filters.availabilityCategory.includes(category)) return false;
       }
-      
+
       return true;
     });
   }, [filters, data]);
 
   // Helper function to generate dynamic columns based on month range
   const generateColumns = (): ColumnDef<Station>[] => {
+    // Calculate uniform width for all columns
+    const totalColumns = (() => {
+      let count = 2; // Station Code + Detail
+      const currentDate = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
+      const endDate = new Date(selectedMonth.endYear, selectedMonth.endMonth, 1);
+      while (currentDate <= endDate) {
+        count++;
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      }
+      return count;
+    })();
+
+    // Set uniform width for all columns (assuming table width ~1200px)
+    const uniformWidth = Math.max(80, Math.floor(1200 / totalColumns));
+
     const columns: ColumnDef<Station>[] = [
       {
         header: "Station Code",
         accessorKey: "kode",
         enableSorting: true,
+        size: uniformWidth,
         cell: ({ row }) => {
           const station = row.original;
           return (
@@ -346,57 +405,54 @@ const StationAvailability = () => {
             </span>
           );
         },
-      },
-      {
-        header: "Station Detail",
-        accessorKey: "actions",
-        enableSorting: false,
-        cell: ({ row }) => {
-          const station = row.original;
-          return (
-            <Link
-              to={`/station-availability/${station.kode}`}
-              className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-            >
-              View Detail
-            </Link>
-          );
-        },
       }
     ];
 
-    // Generate kolom untuk setiap bulan dalam range
     const currentDate = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
     const endDate = new Date(selectedMonth.endYear, selectedMonth.endMonth, 1);
-    
+
     while (currentDate <= endDate) {
       const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
       const monthLabel = `${MONTH_NAMES[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
-      
+
       columns.push({
         header: monthLabel,
         accessorKey: `monthlyData.${monthKey}`,
         enableSorting: true,
+        size: uniformWidth,
         cell: ({ row }) => {
           const station = row.original;
           const value = station.monthlyData[monthKey];
           if (value === null || value === undefined) return "-";
-          
-          // Format dengan 2 decimal dan tambahkan warna berdasarkan nilai
+
           const formatted = value.toFixed(2);
-          let colorClass = "";
-          
-          if (value >= 95) colorClass = "text-green-600 font-semibold";
-          else if (value >= 80) colorClass = "text-yellow-600 font-semibold";
-          else colorClass = "text-red-600 font-semibold";
-          
+          const colorClass = getTableColorClass(value);
+
           return <span className={colorClass}>{formatted}%</span>;
         },
       });
-      
-      // Next month
+
       currentDate.setMonth(currentDate.getMonth() + 1);
     }
+
+    // Add Station Detail column at the end
+    columns.push({
+      header: "Detail",
+      accessorKey: "actions",
+      enableSorting: false,
+      size: uniformWidth,
+      cell: ({ row }) => {
+        const station = row.original;
+        return (
+          <Link
+            to={`/station-availability/${station.kode}`}
+            className="inline-flex items-center px-2 py-1 text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
+          >
+            Detail
+          </Link>
+        );
+      },
+    });
 
     return columns;
   };
@@ -544,30 +600,25 @@ const StationAvailability = () => {
                           }}
                           labelStyle={{ color: '#000' }}
                         />
-                        <Bar dataKey="> 97%" stackId="a" fill="#16a34a" radius={[0, 0, 0, 0]} />
-                        <Bar dataKey="90-97%" stackId="a" fill="#ffff00" radius={[0, 0, 0, 0]} />
-                        <Bar dataKey="1-89%" stackId="a" fill="#ff7f00" radius={[0, 0, 0, 0]} />
-                        <Bar dataKey="0%" stackId="a" fill="#ff0000" radius={[4, 4, 0, 0]} />
+                        {AVAILABILITY_CONFIG.ranges.map((range, index) => (
+                          <Bar
+                            key={range.key}
+                            dataKey={range.key}
+                            stackId="a"
+                            fill={range.chartColor}
+                            radius={index === AVAILABILITY_CONFIG.ranges.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                          />
+                        ))}
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
                   <div className="flex justify-center gap-6 mt-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 bg-green-600 rounded"></div>
-                      <span>&gt; 97%</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 bg-yellow-200 rounded"></div>
-                      <span>90-97%</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 bg-orange-400 rounded"></div>
-                      <span>1-89%</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 bg-red-500 rounded"></div>
-                      <span>0%</span>
-                    </div>
+                    {AVAILABILITY_CONFIG.ranges.map(range => (
+                      <div key={range.key} className="flex items-center gap-2">
+                        <div className={`w-4 h-4 ${range.legendColor} rounded`}></div>
+                        <span>{range.label}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ) : null}

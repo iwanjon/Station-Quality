@@ -9,6 +9,7 @@ import marker from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import DataTable from "../components/DataTable";
 import { Link } from "react-router-dom";
+import { Download, Upload, FileText } from "lucide-react";
 
 // Tipe data station
 interface Stasiun {
@@ -81,6 +82,15 @@ const getColorByStatus = (): string => {
 const StationMap = () => {
   const [data, setData] = useState<Stasiun[]>([]);
   const [loading, setLoading] = useState(true);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importSuccess, setImportSuccess] = useState<string | null>(null);
+  const [showForeignKeyHelp, setShowForeignKeyHelp] = useState(false);
+  const [foreignKeyOptions, setForeignKeyOptions] = useState<{
+    provinces: string[];
+    upts: string[];
+    networks: string[];
+  } | null>(null);
 
   // Filter states
   const [filterProvinsi, setFilterProvinsi] = useState<string>("");
@@ -122,6 +132,135 @@ const StationMap = () => {
       ...prev,
       [columnKey]: !prev[columnKey]
     }));
+  };
+
+  // Generate CSV template for station creation
+  const handleDownloadTemplate = () => {
+    // Define CSV headers based on station fields
+    const headers = [
+      "net",
+      "kode_stasiun",
+      "lintang",
+      "bujur",
+      "elevasi",
+      "lokasi",
+      "provinsi",
+      "upt_penanggung_jawab",
+      "status",
+      "tahun_instalasi",
+      "jaringan",
+      "prioritas",
+      "keterangan",
+      "accelerometer",
+      "digitizer_komunikasi",
+      "tipe_shelter",
+      "lokasi_shelter",
+      "penjaga_shelter",
+      "penggantian_terakhir_alat",
+      "is_sample"
+    ];
+
+    // Create sample data row with detailed comments
+    const sampleData = [
+      "IA", // net - Network code (e.g., IA, GE, etc.)
+      "ABC123", // kode_stasiun - Unique station code
+      "-6.2088", // lintang - Latitude (decimal format)
+      "106.8456", // bujur - Longitude (decimal format)
+      "100", // elevasi - Elevation in meters
+      "Jakarta Pusat", // lokasi - Full address/location
+      "DKI Jakarta", // provinsi - EXACT province name from database
+      "UPT Jakarta", // upt_penanggung_jawab - EXACT UPT name from database
+      "Active", // status - Station status (Active/Inactive/etc.)
+      "2020", // tahun_instalasi - Installation year
+      "BMKG", // jaringan - EXACT network name from database
+      "High", // prioritas - Priority level
+      "Sample station description", // keterangan - Description/notes
+      "Trillium Compact", // accelerometer - Accelerometer model
+      "Digitizer Model X", // digitizer_komunikasi - Digitizer model
+      "Container", // tipe_shelter - Shelter type
+      "Building A", // lokasi_shelter - Shelter location
+      "John Doe", // penjaga_shelter - Shelter guardian name
+      "2023-01-15", // penggantian_terakhir_alat - Last equipment replacement date (YYYY-MM-DD)
+      "true" // is_sample - Mark as sample (true/false)
+    ];
+
+    // Create CSV content with headers, sample data, and additional guidance rows
+    const guidanceRow1 = [
+      "# GUIDANCE:", "Foreign key fields must match EXACTLY with existing database records:", "", "", "", "", 
+      "Check existing provinces →", "Check existing UPT names →", "", "", "Check existing networks →", 
+      "", "", "", "", "", "", "", "", "DELETE_THIS_ROW"
+    ];
+    
+    const guidanceRow2 = [
+      "# Examples:", "Common values you can use:", "", "", "", "", 
+      "DKI Jakarta, Jawa Barat, Sumatera Utara", "UPT Jakarta, UPT Bandung, UPT Medan", "", "", "BMKG, IA, GE", 
+      "", "", "", "", "", "", "", "", "DELETE_THIS_ROW"
+    ];
+
+    // Combine all content
+    const csvContent = [headers, guidanceRow1, guidanceRow2, sampleData]
+      .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `station_template_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Fetch foreign key options
+  const fetchForeignKeyOptions = async () => {
+    try {
+      const response = await axiosServer.get('/api/stasiun/foreign-key-options');
+      setForeignKeyOptions(response.data.data);
+      setShowForeignKeyHelp(true);
+    } catch (error) {
+      console.error('Error fetching foreign key options:', error);
+      alert('Failed to fetch foreign key options');
+    }
+  };
+
+  // Handle CSV file import
+  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImportLoading(true);
+    setImportError(null);
+    setImportSuccess(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('csvFile', file);
+
+      const response = await axiosServer.post('/api/stasiun/import-csv', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.data.success) {
+        setImportSuccess(`Successfully imported ${response.data.insertedCount} stations`);
+        // Refresh data
+        const stationsResponse = await axiosServer.get("/api/stasiun");
+        setData(stationsResponse.data);
+      } else {
+        setImportError(response.data.message || 'Import failed');
+      }
+    } catch (error) {
+      console.error('Import error:', error);
+      setImportError('Failed to import CSV file');
+    } finally {
+      setImportLoading(false);
+      // Reset file input
+      event.target.value = '';
+    }
   };
   const handleExportCSV = () => {
     if (filteredData.length === 0) {
@@ -309,6 +448,173 @@ const StationMap = () => {
         <h1 className="bg-gray-100 rounded-2xl text-left text-3xl font-bold my-2 ">
           Station Metadata
         </h1>
+
+        {/* Import/Export Controls */}
+        <div className="bg-white p-4 rounded-xl shadow mb-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-800">Data Management</h2>
+            <div className="flex gap-3">
+              {/* Download Template Button */}
+              <button
+                onClick={handleDownloadTemplate}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                title="Download CSV template for bulk station creation"
+              >
+                <Download size={16} />
+                Download Template
+              </button>
+
+              {/* Show Foreign Key Options Button */}
+              <button
+                onClick={fetchForeignKeyOptions}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
+                title="Show valid values for foreign key fields"
+              >
+                <FileText size={16} />
+                View Valid Options
+              </button>
+
+              {/* Import CSV Button */}
+              <div className="relative">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleImportCSV}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  disabled={importLoading}
+                />
+                <button
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    importLoading
+                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
+                  disabled={importLoading}
+                  title="Import stations from CSV file"
+                >
+                  <Upload size={16} />
+                  {importLoading ? 'Importing...' : 'Import CSV'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Import Status Messages */}
+          {importError && (
+            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700 text-sm">{importError}</p>
+            </div>
+          )}
+          {importSuccess && (
+            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-green-700 text-sm">{importSuccess}</p>
+            </div>
+          )}
+
+          {/* Instructions */}
+          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <FileText size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-blue-700">
+                <p className="font-medium mb-2">How to create stations:</p>
+                <ol className="list-decimal list-inside space-y-1 mb-3">
+                  <li>Download the CSV template</li>
+                  <li>Fill in the station data following the format</li>
+                  <li>Remove or modify the sample row (marked with is_sample=true)</li>
+                  <li>Save the file and import it back</li>
+                  <li>The system will validate and create the stations (sample rows are automatically skipped)</li>
+                </ol>
+                
+                <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                  <p className="font-medium text-yellow-800 mb-1">⚠️ Important: Foreign Key Guidelines</p>
+                  <ul className="text-xs text-yellow-700 space-y-1">
+                    <li><strong>provinsi:</strong> Must match exactly with province names in database (e.g., "DKI Jakarta", "Jawa Barat", "Sumatera Utara")</li>
+                    <li><strong>upt_penanggung_jawab:</strong> Must match exactly with UPT names (e.g., "UPT Jakarta", "UPT Bandung", "UPT Medan")</li>
+                    <li><strong>jaringan:</strong> Must match network names (e.g., "BMKG", "IA", "GE")</li>
+                    <li>❌ If names don't match exactly, the station creation will fail</li>
+                    <li>💡 Check existing data in the system for correct naming</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Foreign Key Options Modal */}
+        {showForeignKeyHelp && foreignKeyOptions && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-gray-800">Valid Foreign Key Options</h3>
+                  <button
+                    onClick={() => setShowForeignKeyHelp(false)}
+                    className="text-gray-500 hover:text-gray-700 text-2xl"
+                  >
+                    ×
+                  </button>
+                </div>
+                
+                <div className="grid md:grid-cols-3 gap-6">
+                  {/* Provinces */}
+                  <div>
+                    <h4 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                      📍 Provinces (provinsi)
+                    </h4>
+                    <div className="bg-gray-50 p-3 rounded-lg max-h-48 overflow-y-auto">
+                      <ul className="text-sm space-y-1">
+                        {foreignKeyOptions.provinces.map((province, index) => (
+                          <li key={index} className="text-gray-600 hover:text-gray-800 cursor-default">
+                            "{province}"
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* UPT Names */}
+                  <div>
+                    <h4 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                      🏢 UPT Names (upt_penanggung_jawab)
+                    </h4>
+                    <div className="bg-gray-50 p-3 rounded-lg max-h-48 overflow-y-auto">
+                      <ul className="text-sm space-y-1">
+                        {foreignKeyOptions.upts.map((upt, index) => (
+                          <li key={index} className="text-gray-600 hover:text-gray-800 cursor-default">
+                            "{upt}"
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Networks */}
+                  <div>
+                    <h4 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                      🌐 Networks (jaringan)
+                    </h4>
+                    <div className="bg-gray-50 p-3 rounded-lg max-h-48 overflow-y-auto">
+                      <ul className="text-sm space-y-1">
+                        {foreignKeyOptions.networks.map((network, index) => (
+                          <li key={index} className="text-gray-600 hover:text-gray-800 cursor-default">
+                            "{network}"
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-700">
+                    <strong>💡 Copy and paste these exact values</strong> into your CSV file to avoid foreign key errors. 
+                    The names must match exactly (including capitalization and spacing).
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Combined Filter and Map Container */}
         <div className="flex bg-white p-2 rounded-xl shadow">

@@ -1,10 +1,11 @@
+import 'dotenv/config';
 import mysql from 'mysql2/promise';
 
 const dbConfig = {
-  host: process.env.MYSQL_HOST,
-  user: process.env.MYSQL_USER,
-  password: process.env.MYSQL_PASS,
-  database: process.env.MYSQL_NAME,
+  host: process.env.MYSQL_HOST || process.env.DB_HOST || 'localhost',
+  user: process.env.MYSQL_USER || process.env.DB_USER || 'root',
+  password: process.env.MYSQL_PASS || process.env.DB_PASS || 'admin',
+  database: process.env.MYSQL_NAME || process.env.DB_NAME || 'station_quality_control',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0

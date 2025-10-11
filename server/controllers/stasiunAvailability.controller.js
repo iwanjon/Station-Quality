@@ -16,7 +16,7 @@ export const getAllStationAvailability = async (req, res) => {
     if (req.query.start_date && req.query.end_date) {
       start_date = req.query.start_date;
       end_date = req.query.end_date;
-      
+
       // Validasi format tanggal (YYYY-MM-DD)
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(start_date) || !dateRegex.test(end_date)) {
@@ -25,7 +25,7 @@ export const getAllStationAvailability = async (req, res) => {
           message: 'Invalid date format. Use YYYY-MM-DD format for start_date and end_date'
         });
       }
-      
+
       // Validasi apakah start_date <= end_date
       if (new Date(start_date) > new Date(end_date)) {
         return res.status(400).json({
@@ -33,6 +33,12 @@ export const getAllStationAvailability = async (req, res) => {
           message: 'start_date must be less than or equal to end_date'
         });
       }
+
+      // Debug log untuk tracking tanggal yang dikirim
+      console.log('Date debug (all stations):', {
+        received: { start_date, end_date },
+        timezoneOffset: new Date().getTimezoneOffset()
+      });
     } else {
       // Set default tanggal: 7 hari terakhir
       const endDate = new Date();
@@ -127,8 +133,7 @@ export const getAllStationAvailability = async (req, res) => {
       if (channelKeys.length === 0) {
         return {
           timestamp: recordData.timestamp,
-          availability: null,
-          note: "No valid channels found (N, E, Z)"
+          availability: null
         };
       }
 
@@ -164,8 +169,7 @@ export const getAllStationAvailability = async (req, res) => {
       if (!apiStationSet.has(dbStationCode)) {
         filteredData[dbStationCode] = [{
           timestamp: start_date,
-          availability: null,
-          note: "Data not available in API for this date range"
+          availability: null
         }];
         missingInApiCount++;
         totalRecords += 1;
@@ -208,6 +212,25 @@ export const getAllStationAvailability = async (req, res) => {
     }
 
     console.log(`✅ Integration completed successfully`);
+
+    // Debug response yang akan dikirim ke frontend
+    console.log('Backend Response Debug (All Stations):', {
+      endpoint: '/api/availability',
+      requestParams: { start_date, end_date },
+      responseData: {
+        success: true,
+        message: `Successfully integrated availability data. Total: ${matchedCount + missingInApiCount} stations (${matchedCount} with data, ${missingInApiCount} with null availability).`,
+        cached: false,
+        cache_key: cacheKey,
+        meta: filteredResponse.meta,
+        dataKeys: Object.keys(filteredResponse.data),
+        sampleData: Object.values(filteredResponse.data).slice(0, 2).map(station => ({
+          code: station.code,
+          recordsCount: station.data?.length || 0,
+          firstRecord: station.data?.[0]
+        }))
+      }
+    });
 
     res.json({
       success: true,
@@ -265,6 +288,12 @@ export const getStationAvailabilityByCode = async (req, res) => {
           message: 'start_date must be less than or equal to end_date'
         });
       }
+
+      // Debug log untuk tracking tanggal yang dikirim
+      console.log('Date debug (single station):', {
+        received: { start_date, end_date },
+        timezoneOffset: new Date().getTimezoneOffset()
+      });
     } else {
       // Set default tanggal: dari awal bulan hingga hari ini
       const today = new Date();
@@ -349,8 +378,7 @@ export const getStationAvailabilityByCode = async (req, res) => {
       if (channelKeys.length === 0) {
         return {
           timestamp: recordData.timestamp,
-          availability: null,
-          note: "No valid channels found (N, E, Z)"
+          availability: null
         };
       }
 
@@ -362,8 +390,7 @@ export const getStationAvailabilityByCode = async (req, res) => {
 
       return {
         timestamp: recordData.timestamp,
-        availability: Math.round(average * 100) / 100,
-        channels: channelKeys // Optional: untuk debugging
+        availability: Math.round(average * 100) / 100
       };
     };
 
@@ -376,8 +403,7 @@ export const getStationAvailabilityByCode = async (req, res) => {
       // Jika tidak ada data dari API, buat entry null
       processedData = [{
         timestamp: start_date,
-        availability: null,
-        note: "Data not available in API for this date range"
+        availability: null
       }];
       totalRecords = 1;
       console.log(`⚠️ No data available for station ${stationCode}, created null entry`);
@@ -414,6 +440,21 @@ export const getStationAvailabilityByCode = async (req, res) => {
     }
 
     console.log(`✅ Single station integration completed successfully`);
+
+    // Debug response yang akan dikirim ke frontend
+    console.log('Backend Response Debug (Single Station):', {
+      endpoint: `/api/availability/${stationCode}`,
+      requestParams: { start_date, end_date },
+      responseData: {
+        success: true,
+        message: `Successfully retrieved availability data for station ${stationCode}`,
+        cached: false,
+        cache_key: cacheKey,
+        meta: stationResponse.meta,
+        dataKeys: Object.keys(stationResponse.data),
+        sampleData: stationResponse.data[stationCode]?.slice(0, 3) // Show first 3 records
+      }
+    });
 
     res.json({
       success: true,
