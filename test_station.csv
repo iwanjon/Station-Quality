@@ -1,0 +1,2 @@
+net,kode_stasiun,lintang,bujur,elevasi,lokasi,provinsi,upt_penanggung_jawab,status,tahun_instalasi,jaringan,prioritas,keterangan,accelerometer,digitizer_komunikasi,tipe_shelter,lokasi_shelter,penjaga_shelter,kondisi_shelter,assets_shelter,access_shelter,photo_shelter,penggantian_terakhir_alat,is_sample
+IA,TEST,-6.2088,106.8456,100,Jakarta Pusat,Jakarta,DGT,Active,2020,BMKG,High,Test station description,Trillium Compact,Digitizer Model X,Container,Building A,John Doe,Good condition,GPS Solar Panel Battery,Easy access 24/7 available,shelter_photo.jpg,2023-01-15,false

@@ -108,6 +108,10 @@ interface Stasiun {
   tipe_shelter: string | null;
   lokasi_shelter: string;
   penjaga_shelter: string;
+  kondisi_shelter: string;
+  assets_shelter: string;
+  access_shelter: string;
+  photo_shelter: string;
   penggantian_terakhir_alat: string | null;
   updated_at: string;
 }
@@ -419,19 +423,13 @@ const StationMapDetail = () => {
                           <td className="px-3 py-2">{station.provinsi}</td>
                         </tr>
                         <tr>
-                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Status</td>
-                          <td className="px-3 py-2">{station.status}</td>
+                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Description</td>
+                          <td className="px-3 py-2">{station.keterangan || '-'}</td>
                         </tr>
                         <tr>
-                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Priority</td>
-                          <td className="px-3 py-2">{station.prioritas}</td>
+                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Access Shelter</td>
+                          <td className="px-3 py-2">{station.access_shelter || '-'}</td>
                         </tr>
-                        {station.keterangan && (
-                          <tr>
-                            <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Description</td>
-                            <td className="px-3 py-2">{station.keterangan}</td>
-                          </tr>
-                        )}
                       </tbody>
                     </table>
                   ) : (
@@ -454,12 +452,12 @@ const StationMapDetail = () => {
                           <td className="px-3 py-2">{station.penjaga_shelter || '-'}</td>
                         </tr>
                         <tr>
-                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Communication Equipment</td>
-                          <td className="px-3 py-2">{station.digitizer_komunikasi || '-'}</td>
+                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Assets Shelter</td>
+                          <td className="px-3 py-2">{station.assets_shelter || '-'}</td>
                         </tr>
                         <tr>
-                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Last Equipment Replacement</td>
-                          <td className="px-3 py-2">{station.penggantian_terakhir_alat || '-'}</td>
+                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Kondisi Shelter</td>
+                          <td className="px-3 py-2">{station.kondisi_shelter || '-'}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -661,9 +659,9 @@ const StationMapDetail = () => {
             editingSection === 'site'
               ? ['lintang', 'bujur', 'elevasi', 'tahun_instalasi', 'jaringan', 'upt_penanggung_jawab']
               : editingSection === 'location'
-              ? ['lokasi', 'provinsi', 'status', 'prioritas', 'keterangan']
+              ? ['lokasi', 'provinsi', 'keterangan', 'access_shelter']
               : editingSection === 'shelter'
-              ? ['tipe_shelter', 'accelerometer', 'lokasi_shelter', 'penjaga_shelter', 'digitizer_komunikasi', 'penggantian_terakhir_alat']
+              ? ['tipe_shelter', 'accelerometer', 'lokasi_shelter', 'penjaga_shelter', 'assets_shelter', 'kondisi_shelter']
               : []
           }
           title={

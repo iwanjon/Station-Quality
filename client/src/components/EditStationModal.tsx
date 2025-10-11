@@ -278,6 +278,38 @@ const EditStationModal = ({
           </div>
         );
 
+      case 'access_shelter':
+        return (
+          <div key={field} className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {label}
+            </label>
+            <textarea
+              value={value || ''}
+              onChange={(e) => handleInputChange(field, e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter shelter access information..."
+            />
+          </div>
+        );
+
+      case 'assets_shelter':
+        return (
+          <div key={field} className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {label}
+            </label>
+            <textarea
+              value={value || ''}
+              onChange={(e) => handleInputChange(field, e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter shelter assets information..."
+            />
+          </div>
+        );
+
       default:
         // Handle numeric fields
         if (['lintang', 'bujur', 'elevasi', 'tahun_instalasi', 'provinsi_id', 'upt', 'jaringan_id'].includes(field)) {

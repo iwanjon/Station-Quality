@@ -28,6 +28,10 @@ export const getAllStasiun = async (req, res) => {
                 s.tipe_shelter,
                 s.lokasi_shelter,
                 s.penjaga_shelter,
+                s.kondisi_shelter,
+                s.assets_shelter,
+                s.access_shelter,
+                s.photo_shelter,
                 s.penggantian_terakhir_alat,
                 s.updated_at
             FROM stasiun s
@@ -141,6 +145,10 @@ export const getStasiunByCode = async (req, res) => {
                 s.tipe_shelter,
                 s.lokasi_shelter,
                 s.penjaga_shelter,
+                s.kondisi_shelter,
+                s.assets_shelter,
+                s.access_shelter,
+                s.photo_shelter,
                 s.penggantian_terakhir_alat,
                 s.updated_at
             FROM stasiun s
@@ -297,6 +305,9 @@ export const updateStasiunByCode = async (req, res) => {
                 s.lokasi_shelter,
                 s.penjaga_shelter,
                 s.kondisi_shelter,
+                s.assets_shelter,
+                s.access_shelter,
+                s.photo_shelter,
                 s.penggantian_terakhir_alat,
                 s.updated_at
             FROM stasiun s
@@ -347,7 +358,8 @@ export const importStationsFromCSV = async (req, res) => {
             'net', 'kode_stasiun', 'lintang', 'bujur', 'elevasi', 'lokasi', 'provinsi',
             'upt_penanggung_jawab', 'status', 'tahun_instalasi', 'jaringan', 'prioritas',
             'keterangan', 'accelerometer', 'digitizer_komunikasi', 'tipe_shelter',
-            'lokasi_shelter', 'penjaga_shelter', 'penggantian_terakhir_alat', 'is_sample'
+            'lokasi_shelter', 'penjaga_shelter', 'kondisi_shelter', 'assets_shelter',
+            'access_shelter', 'photo_shelter', 'penggantian_terakhir_alat', 'is_sample'
         ];
 
         // Validate headers
@@ -461,37 +473,152 @@ export const importStationsFromCSV = async (req, res) => {
                 // Get provinsi_id and upt_id from names with validation
                 let provinsiId = null;
                 let uptId = null;
+                let jaringanId = null;
 
                 if (station.provinsi) {
-                    const [provinsiResult] = await connection.query(
-                        'SELECT provinsi_id FROM provinsi WHERE nama_provinsi = ?',
+                    // First try exact match
+                    let [provinsiResult] = await connection.query(
+                        'SELECT provinsi_id, nama_provinsi FROM provinsi WHERE nama_provinsi = ?',
                         [station.provinsi]
                     );
+
                     if (provinsiResult.length === 0) {
-                        throw new Error(`Province not found: "${station.provinsi}". Please check existing province names in the database.`);
+                        // If no exact match, try case-insensitive match
+                        [provinsiResult] = await connection.query(
+                            'SELECT provinsi_id, nama_provinsi FROM provinsi WHERE LOWER(nama_provinsi) = LOWER(?)',
+                            [station.provinsi]
+                        );
+
+                        if (provinsiResult.length === 0) {
+                            // If still no match, try partial match
+                            [provinsiResult] = await connection.query(
+                                'SELECT provinsi_id, nama_provinsi FROM provinsi WHERE LOWER(nama_provinsi) LIKE LOWER(?)',
+                                [`%${station.provinsi}%`]
+                            );
+
+                            if (provinsiResult.length === 0) {
+                                // If no similar match found, create new provinsi
+                                console.log(`Creating new province: ${station.provinsi}`);
+                                const [insertResult] = await connection.query(
+                                    'INSERT INTO provinsi (nama_provinsi) VALUES (?)',
+                                    [station.provinsi]
+                                );
+                                provinsiId = insertResult.insertId;
+                            } else {
+                                // Use the first partial match found
+                                provinsiId = provinsiResult[0].provinsi_id;
+                                console.log(`Using similar province match: "${provinsiResult[0].nama_provinsi}" for input "${station.provinsi}"`);
+                            }
+                        } else {
+                            // Use case-insensitive match
+                            provinsiId = provinsiResult[0].provinsi_id;
+                            console.log(`Using case-insensitive province match: "${provinsiResult[0].nama_provinsi}" for input "${station.provinsi}"`);
+                        }
+                    } else {
+                        // Use exact match
+                        provinsiId = provinsiResult[0].provinsi_id;
                     }
-                    provinsiId = provinsiResult[0].provinsi_id;
                 }
 
                 if (station.upt_penanggung_jawab) {
-                    const [uptResult] = await connection.query(
-                        'SELECT upt_id FROM upt WHERE nama_upt = ?',
+                    // First try exact match
+                    let [uptResult] = await connection.query(
+                        'SELECT upt_id, nama_upt FROM upt WHERE nama_upt = ?',
                         [station.upt_penanggung_jawab]
                     );
+
                     if (uptResult.length === 0) {
-                        throw new Error(`UPT not found: "${station.upt_penanggung_jawab}". Please check existing UPT names in the database.`);
+                        // If no exact match, try case-insensitive match
+                        [uptResult] = await connection.query(
+                            'SELECT upt_id, nama_upt FROM upt WHERE LOWER(nama_upt) = LOWER(?)',
+                            [station.upt_penanggung_jawab]
+                        );
+
+                        if (uptResult.length === 0) {
+                            // If still no match, try partial match
+                            [uptResult] = await connection.query(
+                                'SELECT upt_id, nama_upt FROM upt WHERE LOWER(nama_upt) LIKE LOWER(?)',
+                                [`%${station.upt_penanggung_jawab}%`]
+                            );
+
+                            if (uptResult.length === 0) {
+                                // If no similar match found, create new upt
+                                console.log(`Creating new UPT: ${station.upt_penanggung_jawab}`);
+                                const [insertResult] = await connection.query(
+                                    'INSERT INTO upt (nama_upt) VALUES (?)',
+                                    [station.upt_penanggung_jawab]
+                                );
+                                uptId = insertResult.insertId;
+                            } else {
+                                // Use the first partial match found
+                                uptId = uptResult[0].upt_id;
+                                console.log(`Using similar UPT match: "${uptResult[0].nama_upt}" for input "${station.upt_penanggung_jawab}"`);
+                            }
+                        } else {
+                            // Use case-insensitive match
+                            uptId = uptResult[0].upt_id;
+                            console.log(`Using case-insensitive UPT match: "${uptResult[0].nama_upt}" for input "${station.upt_penanggung_jawab}"`);
+                        }
+                    } else {
+                        // Use exact match
+                        uptId = uptResult[0].upt_id;
                     }
-                    uptId = uptResult[0].upt_id;
+                }
+
+                if (station.jaringan) {
+                    // First try exact match
+                    let [jaringanResult] = await connection.query(
+                        'SELECT jaringan_id, nama_jaringan FROM jaringan WHERE nama_jaringan = ?',
+                        [station.jaringan]
+                    );
+
+                    if (jaringanResult.length === 0) {
+                        // If no exact match, try fuzzy match (case insensitive)
+                        [jaringanResult] = await connection.query(
+                            'SELECT jaringan_id, nama_jaringan FROM jaringan WHERE LOWER(nama_jaringan) = LOWER(?)',
+                            [station.jaringan]
+                        );
+
+                        if (jaringanResult.length === 0) {
+                            // If still no match, try partial match
+                            [jaringanResult] = await connection.query(
+                                'SELECT jaringan_id, nama_jaringan FROM jaringan WHERE LOWER(nama_jaringan) LIKE LOWER(?)',
+                                [`%${station.jaringan}%`]
+                            );
+
+                            if (jaringanResult.length === 0) {
+                                // If no similar match found, create new jaringan
+                                console.log(`Creating new network: ${station.jaringan}`);
+                                const [insertResult] = await connection.query(
+                                    'INSERT INTO jaringan (nama_jaringan) VALUES (?)',
+                                    [station.jaringan]
+                                );
+                                jaringanId = insertResult.insertId;
+                            } else {
+                                // Use the first partial match found
+                                jaringanId = jaringanResult[0].jaringan_id;
+                                console.log(`Using similar network match: "${jaringanResult[0].nama_jaringan}" for input "${station.jaringan}"`);
+                            }
+                        } else {
+                            // Use case-insensitive match
+                            jaringanId = jaringanResult[0].jaringan_id;
+                            console.log(`Using case-insensitive network match: "${jaringanResult[0].nama_jaringan}" for input "${station.jaringan}"`);
+                        }
+                    } else {
+                        // Use exact match
+                        jaringanId = jaringanResult[0].jaringan_id;
+                    }
                 }
 
                 await connection.query(`
                     INSERT INTO stasiun (
                         net, kode_stasiun, lintang, bujur, elevasi, lokasi,
-                        provinsi_id, upt_id, status, tahun_instalasi, jaringan,
+                        provinsi_id, upt_id, status, tahun_instalasi, jaringan_id,
                         prioritas, keterangan, accelerometer, digitizer_komunikasi,
-                        tipe_shelter, lokasi_shelter, penjaga_shelter,
-                        penggantian_terakhir_alat, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                        tipe_shelter, lokasi_shelter, penjaga_shelter, kondisi_shelter,
+                        assets_shelter, access_shelter, photo_shelter,
+                        penggantian_terakhir_alat, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 `, [
                     station.net,
                     station.kode_stasiun,
@@ -503,7 +630,7 @@ export const importStationsFromCSV = async (req, res) => {
                     uptId,
                     station.status,
                     station.tahun_instalasi,
-                    station.jaringan,
+                    jaringanId,
                     station.prioritas,
                     station.keterangan,
                     station.accelerometer,
@@ -511,6 +638,10 @@ export const importStationsFromCSV = async (req, res) => {
                     station.tipe_shelter,
                     station.lokasi_shelter,
                     station.penjaga_shelter,
+                    station.kondisi_shelter,
+                    station.assets_shelter,
+                    station.access_shelter,
+                    station.photo_shelter,
                     station.penggantian_terakhir_alat
                 ]);
 

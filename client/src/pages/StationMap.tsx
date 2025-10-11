@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import MainLayout from "../layouts/MainLayout";
 import axiosServer from "../utilities/AxiosServer";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
@@ -8,8 +8,10 @@ import marker2x from "leaflet/dist/images/marker-icon-2x.png";
 import marker from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import DataTable from "../components/DataTable";
+import TableFilters from "../components/TableFilters";
 import { Link } from "react-router-dom";
 import { Download, Upload, FileText } from "lucide-react";
+import type { CellContext } from "@tanstack/react-table";
 
 // Tipe data station
 interface Stasiun {
@@ -32,6 +34,10 @@ interface Stasiun {
   tipe_shelter: string | null;
   lokasi_shelter: string;
   penjaga_shelter: string;
+  kondisi_shelter: string;
+  assets_shelter: string;
+  access_shelter: string;
+  photo_shelter: string;
   penggantian_terakhir_alat: string | null;
   updated_at: string;
 }
@@ -92,12 +98,16 @@ const StationMap = () => {
     networks: string[];
   } | null>(null);
 
-  // Filter states
-  const [filterProvinsi, setFilterProvinsi] = useState<string>("");
-  const [filterUpt, setFilterUpt] = useState<string>("");
-  const [filterTahun, setFilterTahun] = useState<string>("");
-  const [filterPriority, setFilterPriority] = useState<string>("");
-  const [filterStatus, setFilterStatus] = useState<string>("");
+  // Filter states - consolidated into single object for TableFilters
+  const [filters, setFilters] = useState<Record<string, string | string[]>>({
+    provinsi: [],
+    upt: [],
+    tahun_instalasi: [],
+    prioritas: [],
+    status: []
+  });
+
+  // Separate state for station code search (text input)
   const [searchKode, setSearchKode] = useState<string>("");
 
   // Column visibility states
@@ -115,16 +125,6 @@ const StationMap = () => {
 
   // Selected station for card display
   const [selectedStation, setSelectedStation] = useState<Stasiun | null>(null);
-
-  // Reset filter handler
-  const handleResetFilter = () => {
-    setFilterProvinsi("");
-    setFilterUpt("");
-    setFilterTahun("");
-    setFilterPriority("");
-    setFilterStatus("");
-    setSearchKode("");
-  };
 
   // Column visibility toggle handler
   const toggleColumnVisibility = (columnKey: string) => {
@@ -156,6 +156,10 @@ const StationMap = () => {
       "tipe_shelter",
       "lokasi_shelter",
       "penjaga_shelter",
+      "kondisi_shelter",
+      "assets_shelter",
+      "access_shelter",
+      "photo_shelter",
       "penggantian_terakhir_alat",
       "is_sample"
     ];
@@ -180,25 +184,16 @@ const StationMap = () => {
       "Container", // tipe_shelter - Shelter type
       "Building A", // lokasi_shelter - Shelter location
       "John Doe", // penjaga_shelter - Shelter guardian name
+      "Good condition", // kondisi_shelter - Shelter condition description
+      "GPS, Solar Panel, Battery", // assets_shelter - Shelter assets
+      "Easy access, 24/7 available", // access_shelter - Shelter access information
+      "shelter_photo.jpg", // photo_shelter - Shelter photo filename
       "2023-01-15", // penggantian_terakhir_alat - Last equipment replacement date (YYYY-MM-DD)
       "true" // is_sample - Mark as sample (true/false)
     ];
 
-    // Create CSV content with headers, sample data, and additional guidance rows
-    const guidanceRow1 = [
-      "# GUIDANCE:", "Foreign key fields must match EXACTLY with existing database records:", "", "", "", "", 
-      "Check existing provinces →", "Check existing UPT names →", "", "", "Check existing networks →", 
-      "", "", "", "", "", "", "", "", "DELETE_THIS_ROW"
-    ];
-    
-    const guidanceRow2 = [
-      "# Examples:", "Common values you can use:", "", "", "", "", 
-      "DKI Jakarta, Jawa Barat, Sumatera Utara", "UPT Jakarta, UPT Bandung, UPT Medan", "", "", "BMKG, IA, GE", 
-      "", "", "", "", "", "", "", "", "DELETE_THIS_ROW"
-    ];
-
-    // Combine all content
-    const csvContent = [headers, guidanceRow1, guidanceRow2, sampleData]
+    // Create CSV content with headers and sample data
+    const csvContent = [headers, sampleData]
       .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(","))
       .join("\n");
 
@@ -288,6 +283,10 @@ const StationMap = () => {
       "Tipe Shelter",
       "Lokasi Shelter",
       "Penjaga Shelter",
+      "Kondisi Shelter",
+      "Assets Shelter",
+      "Access Shelter",
+      "Photo Shelter",
       "Penggantian Terakhir Alat",
       "Updated At"
     ];
@@ -312,6 +311,10 @@ const StationMap = () => {
       station.tipe_shelter || "",
       station.lokasi_shelter,
       station.penjaga_shelter,
+      station.kondisi_shelter || "",
+      station.assets_shelter || "",
+      station.access_shelter || "",
+      station.photo_shelter || "",
       station.penggantian_terakhir_alat || "",
       station.updated_at
     ]);
@@ -350,43 +353,56 @@ const StationMap = () => {
   // Filter data berdasarkan All filter
   const filteredData = data && Array.isArray(data) ? data.filter((station) => {
     return (
-      (filterPriority === "" || String(station.prioritas) === filterPriority) &&
-      (filterProvinsi === "" || String(station.provinsi) === filterProvinsi) &&
-      (filterUpt === "" || String(station.upt_penanggung_jawab) === filterUpt) &&
-      (filterTahun === "" || String(station.tahun_instalasi) === filterTahun) &&
-      (filterStatus === "" || String(station.status) === filterStatus) &&
+      (filters.prioritas.length === 0 || filters.prioritas.includes(station.prioritas)) &&
+      (filters.provinsi.length === 0 || filters.provinsi.includes(station.provinsi)) &&
+      (filters.upt.length === 0 || filters.upt.includes(station.upt_penanggung_jawab)) &&
+      (filters.tahun_instalasi.length === 0 || filters.tahun_instalasi.includes(String(station.tahun_instalasi))) &&
+      (filters.status.length === 0 || filters.status.includes(station.status)) &&
       (searchKode === "" || station.kode_stasiun.toLowerCase().includes(searchKode.toLowerCase()))
     );
   }) : [];
 
-  // Fungsi untuk mendapatkan opsi dropdown yang tersedia berdasarkan filter yang sudah dipilih
-  const getAvailableOptions = () => {
-    // Data yang sudah difilter sebagian (tanpa field yang sedang diupdate)
-    const getFilteredDataExcept = (excludeField: string) => {
-      return data && Array.isArray(data) ? data.filter((station) => {
-        return (
-          (excludeField === 'priority' || filterPriority === "" || String(station.prioritas) === filterPriority) &&
-          (excludeField === 'provinsi' || filterProvinsi === "" || String(station.provinsi) === filterProvinsi) &&
-          (excludeField === 'upt' || filterUpt === "" || String(station.upt_penanggung_jawab) === filterUpt) &&
-          (excludeField === 'tahun' || filterTahun === "" || String(station.tahun_instalasi) === filterTahun) &&
-          (excludeField === 'status' || filterStatus === "" || String(station.status) === filterStatus) &&
-          (excludeField === 'search' || searchKode === "" || station.kode_stasiun.toLowerCase().includes(searchKode.toLowerCase()))
-        );
-      }) : [];
-    };
+  // Get all available options from data (not filtered)
+  const allOptions = useMemo(() => {
+    if (!data || !Array.isArray(data)) return { provinsi: [], upt: [], tahun: [], prioritas: [], status: [] };
 
     return {
-      prioritas: Array.from(new Set(getFilteredDataExcept('priority').map(s => s.prioritas))).filter(v => v !== null && v !== undefined).sort(), 
-      provinsi: Array.from(new Set(getFilteredDataExcept('provinsi').map(s => s.provinsi))).filter(v => v !== null && v !== undefined).sort(),
-      upt: Array.from(new Set(getFilteredDataExcept('upt').map(s => s.upt_penanggung_jawab))).filter(v => v !== null && v !== undefined).sort(),
-      tahun: Array.from(new Set(getFilteredDataExcept('tahun').map(s => s.tahun_instalasi))).filter(v => v !== null && v !== undefined).sort(),
-      status: Array.from(new Set(getFilteredDataExcept('status').map(s => s.status))).filter(v => v !== null && v !== undefined).sort()
+      provinsi: Array.from(new Set(data.map(s => s.provinsi))).filter(v => v !== null && v !== undefined).sort(),
+      upt: Array.from(new Set(data.map(s => s.upt_penanggung_jawab))).filter(v => v !== null && v !== undefined).sort(),
+      tahun: Array.from(new Set(data.map(s => s.tahun_instalasi))).filter(v => v !== null && v !== undefined).sort(),
+      prioritas: Array.from(new Set(data.map(s => s.prioritas))).filter(v => v !== null && v !== undefined).sort(),
+      status: Array.from(new Set(data.map(s => s.status))).filter(v => v !== null && v !== undefined).sort()
     };
-  };
+  }, [data]);
 
-  const availableOptions = getAvailableOptions();
-
-  
+  // Filter configuration for TableFilters component
+  const filterConfig = useMemo(() => ({
+    provinsi: {
+      label: "Province",
+      type: "multi" as const,
+      options: allOptions.provinsi
+    },
+    upt: {
+      label: "UPT",
+      type: "multi" as const,
+      options: allOptions.upt
+    },
+    tahun_instalasi: {
+      label: "Installation Year",
+      type: "multi" as const,
+      options: allOptions.tahun.map(String)
+    },
+    prioritas: {
+      label: "Priority",
+      type: "multi" as const,
+      options: allOptions.prioritas
+    },
+    status: {
+      label: "Status",
+      type: "multi" as const,
+      options: allOptions.status
+    }
+  }), [allOptions]);
 
   // Default center Indonesia
   const center: [number, number] = [-2.5, 118];
@@ -395,47 +411,47 @@ const StationMap = () => {
     {
       header: "Net",
       accessorKey: "net",
-      cell: (info: { getValue: () => string }) => info.getValue(),
+      cell: (info: CellContext<Stasiun, unknown>) => info.getValue(),
     },
     {
       header: "Station Code",
       accessorKey: "kode_stasiun",
-      cell: (info: { getValue: () => string }) => info.getValue(),
+      cell: (info: CellContext<Stasiun, unknown>) => info.getValue(),
     },
     {
       header: "Location",
       accessorKey: "lokasi",
-      cell: (info: { getValue: () => string }) => info.getValue(),
+      cell: (info: CellContext<Stasiun, unknown>) => info.getValue(),
     },
     {
       header: "Province",
       accessorKey: "provinsi",
-      cell: (info: { getValue: () => string }) => info.getValue(),
+      cell: (info: CellContext<Stasiun, unknown>) => info.getValue(),
     },
     {
       header: "UPT",
       accessorKey: "upt_penanggung_jawab",
-      cell: (info: { getValue: () => string }) => info.getValue(),
+      cell: (info: CellContext<Stasiun, unknown>) => info.getValue(),
     },
     {
       header: "Status",
       accessorKey: "status",
-      cell: (info: { getValue: () => string }) => info.getValue(),
+      cell: (info: CellContext<Stasiun, unknown>) => info.getValue(),
     },
     {
       header: "Installation Year",
       accessorKey: "tahun_instalasi",
-      cell: (info: { getValue: () => number }) => info.getValue(),
+      cell: (info: CellContext<Stasiun, unknown>) => info.getValue(),
     },
     {
       header: "Latitude",
       accessorKey: "lintang",
-      cell: (info: { getValue: () => number }) => info.getValue(),
+      cell: (info: CellContext<Stasiun, unknown>) => info.getValue(),
     },
     {
       header: "Longitude",
       accessorKey: "bujur",
-      cell: (info: { getValue: () => number }) => info.getValue(),
+      cell: (info: CellContext<Stasiun, unknown>) => info.getValue(),
     },
   ];
 
@@ -448,97 +464,6 @@ const StationMap = () => {
         <h1 className="bg-gray-100 rounded-2xl text-left text-3xl font-bold my-2 ">
           Station Metadata
         </h1>
-
-        {/* Import/Export Controls */}
-        <div className="bg-white p-4 rounded-xl shadow mb-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-800">Data Management</h2>
-            <div className="flex gap-3">
-              {/* Download Template Button */}
-              <button
-                onClick={handleDownloadTemplate}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                title="Download CSV template for bulk station creation"
-              >
-                <Download size={16} />
-                Download Template
-              </button>
-
-              {/* Show Foreign Key Options Button */}
-              <button
-                onClick={fetchForeignKeyOptions}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
-                title="Show valid values for foreign key fields"
-              >
-                <FileText size={16} />
-                View Valid Options
-              </button>
-
-              {/* Import CSV Button */}
-              <div className="relative">
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleImportCSV}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  disabled={importLoading}
-                />
-                <button
-                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                    importLoading
-                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                      : 'bg-green-600 text-white hover:bg-green-700'
-                  }`}
-                  disabled={importLoading}
-                  title="Import stations from CSV file"
-                >
-                  <Upload size={16} />
-                  {importLoading ? 'Importing...' : 'Import CSV'}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Import Status Messages */}
-          {importError && (
-            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-700 text-sm">{importError}</p>
-            </div>
-          )}
-          {importSuccess && (
-            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-700 text-sm">{importSuccess}</p>
-            </div>
-          )}
-
-          {/* Instructions */}
-          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-start gap-2">
-              <FileText size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-blue-700">
-                <p className="font-medium mb-2">How to create stations:</p>
-                <ol className="list-decimal list-inside space-y-1 mb-3">
-                  <li>Download the CSV template</li>
-                  <li>Fill in the station data following the format</li>
-                  <li>Remove or modify the sample row (marked with is_sample=true)</li>
-                  <li>Save the file and import it back</li>
-                  <li>The system will validate and create the stations (sample rows are automatically skipped)</li>
-                </ol>
-                
-                <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded">
-                  <p className="font-medium text-yellow-800 mb-1">⚠️ Important: Foreign Key Guidelines</p>
-                  <ul className="text-xs text-yellow-700 space-y-1">
-                    <li><strong>provinsi:</strong> Must match exactly with province names in database (e.g., "DKI Jakarta", "Jawa Barat", "Sumatera Utara")</li>
-                    <li><strong>upt_penanggung_jawab:</strong> Must match exactly with UPT names (e.g., "UPT Jakarta", "UPT Bandung", "UPT Medan")</li>
-                    <li><strong>jaringan:</strong> Must match network names (e.g., "BMKG", "IA", "GE")</li>
-                    <li>❌ If names don't match exactly, the station creation will fail</li>
-                    <li>💡 Check existing data in the system for correct naming</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Foreign Key Options Modal */}
         {showForeignKeyHelp && foreignKeyOptions && (
@@ -618,152 +543,50 @@ const StationMap = () => {
 
         {/* Combined Filter and Map Container */}
         <div className="flex bg-white p-2 rounded-xl shadow">
-          {/* Filter Panel - Left Side */}
           <div className="w-80 p-4 flex-shrink-0 border-r border-gray-200">
             <h3 className="text-lg font-bold mb-4">Advanced Filter</h3>
-            <div className="space-y-3">
-              {/* Search Kode Stasiun */}
-              <div className="flex flex-col">
-                <label htmlFor="search-kode" className="font-semibold text-sm mb-1">
-                  Station Code:
-                </label>
-                <input
-                  id="search-kode"
-                  type="text"
-                  className="border rounded px-2 py-1 text-sm"
-                  placeholder="Input station code..."
-                  value={searchKode}
-                  onChange={(e) => setSearchKode(e.target.value)}
-                />
-              </div>
 
-              {/* Provinsi Filter */}
-              <div className="flex flex-col">
-                <label htmlFor="filter-provinsi" className="font-semibold text-sm mb-1">
-                  Province:
-                </label>
-                <select
-                  id="filter-provinsi"
-                  className="border rounded px-2 py-1 text-sm"
-                  value={filterProvinsi}
-                  onChange={(e) => setFilterProvinsi(e.target.value)}
-                >
-                  <option value="">All</option>
-                  {availableOptions.provinsi.map((provinsi: string) => (
-                    <option key={provinsi} value={provinsi}>
-                      {provinsi}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* Station Code Search */}
+            <div className="mb-4">
+              <label htmlFor="search-kode" className="font-semibold text-sm mb-1 block">
+                Station Code:
+              </label>
+              <input
+                id="search-kode"
+                type="text"
+                className="border rounded px-2 py-1 text-sm w-full"
+                placeholder="Input station code..."
+                value={searchKode}
+                onChange={(e) => setSearchKode(e.target.value)}
+              />
+            </div>
 
-              {/* UPT Filter */}
-              <div className="flex flex-col">
-                <label htmlFor="filter-upt" className="font-semibold text-sm mb-1">
-                  UPT:
-                </label>
-                <select
-                  id="filter-upt"
-                  className="border rounded px-2 py-1 text-sm"
-                  value={filterUpt}
-                  onChange={(e) => setFilterUpt(e.target.value)}
-                >
-                  <option value="">All</option>
-                  {availableOptions.upt.map((upt: string) => (
-                    <option key={upt} value={upt}>
-                      {upt}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* TableFilters Component */}
+            <TableFilters
+              filters={filters}
+              setFilters={setFilters}
+              filterConfig={filterConfig}
+            />
 
-              {/* Tahun Instalasi Filter */}
-              <div className="flex flex-col">
-                <label htmlFor="filter-tahun" className="font-semibold text-sm mb-1">
-                  Installation Year:
-                </label>
-                <select
-                  id="filter-tahun"
-                  className="border rounded px-2 py-1 text-sm"
-                  value={filterTahun}
-                  onChange={(e) => setFilterTahun(e.target.value)}
-                >
-                  <option value="">All</option>
-                  {availableOptions.tahun.map((tahun: number) => (
-                    <option key={tahun} value={tahun}>
-                      {tahun}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* Action Buttons */}
+            <div className="flex gap-2 mt-4">
+              <button
+                type="button"
+                className="flex-1 px-3 py-2 rounded bg-green-600 hover:bg-green-700 text-white text-sm font-semibold"
+                onClick={handleExportCSV}
+              >
+                Export CSV
+              </button>
+            </div>
 
-              {/* Prioritas Filter */}
-              <div className="flex flex-col">
-                <label htmlFor="filter-priority" className="font-semibold text-sm mb-1">
-                  Priority:
-                </label>
-                <select
-                  id="filter-priority"
-                  className="border rounded px-2 py-1 text-sm"
-                  value={filterPriority}
-                  onChange={(e) => setFilterPriority(e.target.value)}
-                >
-                  <option value="">All</option>
-                  {availableOptions.prioritas.map((prioritas: string) => (
-                    <option key={prioritas} value={prioritas}>
-                      {prioritas}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Status Filter */}
-              <div className="flex flex-col">
-                <label htmlFor="filter-status" className="font-semibold text-sm mb-1">
-                  Status:
-                </label>
-                <select
-                  id="filter-status"
-                  className="border rounded px-2 py-1 text-sm"
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                >
-                  <option value="">All</option>
-                  {availableOptions.status.map((status: string) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-2 mt-4">
-                <button
-                  type="button"
-                  className="flex-1 px-3 py-2 rounded bg-gray-200 hover:bg-gray-300 text-sm font-semibold"
-                  onClick={handleResetFilter}
-                >
-                  Reset Filter
-                </button>
-                <button
-                  type="button"
-                  className="flex-1 px-3 py-2 rounded bg-green-600 hover:bg-green-700 text-white text-sm font-semibold"
-                  onClick={handleExportCSV}
-                >
-                  Export CSV
-                </button>
-              </div>
-
-              {/* Station Count Display */}
-              <div className="mt-3 text-center">
-                <p className="text-sm text-gray-600">
-                  {filteredData.length === 0 
-                    ? "No stations found" 
-                    : `Now showing ${filteredData.length} station${filteredData.length === 1 ? '' : 's'}`
-                  }
-                </p>
-              </div>
+            {/* Station Count Display */}
+            <div className="mt-3 text-center">
+              <p className="text-sm text-gray-600">
+                {filteredData.length === 0
+                  ? "No stations found"
+                  : `Now showing ${filteredData.length} station${filteredData.length === 1 ? '' : 's'}`
+                }
+              </p>
             </div>
           </div>
 
@@ -835,6 +658,97 @@ const StationMap = () => {
           </div>
           
           <DataTable columns={visibleColumnsArray} data={filteredData} />
+        </div>
+
+        {/* Import/Export Controls */}
+        <div className="bg-white p-4 rounded-xl shadow mb-4 mt-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-800">Data Management</h2>
+            <div className="flex gap-3">
+              {/* Download Template Button */}
+              <button
+                onClick={handleDownloadTemplate}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                title="Download CSV template for bulk station creation"
+              >
+                <Download size={16} />
+                Download Template
+              </button>
+
+              {/* Show Foreign Key Options Button */}
+              <button
+                onClick={fetchForeignKeyOptions}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
+                title="Show valid values for foreign key fields"
+              >
+                <FileText size={16} />
+                View Valid Options
+              </button>
+
+              {/* Import CSV Button */}
+              <div className="relative">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleImportCSV}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  disabled={importLoading}
+                />
+                <button
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    importLoading
+                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
+                  disabled={importLoading}
+                  title="Import stations from CSV file"
+                >
+                  <Upload size={16} />
+                  {importLoading ? 'Importing...' : 'Import CSV'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Import Status Messages */}
+          {importError && (
+            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700 text-sm">{importError}</p>
+            </div>
+          )}
+          {importSuccess && (
+            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-green-700 text-sm">{importSuccess}</p>
+            </div>
+          )}
+
+          {/* Instructions */}
+          <div className="mt-3  p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <FileText size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-blue-700">
+                <p className="font-medium mb-2">How to create stations:</p>
+                <ol className="list-decimal list-inside space-y-1 mb-3">
+                  <li>Download the CSV template</li>
+                  <li>Fill in the station data following the format</li>
+                  <li>Remove or modify the sample row (marked with is_sample=true)</li>
+                  <li>Save the file and import it back</li>
+                  <li>The system will validate and create the stations (sample rows are automatically skipped)</li>
+                </ol>
+                
+                <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                  <p className="font-medium text-yellow-800 mb-1">⚠️ Important: Foreign Key Guidelines</p>
+                  <ul className="text-xs text-yellow-700 space-y-1">
+                    <li><strong>provinsi:</strong> Must match exactly with province names in database (e.g., "DKI Jakarta", "Jawa Barat", "Sumatera Utara")</li>
+                    <li><strong>upt_penanggung_jawab:</strong> Must match exactly with UPT names (e.g., "UPT Jakarta", "UPT Bandung", "UPT Medan")</li>
+                    <li><strong>jaringan:</strong> Must match network names (e.g., "BMKG", "IA", "GE")</li>
+                    <li>❌ If names don't match exactly, the station creation will fail</li>
+                    <li>💡 Check existing data in the system for correct naming</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </MainLayout>
     </div>
