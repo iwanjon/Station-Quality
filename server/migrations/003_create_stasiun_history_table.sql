@@ -23,5 +23,5 @@ CREATE TABLE `availability` (
   `availability_id` integer PRIMARY KEY AUTO_INCREMENT,
   `stasiun_id` integer,
   `tanggal` datetime,
-  `nilai_availability` integer
+  `nilai_availability` float
 );
