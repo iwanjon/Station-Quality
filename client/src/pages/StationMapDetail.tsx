@@ -96,7 +96,7 @@ interface Stasiun {
   provinsi: string;
   provinsi_id: number;
   upt_penanggung_jawab: string;
-  upt: number;
+  upt_id: number;
   status: string;
   tahun_instalasi: number;
   jaringan: string;
@@ -235,6 +235,54 @@ const StationMapDetail = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [dropdownOpen]);
+
+  const handleEditSuccess = useCallback(async (updatedData: StationData) => {
+    console.log('✅ Update successful, received data:', updatedData);
+    console.log('🔄 Refreshing station data...');
+
+    if (!station?.kode_stasiun) {
+      console.error('❌ Station code not available for refresh');
+      return;
+    }
+
+    try {
+      // Fetch fresh data from server
+      const response = await axiosServer.get(`/api/stasiun/bycode?code=${station.kode_stasiun}`);
+      console.log('📡 Server response:', response.data);
+
+      if (response.data.success && response.data.data) {
+        console.log('📦 Setting new station data:', response.data.data);
+        console.log('🔄 Previous station state:', station);
+
+        // Update station state with fresh data
+        setStation(prevStation => {
+          const newData = { ...response.data.data };
+          console.log('🔄 Updating station from:', prevStation, 'to:', newData);
+          return newData;
+        });
+
+        console.log('🔄 Data refreshed successfully');
+
+        // Verify the update after a short delay
+        setTimeout(() => {
+          console.log('🔍 Verification - Current station state:', station);
+        }, 100);
+
+      } else {
+        console.error('❌ Invalid response format:', response.data);
+      }
+    } catch (error) {
+      console.error('❌ Failed to refresh data:', error);
+    }
+
+    setEditModalOpen(false);
+    setEditingSection('');
+
+    // Delay alert to ensure state update is complete
+    setTimeout(() => {
+      alert('Station data updated successfully!');
+    }, 200);
+  }, [station]);
 
   const handleEditClick = (section: string) => {
     setEditingSection(section);
@@ -444,6 +492,10 @@ const StationMapDetail = () => {
                           <td className="px-3 py-2">{station.accelerometer || '-'}</td>
                         </tr>
                         <tr>
+                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Communication Equipment</td>
+                          <td className="px-3 py-2">{station.digitizer_komunikasi || '-'}</td>
+                        </tr>
+                        <tr>
                           <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Shelter Location</td>
                           <td className="px-3 py-2">{station.lokasi_shelter || '-'}</td>
                         </tr>
@@ -635,33 +687,14 @@ const StationMapDetail = () => {
           }}
           stationCode={station.kode_stasiun}
           stationData={station as unknown as StationData}
-          onSuccess={async (_updatedData) => { // eslint-disable-line @typescript-eslint/no-unused-vars
-            console.log('✅ Update successful, refreshing data...');
-            if (!station?.kode_stasiun) {
-              console.error('❌ Station code not available for refresh');
-              return;
-            }
-            try {
-              // Fetch fresh data from server
-              const response = await axiosServer.get(`/api/stasiun/bycode?code=${station.kode_stasiun}`);
-              if (response.data.success) {
-                setStation(response.data.data);
-                console.log('🔄 Data refreshed successfully');
-              }
-            } catch (error) {
-              console.error('❌ Failed to refresh data:', error);
-            }
-            setEditModalOpen(false);
-            setEditingSection('');
-            alert('Station data updated successfully!');
-          }}
+          onSuccess={handleEditSuccess}
           fieldsToEdit={
             editingSection === 'site'
               ? ['lintang', 'bujur', 'elevasi', 'tahun_instalasi', 'jaringan', 'upt_penanggung_jawab']
               : editingSection === 'location'
               ? ['lokasi', 'provinsi', 'keterangan', 'access_shelter']
               : editingSection === 'shelter'
-              ? ['tipe_shelter', 'accelerometer', 'lokasi_shelter', 'penjaga_shelter', 'assets_shelter', 'kondisi_shelter']
+              ? ['tipe_shelter', 'accelerometer', 'digitizer_komunikasi', 'lokasi_shelter', 'penjaga_shelter', 'assets_shelter', 'kondisi_shelter']
               : []
           }
           title={

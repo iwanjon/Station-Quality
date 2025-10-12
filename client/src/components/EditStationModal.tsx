@@ -32,6 +32,12 @@ const EditStationModal = ({
   const [formData, setFormData] = useState<FormData>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [networks, setNetworks] = useState<string[]>([]);
+  const [upts, setUpts] = useState<string[]>([]);
+  const [provinces, setProvinces] = useState<string[]>([]);
+  const [showNewNetworkInput, setShowNewNetworkInput] = useState(false);
+  const [showNewUptInput, setShowNewUptInput] = useState(false);
+  const [showNewProvinceInput, setShowNewProvinceInput] = useState(false);
 
   // Initialize form data when modal opens
   useEffect(() => {
@@ -42,8 +48,28 @@ const EditStationModal = ({
       });
       setFormData(initialData);
       setError(null);
+      setShowNewNetworkInput(false);
+      setShowNewUptInput(false);
+      
+      // Fetch reference data if needed
+      if (fieldsToEdit.includes('jaringan') || fieldsToEdit.includes('upt_penanggung_jawab') || fieldsToEdit.includes('provinsi')) {
+        fetchReferenceData();
+      }
     }
   }, [isOpen, stationData, fieldsToEdit]);
+
+  const fetchReferenceData = async () => {
+    try {
+      const response = await axiosInstance.get('/api/stasiun/foreign-key-options');
+      if (response.data.success) {
+        setNetworks(response.data.data.networks);
+        setUpts(response.data.data.upts);
+        setProvinces(response.data.data.provinces);
+      }
+    } catch (error) {
+      console.error('Error fetching reference data:', error);
+    }
+  };
 
   const handleInputChange = (field: string, value: string | number | null | undefined) => {
     setFormData(prev => ({
@@ -96,7 +122,30 @@ const EditStationModal = ({
 
   const renderField = (field: string) => {
     const value = formData[field];
-    const label = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    
+    // Mapping untuk label yang konsisten dengan station detail
+    const labelMapping: { [key: string]: string } = {
+      lintang: 'Latitude',
+      bujur: 'Longitude',
+      elevasi: 'Elevation',
+      tahun_instalasi: 'Year of Installation',
+      jaringan: 'Group',
+      upt_penanggung_jawab: 'UPT',
+      lokasi: 'Address',
+      provinsi: 'Province',
+      keterangan: 'Description',
+      access_shelter: 'Access Shelter',
+      tipe_shelter: 'Shelter Type',
+      accelerometer: 'Installation Sensor Type',
+      digitizer_komunikasi: 'Communication Equipment',
+      lokasi_shelter: 'Shelter Location',
+      penjaga_shelter: 'Shelter Guard',
+      assets_shelter: 'Assets Shelter',
+      kondisi_shelter: 'Kondisi Shelter',
+      penggantian_terakhir_alat: 'Last Equipment Replacement'
+    };
+
+    const label = labelMapping[field] || field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
     // Special handling for different field types
     switch (field) {
@@ -115,6 +164,153 @@ const EditStationModal = ({
               <option value="IA">IA</option>
               <option value="II">II</option>
             </select>
+          </div>
+        );
+
+      case 'jaringan':
+        return (
+          <div key={field} className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {label}
+            </label>
+            {!showNewNetworkInput ? (
+              <select
+                value={value || ''}
+                onChange={(e) => {
+                  if (e.target.value === '__add_new__') {
+                    setShowNewNetworkInput(true);
+                    handleInputChange(field, '');
+                  } else {
+                    handleInputChange(field, e.target.value);
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select Network</option>
+                {networks.map(network => (
+                  <option key={network} value={network}>{network}</option>
+                ))}
+                <option value="__add_new__">+ Add New Network</option>
+              </select>
+            ) : (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={value || ''}
+                  onChange={(e) => handleInputChange(field, e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter new network name"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowNewNetworkInput(false);
+                    handleInputChange(field, '');
+                  }}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  ← Back to selection
+                </button>
+              </div>
+            )}
+          </div>
+        );
+
+      case 'provinsi':
+        return (
+          <div key={field} className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {label}
+            </label>
+            {!showNewProvinceInput ? (
+              <select
+                value={value || ''}
+                onChange={(e) => {
+                  if (e.target.value === '__add_new__') {
+                    setShowNewProvinceInput(true);
+                    handleInputChange(field, '');
+                  } else {
+                    handleInputChange(field, e.target.value);
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select Province</option>
+                {provinces.map(province => (
+                  <option key={province} value={province}>{province}</option>
+                ))}
+                <option value="__add_new__">+ Add New Province</option>
+              </select>
+            ) : (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={value || ''}
+                  onChange={(e) => handleInputChange(field, e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter new province name"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowNewProvinceInput(false);
+                    handleInputChange(field, '');
+                  }}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  ← Back to selection
+                </button>
+              </div>
+            )}
+          </div>
+        );
+
+      case 'upt_penanggung_jawab':
+        return (
+          <div key={field} className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {label}
+            </label>
+            {!showNewUptInput ? (
+              <select
+                value={value || ''}
+                onChange={(e) => {
+                  if (e.target.value === '__add_new__') {
+                    setShowNewUptInput(true);
+                    handleInputChange(field, '');
+                  } else {
+                    handleInputChange(field, e.target.value);
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select UPT</option>
+                {upts.map(upt => (
+                  <option key={upt} value={upt}>{upt}</option>
+                ))}
+                <option value="__add_new__">+ Add New UPT</option>
+              </select>
+            ) : (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={value || ''}
+                  onChange={(e) => handleInputChange(field, e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter new UPT name"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowNewUptInput(false);
+                    handleInputChange(field, '');
+                  }}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  ← Back to selection
+                </button>
+              </div>
+            )}
           </div>
         );
 
@@ -243,6 +439,24 @@ const EditStationModal = ({
               <option value="baik">Baik</option>
               <option value="rusak_ringan">Rusak Ringan</option>
               <option value="rusak_berat">Rusak Berat</option>
+            </select>
+          </div>
+        );
+
+      case 'digitizer_komunikasi':
+        return (
+          <div key={field} className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {label}
+            </label>
+            <select
+              value={value || ''}
+              onChange={(e) => handleInputChange(field, e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select Communication Equipment</option>
+              <option value="installed">Installed</option>
+              <option value="not_installed">Not Installed</option>
             </select>
           </div>
         );

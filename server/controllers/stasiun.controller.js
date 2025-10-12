@@ -212,6 +212,12 @@ export const updateStasiunByCode = async (req, res) => {
             if (provinsiRows.length > 0) {
                 processedData.provinsi_id = provinsiRows[0].provinsi_id;
                 delete processedData.provinsi;
+            } else {
+                // Create new provinsi if it doesn't exist
+                console.log(`Creating new province: ${processedData.provinsi}`);
+                const [insertResult] = await pool.query('INSERT INTO provinsi (nama_provinsi) VALUES (?)', [processedData.provinsi]);
+                processedData.provinsi_id = insertResult.insertId;
+                delete processedData.provinsi;
             }
         }
 
@@ -221,14 +227,26 @@ export const updateStasiunByCode = async (req, res) => {
             if (jaringanRows.length > 0) {
                 processedData.jaringan_id = jaringanRows[0].jaringan_id;
                 delete processedData.jaringan;
+            } else {
+                // Create new jaringan if it doesn't exist
+                console.log(`Creating new jaringan: ${processedData.jaringan}`);
+                const [insertResult] = await pool.query('INSERT INTO jaringan (nama_jaringan) VALUES (?)', [processedData.jaringan]);
+                processedData.jaringan_id = insertResult.insertId;
+                delete processedData.jaringan;
             }
         }
 
-        // Convert upt_penanggung_jawab name to upt
+        // Convert upt_penanggung_jawab name to upt_id
         if (processedData.upt_penanggung_jawab && typeof processedData.upt_penanggung_jawab === 'string') {
             const [uptRows] = await pool.query('SELECT upt_id FROM upt WHERE nama_upt = ?', [processedData.upt_penanggung_jawab]);
             if (uptRows.length > 0) {
-                processedData.upt = uptRows[0].upt_id;
+                processedData.upt_id = uptRows[0].upt_id;
+                delete processedData.upt_penanggung_jawab;
+            } else {
+                // Create new upt if it doesn't exist
+                console.log(`Creating new UPT: ${processedData.upt_penanggung_jawab}`);
+                const [insertResult] = await pool.query('INSERT INTO upt (nama_upt) VALUES (?)', [processedData.upt_penanggung_jawab]);
+                processedData.upt_id = insertResult.insertId;
                 delete processedData.upt_penanggung_jawab;
             }
         }
