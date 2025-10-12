@@ -7,9 +7,10 @@ import L from "leaflet";
 import marker2x from "leaflet/dist/images/marker-icon-2x.png";
 import marker from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
-import { ChevronLeft, MapPin, ChevronDown, Edit } from "lucide-react";
+import { ChevronLeft, MapPin, ChevronDown, Edit, Camera } from "lucide-react";
 import axiosServer from "../utilities/AxiosServer";
 import EditStationModal from "../components/EditStationModal";
+import PhotoUpload from "../components/PhotoUpload";
 
 // Define StationData interface
 interface StationData {
@@ -111,7 +112,7 @@ interface Stasiun {
   kondisi_shelter: string;
   assets_shelter: string;
   access_shelter: string;
-  photo_shelter: string;
+  photo_shelter: string | null;
   penggantian_terakhir_alat: string | null;
   updated_at: string;
 }
@@ -131,6 +132,7 @@ const StationMapDetail = () => {
   const [showShelterInfo, setShowShelterInfo] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingSection, setEditingSection] = useState<string>('');
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
 
   const fetchStationDetail = useCallback(async () => {
     if (!stationCode) return;
@@ -287,6 +289,20 @@ const StationMapDetail = () => {
   const handleEditClick = (section: string) => {
     setEditingSection(section);
     setEditModalOpen(true);
+  };
+
+  // Helper functions for photo handling
+  const getPhotoArray = (photoString: string | null): string[] => {
+    if (!photoString) return [];
+    return photoString.split(',').filter(p => p.trim());
+  };
+
+  const getPhotoUrl = (photoPath: string) => {
+    if (photoPath.startsWith('http')) {
+      return photoPath;
+    }
+    const baseUrl = import.meta.env.VITE_SERVER_BASE_URL || 'http://localhost:5000';
+    return `${baseUrl}${photoPath}`;
   };
 
   if (loading) {
@@ -578,12 +594,53 @@ const StationMapDetail = () => {
             </div>
           </div>
 
-          {/* Bagian 2: Kosongkan dulu */}
+          {/* Bagian 2: Site Photo */}
           <div className="bg-white p-6 rounded-2xl shadow-md mb-6">
-            <h2 className="text-xl font-bold mb-4 text-gray-800">Site photo</h2>
-            <div className="text-center py-16 text-gray-500">
-              This section is currently empty
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-800">Site Photo</h2>
+              <button
+                onClick={() => setPhotoModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Camera size={16} />
+                Manage Photos
+              </button>
             </div>
+            {station.photo_shelter && getPhotoArray(station.photo_shelter).length > 0 ? (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-sm text-gray-600 mb-3">
+                  {getPhotoArray(station.photo_shelter).length} photo{getPhotoArray(station.photo_shelter).length > 1 ? 's' : ''} uploaded
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {getPhotoArray(station.photo_shelter).slice(0, 4).map((photoPath, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={getPhotoUrl(photoPath)}
+                        alt={`Site photo ${index + 1}`}
+                        className="w-full h-20 object-cover rounded-lg border border-gray-300"
+                        onError={(e) => {
+                          console.error('Failed to load image:', photoPath);
+                          e.currentTarget.src = '/placeholder-image.png';
+                        }}
+                      />
+                    </div>
+                  ))}
+                  {getPhotoArray(station.photo_shelter).length > 4 && (
+                    <div className="flex items-center justify-center w-full h-20 bg-gray-200 rounded-lg border border-gray-300">
+                      <span className="text-sm text-gray-600 font-medium">
+                        +{getPhotoArray(station.photo_shelter).length - 4} more
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Camera size={48} className="mx-auto mb-3 text-gray-300" />
+                <p className="text-sm">No photos uploaded yet</p>
+                <p className="text-xs text-gray-400 mt-1">Click "Manage Photos" to add photos</p>
+              </div>
+            )}
           </div>
 
           {/* Bagian 3: Equipment Details dengan Station History per Channel */}
@@ -706,6 +763,20 @@ const StationMapDetail = () => {
               ? 'Edit Shelter Information'
               : 'Edit Information'
           }
+        />
+      )}
+
+      {/* Photo Upload Modal */}
+      {station && (
+        <PhotoUpload
+          stationCode={station.kode_stasiun}
+          currentPhoto={station.photo_shelter}
+          onPhotoUpdate={(photoPaths) => {
+            setStation(prev => prev ? { ...prev, photo_shelter: photoPaths } : null);
+          }}
+          isModal={true}
+          isOpen={photoModalOpen}
+          onClose={() => setPhotoModalOpen(false)}
         />
       )}
     </div>

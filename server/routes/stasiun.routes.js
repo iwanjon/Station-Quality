@@ -1,6 +1,6 @@
 import { Router } from "express";
 import multer from 'multer';
-import { getAllStasiun, getAllStasiunCodes, getStasiunByCode, updateStasiunByCode, importStationsFromCSV, getForeignKeyOptions } from '../controllers/stasiun.controller.js';
+import { getAllStasiun, getAllStasiunCodes, getStasiunByCode, updateStasiunByCode, importStationsFromCSV, getForeignKeyOptions, uploadSitePhoto, deleteSitePhoto } from '../controllers/stasiun.controller.js';
 
 const router = Router();
 
@@ -15,6 +15,21 @@ const upload = multer({
             cb(null, true);
         } else {
             cb(new Error('Only CSV files are allowed'));
+        }
+    }
+});
+
+// Configure multer for photo upload
+const photoUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB limit for photos
+    },
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed'));
         }
     }
 });
@@ -36,5 +51,11 @@ router.put('/:code', updateStasiunByCode);
 
 // POST /api/stasiun/import-csv - Import stations from CSV
 router.post('/import-csv', upload.single('csvFile'), importStationsFromCSV);
+
+// POST /api/stasiun/:code/upload-photo - Upload site photo
+router.post('/:code/upload-photo', photoUpload.single('photo'), uploadSitePhoto);
+
+// DELETE /api/stasiun/:code/photo - Delete site photo
+router.delete('/:code/photo', deleteSitePhoto);
 
 export default router;

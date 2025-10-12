@@ -1,4 +1,10 @@
 import pool from '../config/database.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Get all stasiun data with JOIN
 export const getAllStasiun = async (req, res) => {
@@ -688,6 +694,136 @@ export const importStationsFromCSV = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to import stations from CSV',
+            error: error.message
+        });
+    }
+};
+
+// Upload site photo for a station
+export const uploadSitePhoto = async (req, res) => {
+    try {
+        const { code } = req.params;
+
+        if (!code) {
+            return res.status(400).json({
+                success: false,
+                message: 'Station code is required'
+            });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'No photo file provided'
+            });
+        }
+
+        // Check if station exists
+        const [stationRows] = await pool.query('SELECT stasiun_id, photo_shelter FROM stasiun WHERE kode_stasiun = ?', [code]);
+        if (stationRows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Station not found'
+            });
+        }
+
+        // Generate unique filename
+        const fileExtension = path.extname(req.file.originalname);
+        const fileName = `site_${code}_${Date.now()}${fileExtension}`;
+        const uploadPath = path.join(__dirname, '../public/uploads', fileName);
+
+        // Ensure uploads directory exists
+        const uploadsDir = path.join(__dirname, '../public/uploads');
+        if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+
+        // Save file to disk
+        fs.writeFileSync(uploadPath, req.file.buffer);
+
+        // Update database with photo path (append to existing photos)
+        const photoPath = `/uploads/${fileName}`;
+        const existingPhotos = stationRows[0].photo_shelter || '';
+        const photoList = existingPhotos ? existingPhotos.split(',').filter(p => p.trim()) : [];
+        photoList.push(photoPath);
+        const updatedPhotos = photoList.join(',');
+
+        await pool.query('UPDATE stasiun SET photo_shelter = ? WHERE kode_stasiun = ?', [updatedPhotos, code]);
+
+        res.json({
+            success: true,
+            message: 'Site photo uploaded successfully',
+            data: {
+                photoPath: photoPath,
+                allPhotos: updatedPhotos
+            }
+        });
+
+    } catch (error) {
+        console.error('Error uploading site photo:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to upload site photo',
+            error: error.message
+        });
+    }
+};// Delete site photo for a station
+export const deleteSitePhoto = async (req, res) => {
+    try {
+        const { code } = req.params;
+        const { photoPath } = req.body; // Photo path to delete
+
+        if (!code) {
+            return res.status(400).json({
+                success: false,
+                message: 'Station code is required'
+            });
+        }
+
+        // Check if station exists and has photo
+        const [stationRows] = await pool.query('SELECT photo_shelter FROM stasiun WHERE kode_stasiun = ?', [code]);
+        if (stationRows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Station not found'
+            });
+        }
+
+        const existingPhotos = stationRows[0].photo_shelter;
+        if (!existingPhotos) {
+            return res.status(400).json({
+                success: false,
+                message: 'No photos to delete'
+            });
+        }
+
+        // Split photos and filter out the one to delete
+        const photoList = existingPhotos.split(',').filter(p => p.trim());
+        const updatedPhotoList = photoList.filter(p => p !== photoPath);
+
+        // Delete file from disk
+        const filePath = path.join(__dirname, '../public', photoPath);
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+
+        // Update database with remaining photos
+        const updatedPhotos = updatedPhotoList.length > 0 ? updatedPhotoList.join(',') : null;
+        await pool.query('UPDATE stasiun SET photo_shelter = ? WHERE kode_stasiun = ?', [updatedPhotos, code]);
+
+        res.json({
+            success: true,
+            message: 'Site photo deleted successfully',
+            data: {
+                remainingPhotos: updatedPhotos
+            }
+        });
+
+    } catch (error) {
+        console.error('Error deleting site photo:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to delete site photo',
             error: error.message
         });
     }

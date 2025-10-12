@@ -1,5 +1,7 @@
 import express, { json } from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import dashboardRoutes from './routes/dashboard.routes.js';
 import signalRoutes from "./routes/signal.routes.js";
 import latencyRoutes from "./routes/latency.routes.js";
@@ -12,8 +14,14 @@ import pool, { testConnection } from './config/database.js';
 import latencyHistoryRoutes from './routes/latencyHistory.routes.js'; 
 import 'dotenv/config';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 app.use(json());
+
+// Serve static files from public/uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
 app.use(
   cors({
