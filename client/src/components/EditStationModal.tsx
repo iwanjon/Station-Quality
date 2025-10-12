@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import axiosInstance from "../utilities/AxiosServer";
 import { X } from "lucide-react";
+import { getDropdownOptions } from "../config/dropdownOptions";
 
 interface StationData {
   [key: string]: string | number | null | undefined;
@@ -161,8 +162,9 @@ const EditStationModal = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select Network</option>
-              <option value="IA">IA</option>
-              <option value="II">II</option>
+              {getDropdownOptions('net').map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
             </select>
           </div>
         );
@@ -326,8 +328,9 @@ const EditStationModal = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select Status</option>
-              <option value="aktif">Aktif</option>
-              <option value="nonaktif">Nonaktif</option>
+              {getDropdownOptions('status').map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
             </select>
           </div>
         );
@@ -344,9 +347,9 @@ const EditStationModal = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select Priority</option>
-              <option value="P1">P1</option>
-              <option value="P2">P2</option>
-              <option value="P3">P3</option>
+              {getDropdownOptions('prioritas').map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
             </select>
           </div>
         );
@@ -363,8 +366,9 @@ const EditStationModal = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select Accelerometer</option>
-              <option value="installed">Installed</option>
-              <option value="not_installed">Not Installed</option>
+              {getDropdownOptions('accelerometer').map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
             </select>
           </div>
         );
@@ -381,9 +385,9 @@ const EditStationModal = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select Shelter Type</option>
-              <option value="bunker">Bunker</option>
-              <option value="posthole">Posthole</option>
-              <option value="surface">Surface</option>
+              {getDropdownOptions('tipe_shelter').map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
             </select>
           </div>
         );
@@ -400,8 +404,9 @@ const EditStationModal = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select Shelter Location</option>
-              <option value="outside_BMKG_office">Outside BMKG Office</option>
-              <option value="inside_BMKG_office">Inside BMKG Office</option>
+              {getDropdownOptions('lokasi_shelter').map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
             </select>
           </div>
         );
@@ -418,8 +423,9 @@ const EditStationModal = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select Shelter Guard</option>
-              <option value="ada">Ada</option>
-              <option value="tidak_ada">Tidak Ada</option>
+              {getDropdownOptions('penjaga_shelter').map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
             </select>
           </div>
         );
@@ -436,9 +442,9 @@ const EditStationModal = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select Shelter Condition</option>
-              <option value="baik">Baik</option>
-              <option value="rusak_ringan">Rusak Ringan</option>
-              <option value="rusak_berat">Rusak Berat</option>
+              {getDropdownOptions('kondisi_shelter').map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
             </select>
           </div>
         );
@@ -455,8 +461,9 @@ const EditStationModal = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select Communication Equipment</option>
-              <option value="installed">Installed</option>
-              <option value="not_installed">Not Installed</option>
+              {getDropdownOptions('digitizer_komunikasi').map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
             </select>
           </div>
         );

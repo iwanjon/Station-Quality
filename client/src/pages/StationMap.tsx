@@ -9,6 +9,7 @@ import marker from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import DataTable from "../components/DataTable";
 import TableFilters from "../components/TableFilters";
+import FieldGuidelines from "../components/FieldGuidelines";
 import { Link } from "react-router-dom";
 import { Download, Upload, FileText } from "lucide-react";
 import type { CellContext } from "@tanstack/react-table";
@@ -166,25 +167,25 @@ const StationMap = () => {
 
     // Create sample data row with detailed comments
     const sampleData = [
-      "IA", // net - Network code (e.g., IA, GE, etc.)
+      "IA", // net - Network code: "IA" or "II"
       "ABC123", // kode_stasiun - Unique station code
       "-6.2088", // lintang - Latitude (decimal format)
       "106.8456", // bujur - Longitude (decimal format)
       "100", // elevasi - Elevation in meters
       "Jakarta Pusat", // lokasi - Full address/location
-      "DKI Jakarta", // provinsi - EXACT province name from database
-      "UPT Jakarta", // upt_penanggung_jawab - EXACT UPT name from database
-      "Active", // status - Station status (Active/Inactive/etc.)
+      "DKI Jakarta", // provinsi - EXACT province name from database (see View Valid Options)
+      "UPT Jakarta", // upt_penanggung_jawab - EXACT UPT name from database (see View Valid Options)
+      "aktif", // status - Station status: "aktif" or "nonaktif"
       "2020", // tahun_instalasi - Installation year
-      "BMKG", // jaringan - EXACT network name from database
-      "High", // prioritas - Priority level
+      "BMKG", // jaringan - EXACT network name from database (see View Valid Options)
+      "P1", // prioritas - Priority level: "P1", "P2", or "P3"
       "Sample station description", // keterangan - Description/notes
-      "Trillium Compact", // accelerometer - Accelerometer model
-      "Digitizer Model X", // digitizer_komunikasi - Digitizer model
-      "Container", // tipe_shelter - Shelter type
-      "Building A", // lokasi_shelter - Shelter location
-      "John Doe", // penjaga_shelter - Shelter guardian name
-      "Good condition", // kondisi_shelter - Shelter condition description
+      "installed", // accelerometer - Accelerometer: "installed" or "not_installed"
+      "installed", // digitizer_komunikasi - Communication equipment: "installed" or "not_installed"
+      "bunker", // tipe_shelter - Shelter type: "bunker", "posthole", or "surface"
+      "outside_BMKG_office", // lokasi_shelter - Shelter location: "outside_BMKG_office" or "inside_BMKG_office"
+      "ada", // penjaga_shelter - Shelter guard: "ada" or "tidak_ada"
+      "baik", // kondisi_shelter - Shelter condition: "baik", "rusak_ringan", or "rusak_berat"
       "GPS, Solar Panel, Battery", // assets_shelter - Shelter assets
       "Easy access, 24/7 available", // access_shelter - Shelter access information
       "shelter_photo.jpg", // photo_shelter - Shelter photo filename
@@ -723,32 +724,7 @@ const StationMap = () => {
           )}
 
           {/* Instructions */}
-          <div className="mt-3  p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-start gap-2">
-              <FileText size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-blue-700">
-                <p className="font-medium mb-2">How to create stations:</p>
-                <ol className="list-decimal list-inside space-y-1 mb-3">
-                  <li>Download the CSV template</li>
-                  <li>Fill in the station data following the format</li>
-                  <li>Remove or modify the sample row (marked with is_sample=true)</li>
-                  <li>Save the file and import it back</li>
-                  <li>The system will validate and create the stations (sample rows are automatically skipped)</li>
-                </ol>
-                
-                <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded">
-                  <p className="font-medium text-yellow-800 mb-1">⚠️ Important: Foreign Key Guidelines</p>
-                  <ul className="text-xs text-yellow-700 space-y-1">
-                    <li><strong>provinsi:</strong> Must match exactly with province names in database (e.g., "DKI Jakarta", "Jawa Barat", "Sumatera Utara")</li>
-                    <li><strong>upt_penanggung_jawab:</strong> Must match exactly with UPT names (e.g., "UPT Jakarta", "UPT Bandung", "UPT Medan")</li>
-                    <li><strong>jaringan:</strong> Must match network names (e.g., "BMKG", "IA", "GE")</li>
-                    <li>❌ If names don't match exactly, the station creation will fail</li>
-                    <li>💡 Check existing data in the system for correct naming</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
+          <FieldGuidelines />
         </div>
       </MainLayout>
     </div>
