@@ -26,7 +26,6 @@ export async function cached(key, ttlSeconds, fetcher) {
   console.log(`🌐 Cache miss for ${key}, fetching...`);
   const data = await fetcher();
 
-  // 5. Coba simpan data baru ke cache HANYA JIKA Redis terhubung
   if (redisClient) {
     try {
       // Menggunakan setEx untuk 'set with expiration'
@@ -39,24 +38,5 @@ export async function cached(key, ttlSeconds, fetcher) {
   return data;
 }
 
-// Ekspor tetap sama seperti kode Anda sebelumnya
 export default { cached };
-// import redisClient from '../config/redisClient.js'; 
-// import getRedisClient from '../config/redisClient.js'; 
-
-// export async function cached(key, ttlSeconds, fetcher) {
-//   const cachedData = await redisClient.get(key);
-//   if (cachedData) {
-//     console.log(`Cache hit for ${key}`);
-//     return JSON.parse(cachedData);
-//   }
-
-//   console.log(`Cache miss for ${key}, fetching...`);
-//   const data = await fetcher();
-//   await redisClient.set(key, JSON.stringify(data), { EX: ttlSeconds });
-//   return data;
-// }
-
-// export default { cached };
-
 

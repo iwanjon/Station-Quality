@@ -462,7 +462,7 @@ const StationAvailability = () => {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <MainLayout>
-        <h1 className="bg-gray-100 rounded-2xl text-left text-3xl font-bold my-2">
+          <h1 className="text-left text-2xl font-bold mt-0 mb-2 ml-1">
             Data Availability
           </h1>
         <div className="bg-white p-4 rounded-xl shadow mb-6">

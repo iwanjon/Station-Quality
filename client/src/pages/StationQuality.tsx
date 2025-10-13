@@ -15,7 +15,7 @@ import axiosServer from "../utilities/AxiosServer.tsx";
 import StatusBadge from "../components/StatusBadge";
 import dayjs from "dayjs";
 
-// Registrasi elemen-elemen Chart.js
+
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const STATUS_CONFIG: { [key: string]: { label: string; color: string; textColor: string } } = {
@@ -34,7 +34,6 @@ interface QCSummary {
   result: string;
 }
 
-// Interface baru untuk data yang sudah digabungkan
 export interface StasiunDenganSummary extends StationMetadata {
   quality_percentage: number | null;
 }
@@ -405,7 +404,6 @@ const StationQuality = () => {
         const code = row.original.kode_stasiun;
         const siteQuality = siteQualityMap[code] || "-";
         return (
-          // <span className="block w-full py-2 rounded-full text-lg font-bold text-center bg-blue-50 text-blue-800">
             <span className="block w-full py-1 rounded-sm text-[11px] font-bold text-center bg-blue-50 text-blue-800">
             {siteQuality}
           </span>
@@ -427,8 +425,8 @@ const StationQuality = () => {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <MainLayout className="flex-1 p-4 ml-15">
+    <div className="min-h-screen flex flex-col bg-gray-50">
+      <MainLayout>
         {/* Judul serupa dashboard */}
         <h1 className="text-left text-2xl font-bold mt-0 mb-2 ml-1">
           Stasiun Quality
@@ -473,7 +471,7 @@ const StationQuality = () => {
           </div>
         </CardContainer>
         
-        <CardContainer className="p-3">
+        <CardContainer className="p-5">
           <div className="flex justify-between items-center mb-4">
             <TableFilters
               filters={filters}
@@ -482,7 +480,7 @@ const StationQuality = () => {
             />
             <button
               onClick={handleDownloadCSV}
-              className="bg-green-600  text-white rounded-lg px-3 py-1 hover:bg-green-700 transition duration-300 text-sm"
+              className="bg-green-600 text-white rounded-lg px-3 py-2.5 hover:bg-green-700 transition duration-300 text-sm"
             >
               Export CSV
             </button>

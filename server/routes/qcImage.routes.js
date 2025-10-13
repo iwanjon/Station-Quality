@@ -1,5 +1,3 @@
-// File baru: routes/qcImage.routes.js
-
 import { Router } from 'express';
 import { fetchPsdImage, fetchSignalImage } from '../services/externalApi.js';
 

@@ -45,7 +45,7 @@ const SortIcon = ({
       </svg>
     );
   }
-  // none (belum di-sort)
+  
   return (
     <svg
       className="inline-block w-6 h-6 ml-1 text-gray-400"
@@ -107,20 +107,21 @@ function DataTable<TData extends object>({
           placeholder="Search..."
           value={globalFilterValue ?? ""}
           onChange={(e) => setGlobalFilterValue(e.target.value)}
-          className="border p-1 rounded"
+          className="border border-gray-300 p-1 rounded"
         />
       </div>
 
       <div className="overflow-x-auto">
         <table className="min-w-full border border-gray-300 text-center table-fixed">
-          <thead className="bg-gray-100">
+          <thead className="bg-gray-50">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
                     colSpan={header.colSpan}
-                    className={`border p-2 text-sm font-semibold select-none ${
+                    // pastikan border warna sama (border-gray-300)
+                    className={`border border-gray-300 p-2 text-sm font-semibold select-none ${
                       header.column.getCanSort() ? "cursor-pointer" : ""
                     }`}
                     style={{
@@ -159,7 +160,8 @@ function DataTable<TData extends object>({
               table.getRowModel().rows.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50">
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="border p-2 text-sm">
+                    // pastikan cell border warna sama dengan tabel detail
+                    <td key={cell.id} className="border border-gray-300 p-2 text-sm">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
@@ -182,7 +184,8 @@ function DataTable<TData extends object>({
       {/* Pagination Controls */}
       <div className="flex items-center justify-center gap-2 py-8">
         <button
-          className="border px-2 py-1 rounded disabled:opacity-50"
+          // tombol pagination border disamakan juga
+          className="border border-gray-300 px-2 py-1 rounded disabled:opacity-50"
           onClick={() => table.previousPage()}
           disabled={!table.getCanPreviousPage()}
         >
@@ -196,7 +199,7 @@ function DataTable<TData extends object>({
           </strong>
         </span>
         <button
-          className="border px-2 py-1 rounded disabled:opacity-50"
+          className="border border-gray-300 px-2 py-1 rounded disabled:opacity-50"
           onClick={() => table.nextPage()}
           disabled={!table.getCanNextPage()}
         >
@@ -208,7 +211,7 @@ function DataTable<TData extends object>({
           onChange={(e) => {
             table.setPageSize(Number(e.target.value));
           }}
-          className="border p-1 rounded ml-4"
+          className="border border-gray-300 p-1 rounded ml-4"
         >
           {[5, 10, 20, 50].map((size) => (
             <option key={size} value={size}>

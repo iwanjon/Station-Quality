@@ -10,7 +10,6 @@ const DEFAULT_CACHE_TTL = 3600;
 console.log("🌍 API_BASE_URL:", process.env.API_BASE_URL);
 console.log("🔑 API_KEY:", process.env.API_KEY);
 
-// [FUNGSI BARU] Ambil data detail site quality control
 export async function fetchQCSiteDetail(code) {
   const cacheKey = `qc:sitedetail:${code}`;
   const redisClient = getRedisClient();

@@ -10,10 +10,7 @@ router.get('/7days', async (req, res) => {
   try {
     const sevenDaysAgo = dayjs().subtract(7, 'day').format('YYYY-MM-DD');
 
-    // --- Kueri SQL BARU yang Akurat ---
-    // Logika ini sekarang sama persis dengan aturan di frontend:
     // OFF jika latency1 adalah NULL ATAU nilai terkecil dari (lat1, lat2, lat3) >= 1 hari.
-    // ON adalah kebalikannya.
     const sql = `
       SELECT
         DATE(recorded_at) as date,

@@ -53,12 +53,14 @@ const getStatusColor = (status: string) => {
 const CHANNELS = ["E", "N", "Z"];
 const CHANNELS_FULL = ["SHE", "SHN", "SHZ"];
 
-// --- FUNGSI BARU UNTUK FORMAT TANGGAL ---
 const formatDateTick = (tickItem: string) => dayjs(tickItem).format("DD-MMM");
 
 const StationDetail = () => {
   const { stationCode } = useParams<{ stationCode: string }>();
   const navigate = useNavigate();
+
+  // Tambahan: state untuk mengontrol select agar menampilkan nama stasiun pertama
+  const [selectedStation, setSelectedStation] = useState<string | undefined>(stationCode);
 
   const [qcData, setQcData] = useState<QCData[]>([]);
   const [summaryData, setSummaryData] = useState<Record<string, SummaryDataItem[]>>({
@@ -66,21 +68,28 @@ const StationDetail = () => {
     SHN: [],
     SHZ: [],
   });
-  const [loadingSummary, setLoadingSummary] = useState(true);
+  const [loadingSummary, setLoadingSummary]= useState(true);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stationList, setStationList] = useState<string[]>([]);
 
+  // ambil daftar stasiun dan jika URL belum berisi stationCode, langsung set default ke stasiun pertama
   useEffect(() => {
     axiosServer
       .get("/api/stasiun")
       .then((res) => {
         const codes = (res.data || []).map((s: any) => s.kode_stasiun);
         setStationList(codes);
+
+        // jika belum ada stationCode di route, navigasi otomatis ke stasiun pertama
+        if ((!stationCode || stationCode === "") && codes.length > 0) {
+          // replace agar tidak menambah history entry saat default dipilih
+          navigate(`/station/${codes[0]}`, { replace: true });
+        }
       })
       .catch(() => setStationList([]));
-  }, []);
+  }, [navigate, stationCode]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -149,14 +158,12 @@ const StationDetail = () => {
 
   }, [stationCode]);
   
-  // --- KONFIGURASI BARU UNTUK X-AXIS ---
-  // Objek ini akan kita teruskan sebagai props ke setiap ChartSlide
   const xAxisConfig = {
-    tickFormatter: formatDateTick, // Menggunakan fungsi format tanggal baru
-    angle: -45, // Memutar label 45 derajat
-    textAnchor: "end", // Meratakan teks setelah diputar
-    height: 50, // Menambah ruang untuk label diagonal
-    interval: 0, // Memastikan semua 7 label tanggal ditampilkan
+    tickFormatter: formatDateTick, 
+    angle: -45, 
+    textAnchor: "end", 
+    height: 50, 
+    interval: 0, 
   };
 
   const groupedByChannel = CHANNELS.reduce<Record<string, QCData[]>>(
@@ -206,31 +213,46 @@ const StationDetail = () => {
         {/* --- Header --- */}
         <div className="flex justify-between items-start mb-3">
           <div className="flex items-center space-x-2">
-            <button
-              type="button"
-              className="bg-gray-200 text-gray-800 font-bold px-3 py-1.5 rounded-md hover:bg-gray-300 text-xs"
-              onClick={() => navigate('/dashboard')}
+            <div
+              aria-hidden
+              className="min-w-[80px] bg-gray-200 text-gray-800 font-bold px-3 py-2 rounded-md text-sm flex items-center justify-center"
             >
               Station
-            </button>
-            <select
-              value={stationCode}
-              onChange={(e) => {
-                const newStationCode = e.target.value;
-                if (newStationCode) {
-                  navigate(`/station/${newStationCode}`);
-                }
-              }}
-              className="p-1 border rounded shadow-sm focus:ring-indigo-500 focus:border-indigo-500 font-bold text-xs"
-              style={{ minWidth: 80 }}
-            >
-              {stationList.map((station) => (
-                <option key={station} value={station}>
-                  {station}
-                </option>
-              ))}
-            </select>
-          </div>
+            </div>
+ 
+             <div className="relative">
+               <select
+                 value={selectedStation ?? ""}
+                 onChange={(e) => {
+                   const newStationCode = e.target.value;
+                   setSelectedStation(newStationCode);
+                   if (newStationCode) navigate(`/station/${newStationCode}`);
+                 }}
+
+                className="appearance-none min-w-[120px] border border-gray-300 rounded px-3 pr-10 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+               >
+                 {stationList.length === 0 && <option value="">Loading...</option>}
+                 {stationList.map((station) => (
+                   <option key={station} value={station}>
+                     {station}
+                   </option>
+                 ))}
+               </select>
+
+               <div className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center">
+                 <span className="w-px h-6 bg-gray-200 mr-2" />
+                 <svg
+                   className="w-4 h-4 text-gray-400"
+                   viewBox="0 0 20 20"
+                   fill="none"
+                   xmlns="http://www.w3.org/2000/svg"
+                   aria-hidden="true"
+                 >
+                   <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                 </svg>
+               </div>
+             </div>
+           </div>
           <div className="flex flex-col items-end">
             <div className="flex space-x-1 rounded bg-gray-200 p-0.5">
               <button
@@ -433,7 +455,7 @@ const StationDetail = () => {
                 ]}
                 yAxisProps={{ domain: [0, "auto"] }}
                 height={180}
-                xAxisProps={xAxisConfig} // <-- PROP BARU DITERUSKAN
+                xAxisProps={xAxisConfig} 
               />
             </div>
           ))}

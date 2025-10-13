@@ -3,7 +3,6 @@ import { fetchSLMONLastStatus } from '../services/externalApi.js';
 
 const router = Router();
 
-// Endpoint baru untuk SLMON Last Status
 router.get('/slmon/laststatus', async (_req, res) => {
   try {
     const data = await fetchSLMONLastStatus();

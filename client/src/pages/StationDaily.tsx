@@ -21,7 +21,6 @@ interface StationData {
   // Tambahkan properti lain jika dibutuhkan
 }
 
-// [BARU] Interface untuk data Site Quality dari API
 interface SiteQualityData {
   code: string;
   geology: string;
@@ -247,15 +246,49 @@ const StationDaily = () => {
       <div className="p-2 sm:p-3 space-y-4 bg-gray-50 min-h-screen">
         <header className="flex justify-between items-start mb-2">
           <div className="flex items-center space-x-2">
-            <Link to="/dashboard" className="bg-gray-200 text-gray-800 font-bold px-3 py-1 rounded hover:bg-gray-300 text-xs">Station</Link>
-            <select value={selectedStation} onChange={handleStationChange} className="p-1 border rounded shadow-sm focus:ring-indigo-500 focus:border-indigo-500 font-bold text-xs min-w-[80px]">
-              {stationList.map((station) => (<option key={station} value={station}>{station}</option>))}
-            </select>
+            <div
+              aria-hidden
+              className="min-w-[80px] bg-gray-200 text-gray-800 font-bold px-3 py-2 rounded-md text-sm flex items-center justify-center"
+            >
+              Station
+            </div>
+
+            <div className="relative">
+              <select
+                value={selectedStation}
+                onChange={handleStationChange}
+                className="appearance-none min-w-[120px] border border-gray-300 rounded px-3 pr-10 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              >
+                {stationList.map((station) => (
+                  <option key={station} value={station}>
+                    {station}
+                  </option>
+                ))}
+              </select>
+
+              <div className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center">
+                <span className="w-px h-6 bg-gray-200 mr-2" />
+                <svg
+                  className="w-4 h-4 text-gray-400"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+            </div>
+
             {!loadingSiteQuality && siteQualityData && (
-              <div className={`px-2 py-1 rounded text-xs font-semibold ${
-                siteQualityData.site_quality === 'Very Good' || siteQualityData.site_quality === 'Good' ? 'bg-green-100 text-green-800' :
-                siteQualityData.site_quality === 'Fair' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
-              }`}>
+              <div className={
+                `min-w-[90px] rounded px-3 py-2 text-sm font-semibold flex items-center justify-center ` +
+                (siteQualityData.site_quality === 'Very Good' || siteQualityData.site_quality === 'Good'
+                  ? 'bg-green-100 text-green-800'
+                  : siteQualityData.site_quality === 'Fair'
+                    ? 'bg-yellow-100 text-yellow-800'
+                    : 'bg-red-100 text-red-800')
+              }>
                 {siteQualityData.site_quality}
               </div>
             )}
@@ -271,7 +304,6 @@ const StationDaily = () => {
           </div>
         </header>
         <main className="grid grid-cols-1 lg:grid-cols-7 gap-2">
-          {/* Station Information & Site Quality diperbesar */}
           <div className="bg-white p-2 rounded-lg shadow-md space-y-4 lg:col-span-3 ml-2">
             {/* Station Information */}
             <div>
@@ -399,16 +431,16 @@ const StationDaily = () => {
         <section className="bg-white p-2 rounded-lg shadow overflow-x-auto">
           <h2 className="text-base font-bold mb-2 text-gray-800">Channel Details</h2>
           {loadingTable ? (
-            <div className="text-center text-gray-500 py-4 text-xs">Memuat data...</div>
+            <div className="text-center text-gray-500 py-4 text-sm">Memuat data...</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full border border-gray-300 text-center">
-                <thead className="bg-gray-100">
+              <table className="min-w-full border border-gray-300 text-center table-fixed">
+                <thead className="bg-gray-50">
                   <tr>
                     {simpleTableColumns.map((col) => (
                       <th
                         key={col.accessorKey}
-                        className="border p-1 text-xs font-semibold"
+                        className="border border-gray-300 p-2 text-sm font-semibold"
                       >
                         {col.header}
                       </th>
@@ -420,7 +452,7 @@ const StationDaily = () => {
                     tableData.map((row, idx) => (
                       <tr key={idx} className="hover:bg-gray-50">
                         {simpleTableColumns.map((col) => (
-                          <td key={col.accessorKey} className="border p-1 text-xs">
+                          <td key={col.accessorKey} className="border border-gray-300 p-2 text-sm">
                             {row && row[col.accessorKey] !== undefined && row[col.accessorKey] !== null
                               ? row[col.accessorKey]
                               : "-"}
@@ -430,7 +462,7 @@ const StationDaily = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={simpleTableColumns.length} className="text-center p-2 text-gray-500 text-xs">
+                      <td colSpan={simpleTableColumns.length} className="text-center p-4 text-gray-500 text-sm">
                         No data available
                       </td>
                     </tr>
