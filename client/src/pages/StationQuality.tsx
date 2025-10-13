@@ -105,7 +105,7 @@ const MapLegend = () => {
   ];
 
   return (
-    <div className="absolute bottom-5 left-5 z-[1000] bg-white/70 backdrop-blur-sm p-3 rounded-lg shadow-lg">
+    <div className="absolute bottom-5 left-5 z-[1000] bg-white/70 p-3 rounded-lg shadow-lg">
       <h3 className="font-bold mb-2 text-sm">Keterangan</h3>
       <ul>
         {legendItems.map((item) => (

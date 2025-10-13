@@ -212,8 +212,11 @@ const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummary[
 
 
 const InfoCard = ({ title, children }: { title: string; children?: React.ReactNode }) => (
-  <div className="bg-white rounded-xl shadow p-4 min-h-[300px] flex flex-col">
-    <h2 className="text-lg font-bold border-b pb-2 mb-4">{title}</h2>
+  <div className="bg-white rounded-xl shadow p-3 min-h-[240px] flex flex-col border border-transparent">
+    {/* Judul diperkecil padding & jarak agar rapi seperti kartu OPERATIONAL */}
+    <h2 className="text-sm font-semibold text-gray-800 border-b border-gray-200 pb-0 mb-2">
+      {title}
+    </h2>
     <div className="flex-grow flex flex-col items-center justify-center w-full">
       {children ? children : <p>Konten untuk {title} akan ditampilkan di sini.</p>}
     </div>
@@ -259,7 +262,7 @@ const Dashboard = () => {
 
       setTotalStationCount(slmonResponse.data.features.length);
       const stasiunData = stasiunResponse.data || [];
-      setRegisteredCount(stasiunData.filter((s) => s.status === "aktif").length);
+      setRegisteredCount(stasiunData.length);
       setInactiveCount(stasiunData.filter((s) => s.status === "nonaktif").length);
 
       const qcData = qcResponse.data;
@@ -444,11 +447,11 @@ const Dashboard = () => {
         <div className="lg:w-1/3 w-full flex flex-col gap-2">
           {/* Status Cards */}
           <div className="grid grid-cols-2 gap-2">
-            <div className="bg-gray-200 rounded p-2 text-center">
+            <div className="bg-white rounded p-2 text-center border border-gray-300 shadow">
               <p className="text-xs font-semibold text-gray-600">REGISTERED</p>
               <p className="text-2xl font-bold">{isLoading ? "..." : registeredCount}</p>
             </div>
-            <div className="bg-gray-200 rounded p-2 text-center">
+            <div className="bg-white rounded p-2 text-center border border-gray-300 shadow">
               <p className="text-xs font-semibold text-gray-600">INACTIVE</p>
               <p className="text-2xl font-bold">{isLoading ? "..." : inactiveCount}</p>
             </div>
@@ -527,8 +530,8 @@ const Dashboard = () => {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-6 flex flex-wrap justify-center gap-x-3 gap-y-1">
-              {[
+            <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1">
+              {[ 
                 { label: ">97%", color: "#16a34a" }, { label: "90-97%", color: "#facc15" },
                 { label: "1-89%", color: "#fb923c" }, { label: "0%", color: "#ef4444" },
                 { label: "No Data", color: "#a3a3a3" },
@@ -537,10 +540,10 @@ const Dashboard = () => {
                   <span
                     className="inline-block rounded-full"
                     style={{
-                      width: "0.65em",
-                      height: "0.65em",
+                      width: "0.45em",   
+                      height: "0.45em",  
                       backgroundColor: item.color,
-                      marginRight: "0.25em",
+                      marginRight: "0.2em", 
                     }}
                   />
                   <span className="font-medium">{item.label}</span>
@@ -555,10 +558,11 @@ const Dashboard = () => {
             </div>
           </div>
         </InfoCard>
+
         {/* Quality Card */}
         <InfoCard title="Quality">
           <div className="w-full flex flex-col items-center justify-center">
-            <div className="w-full h-32 flex items-center justify-center">
+            <div className="w-full h-35 flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -578,16 +582,16 @@ const Dashboard = () => {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-6 flex flex-wrap justify-center gap-x-3 gap-y-1">
+            <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1">
               {QUALITY_LABELS.map((item) => (
                 <div key={item.label} className="flex items-center space-x-1 text-[11px]">
                   <span
                     className="inline-block rounded-full"
                     style={{
-                      width: "0.65em",
-                      height: "0.65em",
+                      width: "0.45em",   
+                      height: "0.45em",  
                       backgroundColor: item.color,
-                      marginRight: "0.25em",
+                      marginRight: "0.2em", 
                     }}
                   />
                   <span className="font-medium">{item.label}</span>
@@ -602,6 +606,7 @@ const Dashboard = () => {
             </div>
           </div>
         </InfoCard>
+
         {/* Performance & Metadata Cards */}
         <InfoCard title="Performance" />
         <InfoCard title="Metadata">

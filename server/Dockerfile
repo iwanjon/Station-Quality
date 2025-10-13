@@ -1,4 +1,9 @@
+# server/Dockerfile
+
 FROM node:lts-alpine AS base
+
+# [TAMBAHKAN BARIS INI] Install curl untuk kebutuhan healthcheck
+RUN apk add --no-cache curl
 
 # Update Alpine packages to fix vulnerabilities
 RUN apk update && apk upgrade
@@ -9,7 +14,7 @@ WORKDIR /usr/src/app
 # Salin file package.json dan package-lock.json terlebih dahulu
 COPY package*.json ./
 
-# Install dependensi yaang dibutuhkan untuk produksi
+# Install dependensi yang dibutuhkan untuk produksi
 RUN npm install --omit=dev
 
 # Salin semua file proyek ke dalam direktori kerja
@@ -22,10 +27,7 @@ EXPOSE 5000
 RUN npm install -g pm2
 
 # Jalankan aplikasi menggunakan PM2
-# Perintah ini akan membaca ecosystem.config.js dan menjalankan kedua proses (server & scheduler)
-CMD ["pm2-runtime", "start", "ecosystem.config.js"]
-
-
+CMD ["pm2-runtime", "start", "ecosystem.config.cjs"]
 
 # FROM node:lts-alpine
 

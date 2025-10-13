@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # MySQL dalam container (opsional, bisa dihapus kalau tetap pakai XAMPP)
   db:
     image: mysql:8
     container_name: mysql-db
@@ -10,8 +9,14 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: admin
       MYSQL_DATABASE: station_quality_control
+      TZ: Asia/Jakarta 
     volumes:
       - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-padmin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
       
   redis-cache:
     image: redis:latest
@@ -24,26 +29,28 @@ services:
       context: ./server 
       dockerfile: Dockerfile
     container_name: server-app
-    command: npm run dev
     ports:
       - "5000:5000"
     env_file:
       - ./server/.env
     environment:
+      MYSQL_HOST: db
+      TZ: Asia/Jakarta 
       REDIS_URL: redis://redis-cache:6379
       API_BASE_URL: http://103.169.3.72:2107/api
       API_KEY: DEBUG-BYPASS-TOKEN-2107
-      DB_MIGRATE: "true"
-      DB_SEED: "true"
     depends_on:
-      - redis-cache
-      - db
-    volumes:
-      - ./server:/app
-      - /app/node_modules
+      db:
+        condition: service_healthy
+      redis-cache:
+        condition: service_started
+        
+    command: sh -c "npm run db:setup && pm2-runtime start ecosystem.config.cjs"
 
   client:
-    build: ./client
+    build:
+      context: ./client
+      dockerfile: Dockerfile
     container_name: client-app
     ports:
       - "5173:5173"

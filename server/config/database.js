@@ -31,7 +31,7 @@ async function testConnection() {
   }
 }
 
-testConnection();
+// testConnection();
 
 export { pool, testConnection };
 export default pool;
