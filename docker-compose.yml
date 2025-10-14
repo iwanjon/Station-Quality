@@ -1,3 +1,5 @@
+# docker-compose.yml
+
 version: '3.8'
 
 services:
@@ -9,7 +11,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: admin
       MYSQL_DATABASE: station_quality_control
-      TZ: Asia/Jakarta 
+      # TZ di sini memastikan CURRENT_TIMESTAMP di DB menggunakan UTC
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:
@@ -35,7 +37,7 @@ services:
       - ./server/.env
     environment:
       MYSQL_HOST: db
-      TZ: Asia/Jakarta 
+      # TZ di sini memastikan aplikasi Node.js & cron berjalan dalam UTC
       REDIS_URL: redis://redis-cache:6379
       API_BASE_URL: http://103.169.3.72:2107/api
       API_KEY: DEBUG-BYPASS-TOKEN-2107
@@ -45,6 +47,9 @@ services:
       redis-cache:
         condition: service_started
         
+    # Ini adalah cara paling andal untuk memastikan urutan eksekusi yang benar:
+    # 1. Jalankan db:setup (migrate & seed) terlebih dahulu.
+    # 2. Setelah selesai, baru jalankan PM2 untuk memulai server dan scheduler.
     command: sh -c "npm run db:setup && pm2-runtime start ecosystem.config.cjs"
 
   client:
