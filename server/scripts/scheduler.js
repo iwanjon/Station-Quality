@@ -3,6 +3,7 @@
 import 'dotenv/config';
 import cron from 'node-cron';
 import { runLatencyTask } from './fetchLatencyHistory.js';
+import { runAvailabilityTask } from './fetchAvailabilityHistory.js';
 import dayjs from 'dayjs';
 
 /**
@@ -37,7 +38,8 @@ console.log('Menunggu jadwal tugas berikutnya...');
 cron.schedule('0 7 * * *', () => {
   console.log(`\n[${dayjs().format('YYYY-MM-DD HH:mm:ss')}] 🔔 Waktu tugas terjadwal tercapai!`);
   // Jalankan tugas terjadwal juga dengan mekanisme coba-lagi
-  runTaskWithRetry(runLatencyTask, 3, 5000); 
+  runTaskWithRetry(runLatencyTask, 3, 5000);
+  runTaskWithRetry(runAvailabilityTask, 3, 5000);
 }, {
   scheduled: true,
   timezone: "Asia/Jakarta"
@@ -45,3 +47,4 @@ cron.schedule('0 7 * * *', () => {
 
 // Jalankan tugas pertama kali saat startup menggunakan mekanisme coba-lagi
 runTaskWithRetry(runLatencyTask);
+runTaskWithRetry(runAvailabilityTask);

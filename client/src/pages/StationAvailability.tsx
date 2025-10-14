@@ -99,12 +99,10 @@ interface APIResponse {
   cache_key: string;
   meta: {
     stationCount: number;
-    totalRecords: number;
     dateRange: {
       start_date: string;
       end_date: string;
     };
-    stationCodes?: string[];
   };
   data: Record<string, StationData[]>;
 }
