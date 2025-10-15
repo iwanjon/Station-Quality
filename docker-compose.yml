@@ -46,11 +46,44 @@ services:
         condition: service_healthy
       redis-cache:
         condition: service_started
+      history-app:
+        condition: service_healthy
         
     # Ini adalah cara paling andal untuk memastikan urutan eksekusi yang benar:
     # 1. Jalankan db:setup (migrate & seed) terlebih dahulu.
     # 2. Setelah selesai, baru jalankan PM2 untuk memulai server dan scheduler.
     command: sh -c "npm run db:setup && pm2-runtime start ecosystem.config.cjs"
+
+
+  history-app:
+    build:
+      context: ./history_app 
+      dockerfile: Dockerfile
+    container_name: history-app
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./history_app/.env
+    environment:
+      MYSQL_HOST: db
+      # TZ di sini memastikan aplikasi Node.js & cron berjalan dalam UTC
+      # REDIS_URL: redis://redis-cache:6379
+      # API_BASE_URL: http://103.169.3.72:2107/api
+      # API_KEY: DEBUG-BYPASS-TOKEN-2107
+    depends_on:
+      db:
+        condition: service_healthy
+    # Ini adalah cara paling andal untuk memastikan urutan eksekusi yang benar:
+    # 1. Jalankan db:setup (migrate & seed) terlebih dahulu.
+    # 2. Setelah selesai, baru jalankan PM2 untuk memulai server dan scheduler.
+    # command: sh -c "npm run db:setup && pm2-runtime start ecosystem.config.cjs"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
   client:
     build:
