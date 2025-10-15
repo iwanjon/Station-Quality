@@ -12,6 +12,7 @@ import StationPerformance from '../pages/StationPerformance';
 import StationDaily from '../pages/StationDaily';
 import StationMapDetail from '../pages/StationMapDetail';
 import StationHistory from '../pages/StationHistory';
+import PerformanceDetail from '../pages/PerformanceDetail';
 
 const Router = () => {
   return (
@@ -28,6 +29,7 @@ const Router = () => {
       <Route path="/about" element={<About />} /> 
       <Route path="/station-map/:stationCode" element={<StationMapDetail />} />
       <Route path="*" element={<NotFound />} />
+      <Route path="/performance-detail/:stationCode" element={<PerformanceDetail />} />
     </Routes>
   );
 };

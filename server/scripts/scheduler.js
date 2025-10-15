@@ -35,8 +35,8 @@ async function runTaskWithRetry(task, retries = 5, delay = 10000) {
 console.log(`[${dayjs().format('YYYY-MM-DD HH:mm:ss')}] 🕒 Penjadwal (Scheduler) diaktifkan.`);
 console.log('Menunggu jadwal tugas berikutnya...');
 
-// Jadwalkan tugas untuk berjalan SETIAP HARI PUKUL 7:00 PAGI.
-cron.schedule('0 7 * * *', () => {
+// Jadwalkan tugas untuk berjalan SETIAP HARI PUKUL 14:00 UTC SIANG (14.00 - 07.00).
+cron.schedule('0 14 * * *', () => {
   console.log(`\n[${dayjs().format('YYYY-MM-DD HH:mm:ss')}] 🔔 Waktu tugas terjadwal tercapai!`);
   // Jalankan tugas terjadwal juga dengan mekanisme coba-lagi
   runTaskWithRetry(runAvailabilityTask, 3, 5000);

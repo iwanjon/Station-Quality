@@ -179,7 +179,7 @@ const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummary[
     { label: "<3m", color: "bg-orange-400", textColor: "text-orange-500", count: countByCategory["<3m"] },
     { label: "<30m", color: "bg-red-500", textColor: "text-red-600", count: countByCategory["<30m"] },
     { label: "<1d", color: "bg-gray-400", textColor: "text-gray-500", count: countByCategory["<1d"] },
-    { label: "≥1d/NA", color: "bg-white", textColor: "text-black", count: countByCategory[">1d/NA"] },
+    { label: "≥1d/NA", color: "bg-black", textColor: "text-black", count: countByCategory[">1d/NA"] },
   ];
 
   const maxCount = Math.max(...summary.map((s) => s.count), 1);
