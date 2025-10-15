@@ -28,24 +28,3 @@ RUN npm install -g pm2
 
 # Jalankan aplikasi menggunakan PM2
 CMD ["pm2-runtime", "start", "ecosystem.config.cjs"]
-
-# FROM node:lts-alpine
-
-# WORKDIR /app
-
-# # Install dependencies
-# COPY package*.json ./
-
-
-# # Install nodemon global
-# RUN npm install 
-
-# COPY . .
-
-# EXPOSE 5000
-
-# RUN npm install -g pm2
-
-# # Jalankan backend dengan nodemon
-# CMD [ "npm", "run", "dev" ]
-# # CMD ["nodemon", "--legacy-watch", "server.js"]

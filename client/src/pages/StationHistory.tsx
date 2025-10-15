@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import axiosInstance from "../utilities/AxiosServer";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, RefreshCw, Eye } from "lucide-react";
+import { type ColumnDef } from "@tanstack/react-table";
+import DataTable from "../components/DataTable";
 
 interface StationHistory {
   history_id: number;
@@ -17,9 +19,10 @@ interface StationHistory {
   sensor_name: string | null;
   start_date: string | null;
   end_date: string | null;
-  PAZ: number | null;
+  PAZ: object | null; // JSON data
   status: boolean;
   created_at: string;
+  response_path: string | null;
 }
 
 const StationHistory = () => {
@@ -29,34 +32,11 @@ const StationHistory = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedChannel, setSelectedChannel] = useState<string>('all');
-
-  useEffect(() => {
-    const fetchStationHistory = async () => {
-      if (!stationCode) return;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await axiosInstance.get(`/api/station-history/bycode`, {
-          params: { code: stationCode }
-        });
-
-        if (response.data.success) {
-          setHistoryData(response.data.data);
-        } else {
-          setError(response.data.message || 'Failed to fetch station history');
-        }
-      } catch (err) {
-        console.error('Error fetching station history:', err);
-        setError('Failed to load station history data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStationHistory();
-  }, [stationCode]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedInstrument, setSelectedInstrument] = useState<StationHistory | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedPAZ, setSelectedPAZ] = useState<StationHistory | null>(null);
+  const [showPAZModal, setShowPAZModal] = useState(false);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
@@ -68,6 +48,179 @@ const StationHistory = () => {
       minute: '2-digit'
     });
   };
+
+  const handleShowInstrumentDetail = (instrument: StationHistory) => {
+    setSelectedInstrument(instrument);
+    setShowModal(true);
+  };
+
+  const handleShowPAZDetail = (instrument: StationHistory) => {
+    setSelectedPAZ(instrument);
+    setShowPAZModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setSelectedInstrument(null);
+  };
+
+  const closePAZModal = () => {
+    setShowPAZModal(false);
+    setSelectedPAZ(null);
+  };
+
+  // Column definitions for DataTable
+  const columns: ColumnDef<StationHistory>[] = [
+    {
+      accessorKey: "created_at",
+      header: "Created At",
+      cell: ({ getValue }: { getValue: () => unknown }) => formatDate(getValue() as string),
+      size: 150,
+      enableSorting: false,
+    },
+    {
+      accessorKey: "channel",
+      header: "Channel",
+      cell: ({ getValue }: { getValue: () => unknown }) => (getValue() as string | null) || "-",
+      size: 100,
+      enableSorting: false,
+    },
+    {
+      accessorKey: "sensor_name",
+      header: "Sensor Name",
+      cell: ({ getValue }: { getValue: () => unknown }) => (getValue() as string | null) || "-",
+      size: 120,
+      enableSorting: false,
+    },
+    {
+      accessorKey: "digitizer_name",
+      header: "Digitizer Name",
+      cell: ({ getValue }: { getValue: () => unknown }) => (getValue() as string | null) || "-",
+      size: 120,
+      enableSorting: false,
+    },
+    {
+      accessorKey: "total_gain",
+      header: "Total Gain",
+      cell: ({ getValue }: { getValue: () => unknown }) => (getValue() as number | null) || "-",
+      size: 100,
+      enableSorting: false,
+    },
+    {
+      accessorKey: "input_unit",
+      header: "Input Unit",
+      cell: ({ getValue }: { getValue: () => unknown }) => (getValue() as string | null) || "-",
+      size: 100,
+      enableSorting: false,
+    },
+    {
+      accessorKey: "sampling_rate",
+      header: "Sampling Rate",
+      cell: ({ getValue }: { getValue: () => unknown }) => (getValue() as number | null) || "-",
+      size: 120,
+      enableSorting: false,
+    },
+    {
+      accessorKey: "start_date",
+      header: "Start Date",
+      cell: ({ getValue }: { getValue: () => unknown }) => formatDate(getValue() as string | null),
+      size: 120,
+      enableSorting: false,
+    },
+    {
+      accessorKey: "end_date",
+      header: "End Date",
+      cell: ({ getValue }: { getValue: () => unknown }) => formatDate(getValue() as string | null),
+      size: 120,
+      enableSorting: false,
+    },
+    {
+      accessorKey: "PAZ",
+      header: "PAZ",
+      cell: ({ getValue, row }: { getValue: () => unknown, row: { original: StationHistory } }) => {
+        const pazValue = getValue() as number | null;
+        return pazValue ? (
+          <button
+            onClick={() => handleShowPAZDetail(row.original)}
+            className="text-blue-600 hover:text-blue-800 underline text-sm"
+            title="View PAZ JSON data"
+          >
+            View JSON
+          </button>
+        ) : (
+          <span>-</span>
+        );
+      },
+      size: 80,
+      enableSorting: false,
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ getValue }: { getValue: () => unknown }) => (
+        <span
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            getValue() as boolean
+              ? 'bg-green-100 text-green-800'
+              : 'bg-red-100 text-red-800'
+          }`}
+        >
+          {getValue() as boolean ? 'In Use' : 'Inactive'}
+        </span>
+      ),
+      size: 100,
+      enableSorting: false,
+    },
+    {
+      id: "instrument_detail",
+      header: "Instrument Detail",
+      cell: ({ row }: { row: { original: StationHistory } }) => (
+        <button
+          onClick={() => handleShowInstrumentDetail(row.original)}
+          className="inline-flex items-center gap-2 px-3 py-1 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          title="View instrument image"
+        >
+          <Eye className="h-4 w-4" />
+          View Image
+        </button>
+      ),
+      size: 150,
+      enableSorting: false,
+    },
+  ];
+
+  const fetchStationHistory = useCallback(async (isRefresh = false) => {
+    if (!stationCode) return;
+
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    setError(null);
+
+    try {
+      const response = await axiosInstance.get(`/api/station-history/bycode`, {
+        params: { code: stationCode }
+      });
+
+      if (response.data.success) {
+        setHistoryData(response.data.data);
+      } else {
+        setError(response.data.message || 'Failed to fetch station history');
+      }
+    } catch (err) {
+      console.error('Error fetching station history:', err);
+      setError('Failed to load station history data');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [stationCode, setError, setHistoryData, setLoading, setRefreshing]);
+
+  useEffect(() => {
+    fetchStationHistory();
+  }, [fetchStationHistory]);
 
   // Get unique channels for filter
   const uniqueChannels = Array.from(new Set(historyData.map(item => item.channel).filter(Boolean))).sort();
@@ -166,117 +319,153 @@ const StationHistory = () => {
           {/* History Table */}
           <div className="bg-white rounded-xl shadow overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Equipment History Records ({filteredData.length} entries)
-                {selectedChannel !== 'all' && (
-                  <span className="text-sm font-normal text-gray-600 ml-2">
-                    - Filtered by Channel: {selectedChannel}
-                  </span>
-                )}
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Equipment History Records ({filteredData.length} entries)
+                  {selectedChannel !== 'all' && (
+                    <span className="text-sm font-normal text-gray-600 ml-2">
+                      - Filtered by Channel: {selectedChannel}
+                    </span>
+                  )}
+                </h2>
+
+                <button
+                  onClick={() => fetchStationHistory(true)}
+                  disabled={loading || refreshing}
+                  className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Refresh data from server"
+                >
+                  <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                  {refreshing ? 'Refreshing...' : 'Refresh'}
+                </button>
+              </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Created At
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Channel
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Sensor Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Digitizer Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total Gain
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Input Unit
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Sampling Rate
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Start Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      End Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      PAZ
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredData.length === 0 ? (
-                    <tr>
-                      <td colSpan={11} className="px-6 py-4 text-center text-gray-500">
-                        {selectedChannel === 'all' 
-                          ? 'No history data available for this station'
-                          : `No history data available for channel ${selectedChannel}`
-                        }
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredData.map((history, index) => (
-                      <tr key={history.history_id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatDate(history.created_at)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {history.channel || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {history.sensor_name || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {history.digitizer_name || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {history.total_gain || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {history.input_unit || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {history.sampling_rate || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatDate(history.start_date)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatDate(history.end_date)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {history.PAZ || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              history.status
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}
-                          >
-                            {history.status ? 'In Use' : 'Inactive'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+            <div className="p-6">
+              <DataTable
+                columns={columns}
+                data={filteredData}
+                globalFilter=""
+                setGlobalFilter={() => {}}
+              />
             </div>
           </div>
         </div>
+
+        {/* Instrument Detail Modal */}
+        {showModal && selectedInstrument && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Instrument Image - {selectedInstrument.kode_stasiun} ({selectedInstrument.channel})
+                  </h3>
+                  <button
+                    onClick={closeModal}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <span className="sr-only">Close</span>
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Instrument Image */}
+                <div className="flex justify-center">
+                  <div className="border-2 border-gray-200 border-dashed rounded-lg p-4 max-w-lg">
+                    <div className="text-center">
+                      {selectedInstrument.response_path ? (
+                        <img
+                          src={`${import.meta.env.VITE_SERVER_BASE_URL}${selectedInstrument.response_path}`}
+                          alt={`Instrument Image - ${selectedInstrument.kode_stasiun} (${selectedInstrument.channel})`}
+                          className="max-w-full h-auto max-h-96 mx-auto rounded-lg shadow-md"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/images/instruments/default.svg';
+                            target.alt = 'Image not available - using default';
+                          }}
+                        />
+                      ) : (
+                        <div className="py-12">
+                          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <p className="mt-2 text-sm text-gray-500">No image available</p>
+                        </div>
+                      )}
+                      <p className="mt-2 text-sm text-gray-500">
+                        {selectedInstrument.sensor_name || 'Instrument'} - {selectedInstrument.channel}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end mt-6">
+                  <button
+                    onClick={closeModal}
+                    className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PAZ JSON Modal */}
+        {showPAZModal && selectedPAZ && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    PAZ Data - {selectedPAZ.kode_stasiun} ({selectedPAZ.channel})
+                  </h3>
+                  <button
+                    onClick={closePAZModal}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <span className="sr-only">Close</span>
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* PAZ JSON Display */}
+                <div className="bg-gray-50 border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">PAZ JSON Data:</span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(JSON.stringify(selectedPAZ.PAZ, null, 2));
+                      }}
+                      className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                      title="Copy to clipboard"
+                    >
+                      Copy JSON
+                    </button>
+                  </div>
+                  <pre className="text-xs text-gray-800 bg-white p-3 rounded border overflow-x-auto max-h-96 overflow-y-auto">
+                    {JSON.stringify(selectedPAZ.PAZ, null, 2)}
+                  </pre>
+                </div>
+
+                <div className="flex justify-end mt-6">
+                  <button
+                    onClick={closePAZModal}
+                    className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </MainLayout>
     </div>
   );
