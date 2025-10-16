@@ -5,7 +5,7 @@ import TableFilters from "../components/TableFilters";
 import type { FilterConfig } from "../components/TableFilters";
 import DataTable from "../components/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
-import axiosInstance from "../utilities/AxiosServer";
+import axiosServer from "../utilities/AxiosServer";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 const MONTH_NAMES = [
@@ -272,7 +272,7 @@ const StationAvailability = () => {
       localDates: { start_date, end_date }
     });
 
-    axiosInstance
+    axiosServer
       .get("/api/availability", {
         params: {
           start_date,

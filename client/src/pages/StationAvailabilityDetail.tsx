@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
-import axiosInstance from "../utilities/AxiosServer";
+import axiosServer from "../utilities/AxiosServer";
 import { ChevronDown } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
@@ -125,7 +125,7 @@ const StationAvailabilityDetail = () => {
   const fetchStations = useCallback(async () => {
     try {
       setStationsLoading(true);
-      const response = await axiosInstance.get('/api/stasiun/codes');
+      const response = await axiosServer.get('/api/stasiun/codes');
       if (response.data.success) {
         const stationList: Station[] = response.data.data.map((item: { kode_stasiun: string }) => ({
           kode_stasiun: item.kode_stasiun

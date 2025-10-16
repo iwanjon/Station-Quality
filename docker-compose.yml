@@ -35,12 +35,6 @@ services:
       - "5000:5000"
     env_file:
       - ./server/.env
-    environment:
-      MYSQL_HOST: db
-      # TZ di sini memastikan aplikasi Node.js & cron berjalan dalam UTC
-      REDIS_URL: redis://redis-cache:6379
-      API_BASE_URL: http://103.169.3.72:2107/api
-      API_KEY: DEBUG-BYPASS-TOKEN-2107
     depends_on:
       db:
         condition: service_healthy

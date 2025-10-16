@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
-import axiosInstance from "../utilities/AxiosServer";
+import axiosServer from "../utilities/AxiosServer";
 import { ChevronLeft, RefreshCw, Eye } from "lucide-react";
 import { type ColumnDef } from "@tanstack/react-table";
 import DataTable from "../components/DataTable";
@@ -19,7 +19,7 @@ interface StationHistory {
   sensor_name: string | null;
   start_date: string | null;
   end_date: string | null;
-  PAZ: object | null; // JSON data
+  paz: object | null; // JSON data - lowercase to match backend response
   status: boolean;
   created_at: string;
   response_path: string | null;
@@ -135,10 +135,10 @@ const StationHistory = () => {
       enableSorting: false,
     },
     {
-      accessorKey: "PAZ",
+      accessorKey: "paz",
       header: "PAZ",
       cell: ({ getValue, row }: { getValue: () => unknown, row: { original: StationHistory } }) => {
-        const pazValue = getValue() as number | null;
+        const pazValue = getValue() as object | null;
         return pazValue ? (
           <button
             onClick={() => handleShowPAZDetail(row.original)}
@@ -200,7 +200,7 @@ const StationHistory = () => {
     setError(null);
 
     try {
-      const response = await axiosInstance.get(`/api/station-history/bycode`, {
+      const response = await axiosServer.get(`/api/station-history/bycode`, {
         params: { code: stationCode }
       });
 
@@ -439,18 +439,36 @@ const StationHistory = () => {
                 <div className="bg-gray-50 border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">PAZ JSON Data:</span>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(JSON.stringify(selectedPAZ.PAZ, null, 2));
-                      }}
-                      className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                      title="Copy to clipboard"
-                    >
-                      Copy JSON
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(JSON.stringify(selectedPAZ.paz, null, 2));
+                        }}
+                        className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                        title="Copy to clipboard"
+                      >
+                        Copy
+                      </button>
+                      <button
+                        onClick={() => {
+                          const dataStr = JSON.stringify(selectedPAZ.paz, null, 2);
+                          const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                          const exportFileDefaultName = `paz_${selectedPAZ.kode_stasiun}_${selectedPAZ.channel}_${new Date().toISOString().split('T')[0]}.json`;
+                          
+                          const linkElement = document.createElement('a');
+                          linkElement.setAttribute('href', dataUri);
+                          linkElement.setAttribute('download', exportFileDefaultName);
+                          linkElement.click();
+                        }}
+                        className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
+                        title="Download as JSON file"
+                      >
+                        Download
+                      </button>
+                    </div>
                   </div>
                   <pre className="text-xs text-gray-800 bg-white p-3 rounded border overflow-x-auto max-h-96 overflow-y-auto">
-                    {JSON.stringify(selectedPAZ.PAZ, null, 2)}
+                    {JSON.stringify(selectedPAZ.paz, null, 2)}
                   </pre>
                 </div>
 
