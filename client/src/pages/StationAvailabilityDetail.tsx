@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import axiosServer from "../utilities/AxiosServer";
-import { ChevronDown } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 // Configuration for availability ranges, colors, and labels
@@ -63,10 +62,6 @@ function getChartColorForValue(value: number | null): string {
   return AVAILABILITY_CONFIG.ranges[3].chartColor; // fallback
 }
 
-interface Station {
-  kode_stasiun: string;
-}
-
 interface ChartDataPoint {
   date: string;
   availability: number;
@@ -80,22 +75,20 @@ interface AvailabilityRecord {
   note?: string;
 }
 
+interface StationData {
+  kode_stasiun: string;
+}
+
 const StationAvailabilityDetail = () => {
   const { stationCode } = useParams<{ stationCode: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [stations, setStations] = useState<Station[]>([]);
-  const [stationsLoading, setStationsLoading] = useState(true);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [stationList, setStationList] = useState<string[]>([]);
+  const [selectedStation, setSelectedStation] = useState<string | undefined>(stationCode);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-
-  const handleStationSelect = (selectedStationCode: string) => {
-    setDropdownOpen(false);
-    navigate(`/station-availability/${selectedStationCode}`);
-  };
 
   const handlePreviousMonth = () => {
     setSelectedMonth(prev => {
@@ -116,32 +109,6 @@ const StationAvailabilityDetail = () => {
       return prev + 1;
     });
   };
-
-  const getCurrentStationName = () => {
-    const currentStation = stations.find(station => station.kode_stasiun === stationCode);
-    return currentStation ? currentStation.kode_stasiun : stationCode;
-  };
-
-  const fetchStations = useCallback(async () => {
-    try {
-      setStationsLoading(true);
-      const response = await axiosServer.get('/api/stasiun/codes');
-      if (response.data.success) {
-        const stationList: Station[] = response.data.data.map((item: { kode_stasiun: string }) => ({
-          kode_stasiun: item.kode_stasiun
-        }));
-        setStations(stationList);
-      }
-    } catch {
-      // Fallback: create station from current stationCode
-      const fallbackStation: Station = {
-        kode_stasiun: stationCode!
-      };
-      setStations([fallbackStation]);
-    } finally {
-      setStationsLoading(false);
-    }
-  }, [stationCode]);
 
   const fetchCurrentMonthData = useCallback(async () => {
     if (!stationCode) return;
@@ -228,26 +195,29 @@ const StationAvailabilityDetail = () => {
   }, [stationCode, selectedMonth, selectedYear]);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownOpen && !(event.target as Element).closest('.relative')) {
-        setDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [dropdownOpen]);
+    let mounted = true;
+    axiosServer
+      .get("/api/stasiun")
+      .then((res) => {
+        if (!mounted) return;
+        const codes = (res.data || []).map((s: StationData) => s.kode_stasiun);
+        setStationList(codes);
+        
+        if (!stationCode && codes.length > 0) {
+          navigate(`/station-availability/${codes[0]}`, { replace: true });
+        }
+      })
+      .catch(() => {
+        if (!mounted) setStationList([]);
+      });
+    return () => { mounted = false; };
+  }, [navigate, stationCode]);
 
   useEffect(() => {
-    if (!stationCode) {
-      setError("Station code not provided");
-      setLoading(false);
-      return;
+    if (stationCode) {
+      setSelectedStation(stationCode);
     }
-
-    fetchStations();
-    fetchCurrentMonthData();
-  }, [stationCode, fetchStations, fetchCurrentMonthData]);
+  }, [stationCode]);
 
   useEffect(() => {
     if (stationCode) {
@@ -269,131 +239,93 @@ const StationAvailabilityDetail = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col bg-gray-50">
-        <MainLayout>
-        <div className="mb-4">
-          {/* Compact Header with Station Selector */}
-          <div className="bg-white rounded-xl shadow p-4 mb-4">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              {/* Station Selector */}
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-gray-800">Station:</h1>
-                <div className="relative">
-                  <button
-                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="flex items-center gap-2 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 hover:bg-gray-100 transition-colors min-w-[180px]"
-                  >
-                    <span className="text-gray-700 text-sm">
-                      {stationsLoading ? 'Loading...' : getCurrentStationName()}
-                    </span>
-                    <ChevronDown size={14} className={`text-gray-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {dropdownOpen && (
-                    <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-10 min-w-[180px] max-h-48 overflow-y-auto">
-                      {stations.map((station) => (
-                        <button
-                          key={station.kode_stasiun}
-                          onClick={() => handleStationSelect(station.kode_stasiun)}
-                          className="w-full text-left px-3 py-2 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 text-sm"
-                        >
-                          <div className="font-medium text-gray-900">{station.kode_stasiun}</div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+      <MainLayout>
+        <div className="p-3 bg-gray-50 min-h-screen">
+          <div className="flex items-start mb-3">
+            <div className="flex items-center space-x-3">
+              <div
+                aria-hidden
+                className="min-w-[90px] bg-gray-200 text-gray-800 font-bold px-3 py-2 rounded-md text-sm flex items-center justify-center"
+              >
+                Station
               </div>
 
-              {/* Empty Statistics */}
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 flex-1 lg:ml-6">
-                <div className="text-center">
-                  <div className="text-xs text-gray-500 uppercase tracking-wide">Total Days</div>
-                  <div className="text-lg font-bold text-gray-900">-</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xs text-gray-500 uppercase tracking-wide">Available</div>
-                  <div className="text-lg font-bold text-green-600">-</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xs text-gray-500 uppercase tracking-wide">Average</div>
-                  <div className="text-lg font-bold text-blue-600">-</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xs text-gray-500 uppercase tracking-wide">Min</div>
-                  <div className="text-lg font-bold text-orange-600">-</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xs text-gray-500 uppercase tracking-wide">Max</div>
-                  <div className="text-lg font-bold text-purple-600">-</div>
+              <div className="relative">
+                <select
+                  value={selectedStation ?? ""}
+                  onChange={(e) => {
+                    if (e.target.value) navigate(`/station-availability/${e.target.value}`);
+                  }}
+                  className="appearance-none min-w-[160px] border border-gray-300 rounded px-3 pr-10 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  {stationList.length === 0 && <option value="">Loading...</option>}
+                  {stationList.map((station) => (
+                    <option key={station} value={station}>{station}</option>
+                  ))}
+                </select>
+
+                <div className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center">
+                  <span className="w-px h-6 bg-gray-200 mr-2" />
+                  <svg className="w-4 h-4 text-gray-400" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
                 </div>
               </div>
             </div>
           </div>
 
-            {/* Error Message */}
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
-              <p className="text-red-600 text-sm">{error}</p>
-            </div>
+          {/* Error Message */}
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
+            <p className="text-red-600 text-sm">{error}</p>
+          </div>
 
-            <div className="bg-white p-6 rounded-xl shadow">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Station Information</h2>
-              <div className="text-center py-12">
-                <p className="text-gray-500">Station availability data will be displayed here</p>
-                <p className="text-sm text-gray-400 mt-2">Chart functionality has been removed</p>
-              </div>
+          <div className="bg-white p-6 rounded-xl shadow">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Station Information</h2>
+            <div className="text-center py-12">
+              <p className="text-gray-500">Station availability data will be displayed here</p>
+              <p className="text-sm text-gray-400 mt-2">Chart functionality has been removed</p>
             </div>
           </div>
-        </MainLayout>
-      </div>
+        </div>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <MainLayout>
-        <div className="mb-4">
-          {/* Compact Header with Station Selector and Stats */}
-          <div className="bg-white rounded-xl shadow p-4 mb-4">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              {/* Station Selector */}
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-gray-800">Station:</h1>
-                <div className="relative">
-                  <button
-                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="flex items-center gap-2 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 hover:bg-gray-100 transition-colors min-w-[180px]"
-                  >
-                    <span className="text-gray-700 text-sm">
-                      {stationsLoading ? 'Loading...' : getCurrentStationName()}
-                    </span>
-                    <ChevronDown size={14} className={`text-gray-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
+    <MainLayout>
+      <div className="p-3 bg-gray-50 min-h-screen">
+        <div className="flex items-start mb-3">
+          <div className="flex items-center space-x-3">
+            <div
+              aria-hidden
+              className="min-w-[90px] bg-gray-200 text-gray-800 font-bold px-3 py-2 rounded-md text-sm flex items-center justify-center"
+            >
+              Station
+            </div>
 
-                  {dropdownOpen && (
-                    <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-10 min-w-[180px] max-h-48 overflow-y-auto">
-                      {stations.map((station) => (
-                        <button
-                          key={station.kode_stasiun}
-                          onClick={() => handleStationSelect(station.kode_stasiun)}
-                          className="w-full text-left px-3 py-2 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 text-sm"
-                        >
-                          <div className="font-medium text-gray-900">{station.kode_stasiun}</div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <button
-                onClick={() => navigate('/station-availability')}
-                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors"
+            <div className="relative">
+              <select
+                value={selectedStation ?? ""}
+                onChange={(e) => {
+                  if (e.target.value) navigate(`/station-availability/${e.target.value}`);
+                }}
+                className="appearance-none min-w-[160px] border border-gray-300 rounded px-3 pr-10 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
               >
-                Back to Station Availability
-              </button>
+                {stationList.length === 0 && <option value="">Loading...</option>}
+                {stationList.map((station) => (
+                  <option key={station} value={station}>{station}</option>
+                ))}
+              </select>
+
+              <div className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center">
+                <span className="w-px h-6 bg-gray-200 mr-2" />
+                <svg className="w-4 h-4 text-gray-400" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
             </div>
           </div>
+        </div>
 
           {/* Chart Section */}
           <div className="bg-white p-4 rounded-xl shadow mb-4">
@@ -404,7 +336,7 @@ const StationAvailabilityDetail = () => {
                   className="p-1 hover:bg-gray-200 rounded transition-colors"
                   title="Previous Month"
                 >
-                  <ChevronDown size={16} className="text-gray-600 rotate-90" />
+                  ‹
                 </button>
                 <span className="text-lg font-semibold text-gray-800 min-w-[140px] text-center">
                   {new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
@@ -414,7 +346,7 @@ const StationAvailabilityDetail = () => {
                   className="p-1 hover:bg-gray-200 rounded transition-colors"
                   title="Next Month"
                 >
-                  <ChevronDown size={16} className="text-gray-600 -rotate-90" />
+                  ›
                 </button>
               </div>
             </div>
@@ -493,7 +425,6 @@ const StationAvailabilityDetail = () => {
           </div>
         </div>
       </MainLayout>
-    </div>
   );
 };
 
