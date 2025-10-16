@@ -89,7 +89,7 @@ export const getAllStationAvailability = async (req, res) => {
         start_date,
         end_date
       },
-      timeout: 30000
+      timeout: 90000
     });
 
     const apiResponse = response.data;

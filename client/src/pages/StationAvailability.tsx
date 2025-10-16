@@ -245,12 +245,84 @@ const StationAvailability = () => {
       endMonth
     };
   });
-  const [filterConfig, setFilterConfig] = useState<Record<string, FilterConfig>>({});
   const [filters, setFilters] = useState<Record<string, string[]>>({
     kode: [],
     availabilityCategory: [],
   });
-  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  // Memoize chart data calculation
+  const chartData = useMemo(() => {
+    if (!data.length) return [];
+
+    const chartDataTemp: ChartDataPoint[] = [];
+
+    const currentDate = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
+    const endDate = new Date(selectedMonth.endYear, selectedMonth.endMonth, 1);
+
+    while (currentDate <= endDate) {
+      const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+      const monthLabel = `${MONTH_NAMES[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+
+      const distribution: Record<string, number> = {};
+      AVAILABILITY_CONFIG.ranges.forEach(range => {
+        distribution[range.key] = 0;
+      });
+
+      data.forEach(station => {
+        const value = station.monthlyData[monthKey];
+        const category = getAvailabilityCategoryForValue(value);
+        distribution[category]++;
+      });
+
+      // Calculate total stations and convert to percentage
+      const totalStations = Object.values(distribution).reduce((sum, count) => sum + count, 0);
+
+      const chartDataPoint: ChartDataPoint = {
+        month: monthLabel,
+        counts: { ...distribution }
+      };
+
+      // Add percentage values for each range
+      AVAILABILITY_CONFIG.ranges.forEach(range => {
+        chartDataPoint[range.key] = totalStations > 0
+          ? Math.round((distribution[range.key] / totalStations) * 100 * 10) / 10
+          : 0;
+      });
+
+      chartDataTemp.push(chartDataPoint);
+
+      // Next month
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+
+    return chartDataTemp;
+  }, [data, selectedMonth]);
+
+  // Memoize filtered data
+  const filteredData = useMemo(() => {
+    return data.filter((item) => {
+      if (filters.kode.length > 0 && !filters.kode.includes(item.kode)) return false;
+
+      if (filters.availabilityCategory.length > 0) {
+        const category = getAvailabilityCategory(item);
+        if (!filters.availabilityCategory.includes(category)) return false;
+      }
+
+      return true;
+    });
+  }, [filters, data]);
+
+  // Memoize filter config
+  const filterConfig = useMemo((): Record<string, FilterConfig> => {
+    if (!data.length) return {};
+
+    const uniqueKode = Array.from(new Set(data.map((s: Station) => s.kode))).sort();
+    const availabilityCategories = AVAILABILITY_CONFIG.ranges.map(range => range.key);
+
+    return {
+      kode: { label: "Station Code", type: "multi" as const, options: uniqueKode },
+      availabilityCategory: { label: "Availability Category", type: "multi" as const, options: availabilityCategories },
+    };
+  }, [data]);
 
   useEffect(() => {
     setLoading(true);
@@ -262,16 +334,6 @@ const StationAvailability = () => {
     const start_date = `${firstDayOfRange.getFullYear()}-${String(firstDayOfRange.getMonth() + 1).padStart(2, '0')}-${String(firstDayOfRange.getDate()).padStart(2, '0')}`;
     const end_date = `${lastDayOfRange.getFullYear()}-${String(lastDayOfRange.getMonth() + 1).padStart(2, '0')}-${String(lastDayOfRange.getDate()).padStart(2, '0')}`;
 
-    console.log('API Request Debug:', {
-      endpoint: '/api/availability',
-      params: { start_date, end_date },
-      selectedMonth,
-      firstDayOfRange: firstDayOfRange.toISOString(),
-      lastDayOfRange: lastDayOfRange.toISOString(),
-      timezoneOffset: firstDayOfRange.getTimezoneOffset(),
-      localDates: { start_date, end_date }
-    });
-
     axiosServer
       .get("/api/availability", {
         params: {
@@ -281,68 +343,16 @@ const StationAvailability = () => {
       })
       .then((res) => {
         const apiResponse: APIResponse = res.data;
-        
+
         if (apiResponse.success) {
           // Process data to calculate statistics per station
           const processedStations = processStationData(apiResponse, selectedMonth);
-          
+
           // Convert to Station format for table
           const stations = convertToStationFormat(processedStations);
-          
+
           setData(stations);
 
-          // Calculate chart data
-          const chartDataTemp: ChartDataPoint[] = [];
-
-          const currentDate = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
-          const endDate = new Date(selectedMonth.endYear, selectedMonth.endMonth, 1);
-
-          while (currentDate <= endDate) {
-            const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-            const monthLabel = `${MONTH_NAMES[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
-
-            const distribution: Record<string, number> = {};
-            AVAILABILITY_CONFIG.ranges.forEach(range => {
-              distribution[range.key] = 0;
-            });
-
-            stations.forEach(station => {
-              const value = station.monthlyData[monthKey];
-              const category = getAvailabilityCategoryForValue(value);
-              distribution[category]++;
-            });
-            
-            // Calculate total stations and convert to percentage
-            const totalStations = Object.values(distribution).reduce((sum, count) => sum + count, 0);
-
-            const chartDataPoint: ChartDataPoint = {
-              month: monthLabel,
-              counts: { ...distribution }
-            };
-
-            // Add percentage values for each range
-            AVAILABILITY_CONFIG.ranges.forEach(range => {
-              chartDataPoint[range.key] = totalStations > 0
-                ? Math.round((distribution[range.key] / totalStations) * 100 * 10) / 10
-                : 0;
-            });
-
-            chartDataTemp.push(chartDataPoint);
-            
-            // Next month
-            currentDate.setMonth(currentDate.getMonth() + 1);
-          }
-          
-          setChartData(chartDataTemp);
-
-          const uniqueKode = Array.from(new Set(stations.map((s: Station) => s.kode))).sort();
-          const availabilityCategories = AVAILABILITY_CONFIG.ranges.map(range => range.key);
-
-          setFilterConfig({
-            kode: { label: "Station Code", type: "multi", options: uniqueKode },
-            availabilityCategory: { label: "Availability Category", type: "multi", options: availabilityCategories },
-          });
-          
           // Set API info for display
           setApiInfo({
             cached: apiResponse.cached,
@@ -359,22 +369,8 @@ const StationAvailability = () => {
       .finally(() => setLoading(false));
   }, [selectedMonth]);
 
-  const filteredData = useMemo(() => {
-    return data.filter((item) => {
-      if (filters.kode.length > 0 && !filters.kode.includes(item.kode)) return false;
-
-      if (filters.availabilityCategory.length > 0) {
-        const category = getAvailabilityCategory(item);
-        if (!filters.availabilityCategory.includes(category)) return false;
-      }
-
-      return true;
-    });
-  }, [filters, data]);
-
-  // Helper function to generate dynamic columns based on month range
-  const generateColumns = (): ColumnDef<Station>[] => {
-    // Calculate uniform width for all columns
+  // Memoize columns generation
+  const columns = useMemo((): ColumnDef<Station>[] => {
     const totalColumns = (() => {
       let count = 2; // Station Code + Detail
       const currentDate = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
@@ -453,9 +449,7 @@ const StationAvailability = () => {
     });
 
     return columns;
-  };
-
-  const columns = generateColumns();
+  }, [selectedMonth]);
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
