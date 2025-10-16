@@ -30,7 +30,8 @@ export const getStationHistoryByCode = async (req, res) => {
                 h.end_date,
                 h.paz,
                 h.status,
-                h.created_at
+                h.created_at,
+                h.response_path
             FROM stasiun_history h
             INNER JOIN stasiun s ON h.stasiun_id = s.stasiun_id
             WHERE s.kode_stasiun = ?
@@ -127,7 +128,8 @@ export const getStationHistoryById = async (req, res) => {
                 h.end_date,
                 h.PAZ,
                 h.status,
-                h.created_at
+                h.created_at,
+                h.response_path
             FROM stasiun_history h
             INNER JOIN stasiun s ON h.stasiun_id = s.stasiun_id
             WHERE h.stasiun_id = ?
