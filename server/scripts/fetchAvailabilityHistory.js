@@ -41,10 +41,11 @@ export async function runAvailabilityTask() {
 
     console.log(`[${dayjs().format('YYYY-MM-DD HH:mm:ss')}] ✅ API mengembalikan ${Object.keys(availabilityData).length} stasiun untuk ${targetDate}`);
 
-    // 2. Fetch semua stasiun dari database
+    // 2. Fetch semua stasiun dari database (hanya yang aktif dan nonaktif)
     const [stationRows] = await pool.query(`
       SELECT stasiun_id, kode_stasiun
       FROM stasiun
+      WHERE status != "dismantled"
       ORDER BY kode_stasiun
     `);
 

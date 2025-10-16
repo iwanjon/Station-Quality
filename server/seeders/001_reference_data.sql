@@ -86,4 +86,6 @@ INSERT INTO `jaringan` (`nama_jaringan`) VALUES
 ('BB2021'),
 ('REPLACEMENT 2024'),
 ('IDRIP Phase II'),
-('JICA');
+('JICA'),
+('JISNET'),
+('BABUN');

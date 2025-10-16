@@ -89,7 +89,7 @@ export const getAllStationAvailability = async (req, res) => {
         start_date,
         end_date
       },
-      timeout: 30000
+      timeout: 90000
     });
 
     const apiResponse = response.data;
@@ -99,8 +99,8 @@ export const getAllStationAvailability = async (req, res) => {
     const apiStationCodes = Object.keys(availabilityData);
     console.log(`✅ API returned ${apiStationCodes.length} stations`);
 
-    // 2. Fetch kode stasiun dari database MySQL
-    const [stationRows] = await pool.query('SELECT DISTINCT kode_stasiun FROM stasiun');
+    // 2. Fetch kode stasiun dari database MySQL (hanya yang aktif dan nonaktif)
+    const [stationRows] = await pool.query('SELECT DISTINCT kode_stasiun FROM stasiun WHERE status != "dismantled"');
     
     if (stationRows.length === 0) {
       return res.status(404).json({
@@ -330,8 +330,8 @@ export const getStationAvailabilityByCode = async (req, res) => {
       console.log('ℹ️ Redis not available, skipping cache check');
     }
 
-    // 1. Check apakah stasiun ada di database
-    const [stationRows] = await pool.query('SELECT kode_stasiun FROM stasiun WHERE kode_stasiun = ?', [stationCode]);
+    // 1. Check apakah stasiun ada di database (hanya yang aktif dan nonaktif)
+    const [stationRows] = await pool.query('SELECT kode_stasiun FROM stasiun WHERE kode_stasiun = ? AND status != "dismantled"', [stationCode]);
 
     if (stationRows.length === 0) {
       return res.status(404).json({
@@ -483,127 +483,5 @@ export const getStationAvailabilityByCode = async (req, res) => {
       message: 'Terjadi kesalahan dalam mengambil data stasiun',
       error: error.message
     });
-  }
-};
-
-// Daily fetch availability data untuk semua stasiun dan simpan ke database
-export const dailyFetchAvailability = async () => {
-  try {
-    console.log('🚀 Starting daily availability fetch...');
-
-    // Set tanggal kemarin sebagai target
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const targetDate = yesterday.toISOString().split('T')[0]; // Format YYYY-MM-DD
-
-    console.log(`📅 Fetching availability data for date: ${targetDate}`);
-
-    // 1. Fetch data availability dari API untuk tanggal kemarin
-    const apiUrl = `${API_BASE_URL}/qc/data/availability/`;
-
-    const response = await axios.get(apiUrl, {
-      headers: {
-        Authorization: `Bearer ${API_KEY}`,
-        Accept: "application/json"
-      },
-      params: {
-        start_date: targetDate,
-        end_date: targetDate
-      },
-      timeout: 30000
-    });
-
-    const apiResponse = response.data;
-    const availabilityData = apiResponse.data;
-
-    console.log(`✅ API returned ${Object.keys(availabilityData).length} stations for ${targetDate}`);
-
-    // 2. Fetch semua stasiun dari database
-    const [stationRows] = await pool.query(`
-      SELECT stasiun_id, kode_stasiun
-      FROM stasiun
-      ORDER BY kode_stasiun
-    `);
-
-    if (stationRows.length === 0) {
-      console.log('⚠️ No stations found in database');
-      return;
-    }
-
-    console.log(`✅ Found ${stationRows.length} stations in database`);
-
-    // 3. Process dan hitung rata-rata availability per stasiun
-    let processedCount = 0;
-    let insertedCount = 0;
-    let skippedCount = 0;
-
-    for (const station of stationRows) {
-      const { stasiun_id, kode_stasiun } = station;
-
-      try {
-        // Check apakah data untuk tanggal ini sudah ada
-        const [existingRows] = await pool.query(`
-          SELECT availability_id
-          FROM availability
-          WHERE stasiun_id = ? AND DATE(tanggal) = ?
-        `, [stasiun_id, targetDate]);
-
-        if (existingRows.length > 0) {
-          console.log(`⏭️ Data already exists for station ${kode_stasiun} on ${targetDate}, skipping`);
-          skippedCount++;
-          continue;
-        }
-
-        // Hitung rata-rata availability dari API data
-        let averageAvailability = null;
-
-        if (availabilityData[kode_stasiun] && availabilityData[kode_stasiun].length > 0) {
-          const stationData = availabilityData[kode_stasiun][0]; // Data untuk tanggal target
-
-          // Cari semua channel yang berakhiran N, E, atau Z
-          const channelKeys = Object.keys(stationData).filter(key =>
-            key.endsWith('N') || key.endsWith('E') || key.endsWith('Z')
-          );
-
-          if (channelKeys.length > 0) {
-            // Ambil nilai dari channel yang ditemukan
-            const channelValues = channelKeys
-              .map(key => parseFloat(stationData[key]) || 0)
-              .filter(val => !isNaN(val) && val > 0); // Filter nilai valid saja
-
-            if (channelValues.length > 0) {
-              // Hitung rata-rata
-              const sum = channelValues.reduce((acc, val) => acc + val, 0);
-              averageAvailability = Math.round((sum / channelValues.length) * 100) / 100;
-            }
-          }
-        }
-
-        // Insert ke tabel availability
-        await pool.query(`
-          INSERT INTO availability (stasiun_id, tanggal, nilai_availability)
-          VALUES (?, ?, ?)
-        `, [stasiun_id, targetDate, averageAvailability]);
-
-        processedCount++;
-        insertedCount++;
-
-        console.log(`✅ Processed station ${kode_stasiun}: ${averageAvailability !== null ? averageAvailability + '%' : 'null'}`);
-
-      } catch (stationError) {
-        console.error(`❌ Error processing station ${kode_stasiun}:`, stationError.message);
-        // Continue processing other stations
-      }
-    }
-
-    console.log(`✅ Daily availability fetch completed:`);
-    console.log(`   📊 Processed: ${processedCount} stations`);
-    console.log(`   💾 Inserted: ${insertedCount} records`);
-    console.log(`   ⏭️ Skipped: ${skippedCount} existing records`);
-    console.log(`   📅 Date: ${targetDate}`);
-
-  } catch (error) {
-    console.error('❌ Error in daily availability fetch:', error.message);
-    throw error; // Re-throw untuk error handling di scheduler
   }
 };

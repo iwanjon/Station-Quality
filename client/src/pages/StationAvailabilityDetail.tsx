@@ -157,7 +157,7 @@ const StationAvailabilityDetail = () => {
       const start_date = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
       const end_date = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
 
-      const response = await axiosInstance.get(`/api/availability/${stationCode}`, {
+      const response = await axiosServer.get(`/api/availability/${stationCode}`, {
         params: {
           start_date,
           end_date
