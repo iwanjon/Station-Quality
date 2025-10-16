@@ -43,7 +43,6 @@ const PerformanceDetail: React.FC = () => {
   const plotsIndex = useMemo( ... );
   */
 
-  // DIPERBARUI: Tambahkan properti `fileName` untuk membuat nama file dinamis
   const plotSpecs = [
     { folder: 'mean_resP_map', title: 'Mean resP amp', fileName: (code: string) => `${code}_mean_resP_amp.png` },
     { folder: 'resP_azi', title: 'resP azimuth', fileName: (code: string) => `${code}_resP_azi.png` },
@@ -55,7 +54,6 @@ const PerformanceDetail: React.FC = () => {
     { folder: 'SP_dt', title: 'SP dt', fileName: (code: string) => `${code}_SP_dt.png` },
   ];
   
-  // DIPERBARUI: Fungsi ini sekarang hanya membuat URL string sederhana
   const getPlotUrl = (code: string | undefined, folder: string, fileNamePattern: (code: string) => string): string | null => {
     if (!code) return null;
     const fileName = fileNamePattern(code.toUpperCase());
@@ -107,11 +105,9 @@ const PerformanceDetail: React.FC = () => {
             const row2 = plotSpecs.slice(3, 6);
             const row3 = plotSpecs.slice(6, 8);
 
-            // Tipe 'spec' diperbarui untuk menyertakan `fileName`
             const renderTile = (spec: { folder: string; title: string; fileName: (code: string) => string }) => {
               const codeForLookup = selectedStation || stationCode;
               
-              // DIPERBARUI: Panggilan fungsi disesuaikan dengan parameter baru
               const src = getPlotUrl(codeForLookup, spec.folder, spec.fileName);
 
               return (
