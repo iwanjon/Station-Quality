@@ -2,7 +2,8 @@ import { Router } from "express";
 import {
     getStationHistoryByCode,
     getAllStationHistory,
-    getStationHistoryById
+    getStationHistoryById,
+    updateStationHistoryById
 } from '../controllers/stasiunHistory.controller.js';
 
 const router = Router();
@@ -15,5 +16,8 @@ router.get('/bycode', getStationHistoryByCode);
 
 // GET /api/station-history/station/:id - Get station history by station ID
 router.get('/station/:id', getStationHistoryById);
+
+// GET /api/station-history/station/:id - Get station history by station ID
+router.put('/station/:id', updateStationHistoryById);
 
 export default router;

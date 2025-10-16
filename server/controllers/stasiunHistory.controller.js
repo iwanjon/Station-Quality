@@ -1,4 +1,5 @@
 import pool from '../config/database.js';
+import axios from 'axios';
 
 // Get station history by station code
 export const getStationHistoryByCode = async (req, res) => {
@@ -146,6 +147,55 @@ export const getStationHistoryById = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to retrieve station history data',
+            error: error.message
+        });
+    }
+};
+
+
+// UPdate station history by station ID
+export const updateStationHistoryById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Station ID is required'
+            });
+        }
+
+        console.log(`update station history data for station ID: ${id}`);
+
+        const [rows] = await pool.query(`
+            SELECT
+                h.stasiun_id,
+                h.kode_stasiun
+            FROM stasiun h
+            WHERE h.stasiun_id = ?
+            ORDER BY h.stasiun_id DESC
+        `, [id]);
+
+        console.log(rows);
+        if (rows.length == 0){
+            throw new Error("data doesnt exist");
+        }
+
+        let externalServiceUrl = process.env.HISTORY_APP
+        let response = await axios.put(externalServiceUrl+rows[0]["kode_stasiun"]);
+        if (response.status != 204){
+            throw new Error("invalid response")
+        }
+        res.json({
+            success: true,
+            data: rows,
+            message: 'Station history data has been updated'
+        });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update station history data',
             error: error.message
         });
     }

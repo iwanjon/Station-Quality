@@ -1,0 +1,2 @@
+SQLALCHEMY_DATABASE_URL = mysql+pymysql://root:admin@db/station_quality_control
+INV_URL = https://ryrytyA&station={station_code}
