@@ -10,7 +10,7 @@ export const DROPDOWN_OPTIONS = {
   status: [
     { value: 'aktif', label: 'Aktif' },
     { value: 'nonaktif', label: 'Nonaktif' },
-    { value: 'perbaikan', label: 'Perbaikan' },
+    { value: 'dismantled', label: 'dismantled' },
   ],
 
   // Priority options
