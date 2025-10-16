@@ -262,7 +262,8 @@ const Dashboard = () => {
 
       setTotalStationCount(slmonResponse.data.features.length);
       const stasiunData = stasiunResponse.data || [];
-      setRegisteredCount(stasiunData.length);
+      // Registered dihitung berdasarkan status "aktif"
+      setRegisteredCount(stasiunData.filter((s) => s.status === "aktif").length);
       setInactiveCount(stasiunData.filter((s) => s.status === "nonaktif").length);
 
       const qcData = qcResponse.data;
