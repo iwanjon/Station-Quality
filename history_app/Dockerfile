@@ -1,5 +1,6 @@
 # Use latest Python 3.13 on Alpine
-FROM python:3-alpine3.13
+# FROM python:3-alpine3.13
+FROM python:3.13-alpine3.22
 
 # Prevent Python from writing .pyc files and buffering stdout/stderr
 ENV PYTHONDONTWRITEBYTECODE=1 \
