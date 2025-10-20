@@ -17,6 +17,11 @@ RUN apk add --no-cache \
     openssl-dev \
     tzdata\
     curl
+# System deps for Tkinter
+RUN apk add --no-cache tcl tk
+
+# (Optional: fonts if your app renders text)
+# RUN apk add --no-cache ttf-dejavu font-noto
 
 # Copy dependency list first for better caching
 COPY requirements.txt .

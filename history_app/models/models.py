@@ -1,7 +1,8 @@
 from databases.database import Base
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Text, DateTime, Float, JSON, Enum
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Text, DateTime, Float, JSON, Enum, func
 from enum import Enum as PyEnum
 from sqlalchemy.orm import relationship, sessionmaker
+from datetime import datetime
 
 class EnumJaringan(PyEnum):
     IA = 'IA'
@@ -59,7 +60,7 @@ class StasiunHistory(Base):
     sampling_rate = Column(Float)
     paz = Column(JSON)
     response_path = Column(Text)
-    created_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.now)
 
     
     
