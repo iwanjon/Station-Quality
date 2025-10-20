@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import axiosServer from "../utilities/AxiosServer";
-import { ChevronLeft, Eye, Upload, Download } from "lucide-react";
+import { ChevronLeft, Eye, Upload, Download, RefreshCw } from "lucide-react";
 import { type ColumnDef } from "@tanstack/react-table";
 import DataTable from "../components/DataTable";
 
@@ -206,8 +206,6 @@ const StationHistory = () => {
   ];
 
   const fetchStationHistory = useCallback(async (isRefresh = false) => {
-    if (!stationCode) return;
-
     if (isRefresh) {
       // No longer using refreshing state
     } else {
@@ -224,7 +222,11 @@ const StationHistory = () => {
         setHistoryData(response.data.data);
         // Extract station_id from the first record if available
         if (response.data.data && response.data.data.length > 0) {
-          setStationId(response.data.data[0].stasiun_id);
+          const extractedStationId = response.data.data[0].stasiun_id;
+          console.log('📍 Setting stationId from history data:', extractedStationId);
+          setStationId(extractedStationId);
+        } else {
+          console.log('⚠️ No history data available to extract stationId');
         }
       } else {
         setError(response.data.message || 'Failed to fetch station history');
@@ -236,6 +238,11 @@ const StationHistory = () => {
       setLoading(false);
     }
   }, [stationCode, setError, setHistoryData, setLoading, setStationId]);
+
+  const refreshData = useCallback(async () => {
+    console.log('🔄 Refresh button clicked');
+    await fetchStationHistory(true);
+  }, [fetchStationHistory]);
 
   const updateStationHistory = useCallback(async () => {
     console.log('🔄 Update button clicked');
@@ -254,8 +261,8 @@ const StationHistory = () => {
         });
         console.log('📡 Station API Response:', stationResponse.data);
 
-        if (stationResponse.data.success && stationResponse.data.data.length > 0) {
-          currentStationId = stationResponse.data.data[0].stasiun_id;
+        if (stationResponse.data.success && stationResponse.data.data) {
+          currentStationId = stationResponse.data.data.stasiun_id;
           console.log('✅ Retrieved Station ID:', currentStationId);
           setStationId(currentStationId); // Store it for future use
         } else {
@@ -289,10 +296,11 @@ const StationHistory = () => {
       console.log('📥 Update API Response:', response.data);
 
       if (response.data.success) {
-        console.log('✅ Update successful, refreshing data...');
-        // Refresh the data after successful update
-        await fetchStationHistory(true);
-        console.log('🔄 Data refreshed successfully');
+        console.log('✅ Update successful');
+        // Refresh data asynchronously after successful update
+        setTimeout(() => {
+          refreshData();
+        }, 100);
       } else {
         console.log('⚠️ Update API returned success=false:', response.data.message);
         setError(response.data.message || 'Failed to update station history');
@@ -305,7 +313,7 @@ const StationHistory = () => {
       console.log('🏁 Update process completed');
       setUpdating(false);
     }
-  }, [stationId, stationCode, fetchStationHistory]);
+  }, [stationId, stationCode, refreshData]);
 
   useEffect(() => {
     fetchStationHistory();
@@ -418,15 +426,27 @@ const StationHistory = () => {
                   )}
                 </h2>
 
-                <button
-                  onClick={updateStationHistory}
-                  disabled={loading || updating}
-                  className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Update station history data from external service"
-                >
-                  <Upload className={`h-4 w-4 ${updating ? 'animate-pulse' : ''}`} />
-                  {updating ? 'Updating...' : 'Update'}
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={updateStationHistory}
+                    disabled={loading || updating}
+                    className="inline-flex items-center gap-2 px-4 py-2 border border-blue-300 bg-blue-50 text-blue-700 rounded-md shadow-sm text-sm font-medium hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Update station history data from external service"
+                  >
+                    <Upload className={`h-4 w-4 ${updating ? 'animate-pulse' : ''}`} />
+                    {updating ? 'Updating...' : 'Update'}
+                  </button>
+
+                  <button
+                    onClick={refreshData}
+                    disabled={loading}
+                    className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Refresh data from server"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Refresh
+                  </button>
+                </div>
               </div>
             </div>
 
