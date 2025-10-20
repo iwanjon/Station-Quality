@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import axiosServer from "../utilities/AxiosServer";
-import { ChevronLeft, RefreshCw, Eye } from "lucide-react";
+import { ChevronLeft, Eye, Upload, Download, RefreshCw } from "lucide-react";
 import { type ColumnDef } from "@tanstack/react-table";
 import DataTable from "../components/DataTable";
 
@@ -32,11 +32,12 @@ const StationHistory = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedChannel, setSelectedChannel] = useState<string>('all');
-  const [refreshing, setRefreshing] = useState(false);
   const [selectedInstrument, setSelectedInstrument] = useState<StationHistory | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [selectedPAZ, setSelectedPAZ] = useState<StationHistory | null>(null);
   const [showPAZModal, setShowPAZModal] = useState(false);
+  const [stationId, setStationId] = useState<number | null>(null);
+  const [updating, setUpdating] = useState(false);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
@@ -67,6 +68,21 @@ const StationHistory = () => {
   const closePAZModal = () => {
     setShowPAZModal(false);
     setSelectedPAZ(null);
+  };
+
+  const downloadInstrumentImage = (instrument: StationHistory) => {
+    if (!instrument.response_path) {
+      alert('No image available for download');
+      return;
+    }
+
+    const imageUrl = `${import.meta.env.VITE_SERVER_BASE_URL}${instrument.response_path}`;
+    const link = document.createElement('a');
+    link.href = imageUrl;
+    link.download = `instrument_${instrument.kode_stasiun}_${instrument.channel}_${new Date().toISOString().split('T')[0]}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Column definitions for DataTable
@@ -190,10 +206,8 @@ const StationHistory = () => {
   ];
 
   const fetchStationHistory = useCallback(async (isRefresh = false) => {
-    if (!stationCode) return;
-
     if (isRefresh) {
-      setRefreshing(true);
+      // No longer using refreshing state
     } else {
       setLoading(true);
     }
@@ -206,6 +220,14 @@ const StationHistory = () => {
 
       if (response.data.success) {
         setHistoryData(response.data.data);
+        // Extract station_id from the first record if available
+        if (response.data.data && response.data.data.length > 0) {
+          const extractedStationId = response.data.data[0].stasiun_id;
+          console.log('📍 Setting stationId from history data:', extractedStationId);
+          setStationId(extractedStationId);
+        } else {
+          console.log('⚠️ No history data available to extract stationId');
+        }
       } else {
         setError(response.data.message || 'Failed to fetch station history');
       }
@@ -214,9 +236,84 @@ const StationHistory = () => {
       setError('Failed to load station history data');
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
-  }, [stationCode, setError, setHistoryData, setLoading, setRefreshing]);
+  }, [stationCode, setError, setHistoryData, setLoading, setStationId]);
+
+  const refreshData = useCallback(async () => {
+    console.log('🔄 Refresh button clicked');
+    await fetchStationHistory(true);
+  }, [fetchStationHistory]);
+
+  const updateStationHistory = useCallback(async () => {
+    console.log('🔄 Update button clicked');
+    console.log('📍 Station Code:', stationCode);
+
+    let currentStationId = stationId;
+    console.log('🆔 Current Station ID from state:', currentStationId);
+
+    // If stationId is not available, try to get it from station code
+    if (!currentStationId && stationCode) {
+      console.log('🔍 Station ID not available, fetching from API...');
+      try {
+        // Make a request to get station info by code to get the ID
+        const stationResponse = await axiosServer.get(`/api/stasiun/bycode`, {
+          params: { code: stationCode }
+        });
+        console.log('📡 Station API Response:', stationResponse.data);
+
+        if (stationResponse.data.success && stationResponse.data.data) {
+          currentStationId = stationResponse.data.data.stasiun_id;
+          console.log('✅ Retrieved Station ID:', currentStationId);
+          setStationId(currentStationId); // Store it for future use
+        } else {
+          console.log('❌ No station data found in response');
+        }
+      } catch (err) {
+        console.error('❌ Error fetching station ID:', err);
+        setError('Failed to get station information for update');
+        return;
+      }
+    }
+
+    if (!currentStationId) {
+      console.log('❌ No Station ID available for update');
+      setError('Station ID not available for update');
+      return;
+    }
+
+    console.log('🚀 Starting update process...');
+    console.log('🆔 Final Station ID to use:', currentStationId);
+
+    const updateUrl = `/api/station-history/station/${currentStationId}`;
+    console.log('🌐 Update URL:', updateUrl);
+
+    setUpdating(true);
+    setError(null);
+
+    try {
+      console.log('📤 Sending PUT request...');
+      const response = await axiosServer.put(updateUrl);
+      console.log('📥 Update API Response:', response.data);
+
+      if (response.data.success) {
+        console.log('✅ Update successful');
+        // Refresh data asynchronously after successful update
+        setTimeout(() => {
+          refreshData();
+        }, 100);
+      } else {
+        console.log('⚠️ Update API returned success=false:', response.data.message);
+        setError(response.data.message || 'Failed to update station history');
+      }
+    } catch (err) {
+      console.error('❌ Error during update:', err);
+      console.log('🔍 Error object:', err);
+      setError('Failed to update station history data');
+    } finally {
+      console.log('🏁 Update process completed');
+      setUpdating(false);
+    }
+  }, [stationId, stationCode, refreshData]);
 
   useEffect(() => {
     fetchStationHistory();
@@ -329,15 +426,27 @@ const StationHistory = () => {
                   )}
                 </h2>
 
-                <button
-                  onClick={() => fetchStationHistory(true)}
-                  disabled={loading || refreshing}
-                  className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Refresh data from server"
-                >
-                  <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                  {refreshing ? 'Refreshing...' : 'Refresh'}
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={updateStationHistory}
+                    disabled={loading || updating}
+                    className="inline-flex items-center gap-2 px-4 py-2 border border-blue-300 bg-blue-50 text-blue-700 rounded-md shadow-sm text-sm font-medium hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Update station history data from external service"
+                  >
+                    <Upload className={`h-4 w-4 ${updating ? 'animate-pulse' : ''}`} />
+                    {updating ? 'Updating...' : 'Update'}
+                  </button>
+
+                  <button
+                    onClick={refreshData}
+                    disabled={loading}
+                    className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Refresh data from server"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Refresh
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -402,7 +511,17 @@ const StationHistory = () => {
                   </div>
                 </div>
 
-                <div className="flex justify-end mt-6">
+                <div className="flex justify-between mt-6">
+                  {selectedInstrument.response_path && (
+                    <button
+                      onClick={() => downloadInstrumentImage(selectedInstrument)}
+                      className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      title="Download instrument image"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download Image
+                    </button>
+                  )}
                   <button
                     onClick={closeModal}
                     className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
