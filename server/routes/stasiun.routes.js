@@ -1,7 +1,16 @@
 import { Router } from "express";
 import multer from 'multer';
-import { getAllStasiun, getAllStasiunCodes, getStasiunByCode, updateStasiunByCode, importStationsFromCSV, getForeignKeyOptions, uploadSitePhoto, deleteSitePhoto } from '../controllers/stasiun.controller.js';
-
+import { 
+    getAllStasiun, 
+    getAllStasiunCodes, 
+    getStasiunByCode, 
+    updateStasiunByCode, 
+    importStationsFromCSV, 
+    getForeignKeyOptions, 
+    uploadSitePhoto, 
+    deleteSitePhoto,
+    getRecentUpdates  
+} from '../controllers/stasiun.controller.js';
 const router = Router();
 
 // Configure multer for CSV upload
@@ -57,5 +66,14 @@ router.post('/:code/upload-photo', photoUpload.single('photo'), uploadSitePhoto)
 
 // DELETE /api/stasiun/:code/photo - Delete site photo
 router.delete('/:code/photo', deleteSitePhoto);
+
+// GET /api/stasiun/foreign-key-options - Get valid foreign key options
+router.get('/foreign-key-options', getForeignKeyOptions);
+
+// GET /api/stasiun/recent-updates - Get 5 most recently updated stations
+router.get('/recent-updates', getRecentUpdates);
+
+// GET /api/stasiunbycode?code=XXX - Get stasiun by code
+router.get('/bycode', getStasiunByCode);
 
 export default router;

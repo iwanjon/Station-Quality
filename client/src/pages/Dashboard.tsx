@@ -223,6 +223,61 @@ const InfoCard = ({ title, children }: { title: string; children?: React.ReactNo
   </div>
 );
 
+const MetadataCard = () => {
+  // Tipe data sekarang adalah array of objects
+  const [recentUpdates, setRecentUpdates] = useState<{ kode_stasiun: string }[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRecentUpdates = async () => {
+      try {
+        setIsLoading(true);
+        const response = await axiosServer.get('/api/stasiun/recent-updates');
+        
+        if (response.data.success && Array.isArray(response.data.data)) {
+          setRecentUpdates(response.data.data);
+        } else {
+          console.error("Failed to fetch recent updates");
+          setRecentUpdates([]);
+        }
+      } catch (error) {
+        console.error("Error fetching recent updates:", error);
+        setRecentUpdates([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRecentUpdates();
+  }, []);
+
+  // <<< PINDAHKAN LOGIKA RENDER KE DALAM SINI >>>
+  return (
+    <InfoCard title="Metadata">
+      <div className="text-left text-gray-800 w-full text-xs">
+        <p className="font-semibold mb-1">Recent updates:</p>
+        
+        {isLoading ? (
+          <div className="flex items-center justify-center h-16">
+            {/* Kita akan tambahkan Loader2 di Langkah 3 */}
+            <p>Loading...</p> 
+          </div>
+        ) : (
+          <ul className="list-disc list-inside">
+            {recentUpdates.length > 0 ? (
+              recentUpdates.map((station) => (
+                <li key={station.kode_stasiun}>{station.kode_stasiun}</li>
+              ))
+            ) : (
+              <li className="list-none italic text-gray-500">No recent updates.</li>
+            )}
+          </ul>
+        )}
+      </div>
+    </InfoCard>
+  );
+};
+
 const AVAILABILITY_COLORS = ["#16a34a", "#facc15", "#fb923c", "#ef4444", "#a3a3a3"];
 
 const getAvailabilityCategory = (value: number | null) => {
@@ -339,7 +394,7 @@ const Dashboard = () => {
   const noDataCount = combinedData.filter((s) => s.result === "No Data" || s.result === "Mati").length;
 
   const [availabilityPieData, setAvailabilityPieData] = useState<{ name: string; value: number }[]>([]);
-  // useEffect untuk data Availability (TIDAK BERUBAH)
+  // useEffect untuk data Availability
   useEffect(() => {
     const fetchAvailability = async () => {
       try {
@@ -376,7 +431,7 @@ const Dashboard = () => {
   }, []);
 
   const [qualityPieData, setQualityPieData] = useState<{ name: string; value: number }[]>([]);
-  // useEffect untuk data Quality (TIDAK BERUBAH)
+  // useEffect untuk data Quality 
   useEffect(() => {
     const fetchQuality = async () => {
       try {
@@ -607,20 +662,7 @@ const Dashboard = () => {
             </div>
           </div>
         </InfoCard>
-
-        {/* Performance & Metadata Cards */}
-        <InfoCard title="Performance" />
-        <InfoCard title="Metadata">
-          <div className="text-left text-gray-800 w-full text-xs">
-            <p className="font-semibold mb-1">Recent updates:</p>
-            <ul className="list-disc list-inside">
-              <li>MMPI</li>
-              <li>MTKI</li>
-              <li>SPSI</li>
-              <li>JMBI</li>
-            </ul>
-          </div>
-        </InfoCard>
+        <MetadataCard />
       </div>
     </MainLayout>
   );

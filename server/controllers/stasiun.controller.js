@@ -828,3 +828,28 @@ export const deleteSitePhoto = async (req, res) => {
         });
     }
 };
+
+// Get recent station updates for Dashboard
+export const getRecentUpdates = async (req, res) => {
+    try {
+        console.log('Fetching recent station updates for dashboard');
+
+        const [rows] = await pool.query(
+            'SELECT kode_stasiun FROM stasiun ORDER BY updated_at DESC LIMIT 5'
+        );
+
+        res.json({
+            success: true,
+            data: rows,
+            message: 'Data update terkini berhasil diambil'
+        });
+
+    } catch (error) {
+        console.error("DB Error fetching recent updates:", error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Gagal ambil data update terkini',
+            error: error.message
+        });
+    }
+};

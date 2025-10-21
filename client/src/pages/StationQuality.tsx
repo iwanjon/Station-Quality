@@ -62,7 +62,7 @@ export interface StationMetadata {
   result: string | null;
 }
 
-// Fungsi ikon segitiga (tidak berubah)
+// Fungsi ikon segitiga 
 const triangleIcon = (color: string) =>
   L.divIcon({
     className: "",
@@ -125,34 +125,6 @@ const MapLegend = () => {
     </div>
   );
 };
-
-
-// const getDashboardCategory = (result: string | null): "GOOD" | "FAIR" | "POOR" | "NO DATA" => {
-//   if (result === "Baik") return "GOOD";
-//   if (result === "Cukup Baik") return "FAIR";
-//   if (result === "Buruk") return "POOR";
-//   return "NO DATA"; // "Mati" dan "No Data" masuk ke sini
-// };
-
-
-// Fungsi getStatusText untuk tabel (tidak berubah)
-// const getStatusText = (result: string | null, quality: number | null): string => {
-//   if (result === 'Mati') return 'Mati';
-//   if (quality === null) return 'No Data';
-//   if (quality >= 80) return 'Sangat Baik';
-//   if (quality >= 60) return 'Baik';
-//   if (quality >= 40) return 'Cukup';
-//   return 'Buruk';
-// };
-
-// Fungsi mapping result ke kategori dashboard
-// const getDashboardCategory = (result: string | null): "GOOD" | "FAIR" | "BAD" | "NO DATA" => {
-//   if (result === "Baik") return "GOOD";
-//   if (result === "Cukup Baik") return "FAIR";
-//   if (result === "Buruk") return "BAD";
-//   if (result === "Mati") return "NO DATA";
-//   return "NO DATA";
-// };
 
 // Komponen untuk Grafik Donat
 const QualityDonutChart = ({ data }: { data: StasiunDenganSummary[] }) => {
