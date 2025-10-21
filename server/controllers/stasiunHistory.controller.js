@@ -1,6 +1,8 @@
 import pool from '../config/database.js';
 import axios from 'axios';
+import { ensureTrailingSlash } from '../utils/pathHelper.js';
 
+import { ensureCleanStartingSlash } from '../utils/pathHelper.js';
 // Get station history by station code
 export const getStationHistoryByCode = async (req, res) => {
     try {
@@ -181,7 +183,8 @@ export const updateStationHistoryById = async (req, res) => {
             throw new Error("data doesnt exist");
         }
 
-        let externalServiceUrl = process.env.HISTORY_APP
+        // let externalServiceUrl = process.env.HISTORY_APP 
+        let externalServiceUrl = ensureTrailingSlash(process.env.HISTORY_APP) + ensureTrailingSlash(process.env.HISTORY_APP_STATION_HISTORY_PATH) 
         let response = await axios.put(externalServiceUrl+rows[0]["kode_stasiun"]);
         if (response.status != 204){
             throw new Error("invalid response")
@@ -196,6 +199,59 @@ export const updateStationHistoryById = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to update station history data',
+            error: error.message
+        });
+    }
+};
+
+
+// get response image by history ID
+export const getResponseImageHistoryById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Station ID is required'
+            });
+        }
+
+        console.log(`get response link for history ID: ${id}`);
+
+        const [rows] = await pool.query(`
+            SELECT
+                h.history_id,
+                h.response_path
+            FROM stasiun_history h
+            WHERE h.history_id = ?
+            ORDER BY h.history_id DESC
+        `, [id]);
+
+        console.log(rows);
+        if (rows.length == 0){
+            throw new Error("data doesnt exist");
+        }
+        if (rows[0]["response_path"]==null || rows[0]["response_path"].trim()==""){
+            return res.json({
+                success: false,
+                data: null,
+                message: 'response not found'
+            });
+        }
+        // let externalServiceUrl = process.env.HISTORY_APP 
+        let externalServiceUrl = ensureTrailingSlash(process.env.HISTORY_APP_FORWARD) + ensureCleanStartingSlash(rows[0]["response_path"])
+        console.log(externalServiceUrl);
+        return res.json({
+            success: true,
+            data: externalServiceUrl,
+            message: 'response found'
+        });
+    } catch (error) {
+        console.error('Error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'response not found',
             error: error.message
         });
     }

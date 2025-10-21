@@ -1,7 +1,8 @@
 from typing import List
 from fastapi import HTTPException
 import matplotlib
-matplotlib.use('tkagg')
+# matplotlib.use('tkagg')
+matplotlib.use("Agg")
 from matplotlib.gridspec import GridSpec
 import pandas as pd
 import numpy as np
@@ -372,7 +373,7 @@ def process_waveform_plot(
     # # Simpan hasil akhir
     # output_excel = "hasil_rms_mean_per_channel.xlsx"
     # df.to_excel(output_excel, index=False)
-    print(data_list)
+    # print(data_list)
     create_xlsx(data_list)
     
     return data_list
@@ -393,7 +394,7 @@ def get_station_history(
 
     station_list = instrument_meta(inv, station_code, save_response=save_response)
 
-    print(station_list)
+    # print(station_list)
 
     
     return station_list
@@ -410,13 +411,13 @@ def get_polesZerosResponseStage(inv, tr):
         # if isinstance(i, PolesZerosResponseStage):
         if i.stage_gain > 10 and i.stage_gain < 3000:
             stage_gain = i.stage_gain
-            print(" === Stage 1: PolesZerosResponseStage from m/s to V, gain: {} === ".format(stage_gain))
+            # print(" === Stage 1: PolesZerosResponseStage from m/s to V, gain: {} === ".format(stage_gain))
             return stage_gain
 
 
 def get_coefficientsTypeResponseStagee(inv, tr):
     tr.attach_response(inv)
-    print(tr.stats.response) 
+    # print(tr.stats.response) 
     # tr.stats.response.instrument_sensitivity
 
     resp_stages = tr.stats.response.response_stages
@@ -425,7 +426,7 @@ def get_coefficientsTypeResponseStagee(inv, tr):
         # if isinstance(i, CoefficientsTypeResponseStage):
         if i.stage_gain > 100000:
             stage_gain = i.stage_gain
-            print(" === Stage 2: CoefficientsTypeResponseStage from V to COUNTS, gain: {} === ".format(stage_gain))
+            # print(" === Stage 2: CoefficientsTypeResponseStage from V to COUNTS, gain: {} === ".format(stage_gain))
             return stage_gain
 
 
@@ -438,7 +439,7 @@ def get_stage_gain(channel):
     for idx , i in enumerate(resp_stages):
 
         stages *= i.stage_gain
-        print(" === Stage gain: {} = {} total stage gain {} === ".format(idx, i.stage_gain, stages))
+        # print(" === Stage gain: {} = {} total stage gain {} === ".format(idx, i.stage_gain, stages))
 
     return stages
 
@@ -565,6 +566,7 @@ def instrument_meta(inv, sta, save_response=None):
         print(file_name)
         if save_response:
             file_path = os.path.join(STATIC_FOLDER, file_name+".jpg")
+            print(file_path, STATIC_FOLDER)
             try:
                 i.response.plot(0.05, outfile=file_path)
             except Exception as e:

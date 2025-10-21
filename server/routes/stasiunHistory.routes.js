@@ -3,7 +3,8 @@ import {
     getStationHistoryByCode,
     getAllStationHistory,
     getStationHistoryById,
-    updateStationHistoryById
+    updateStationHistoryById,
+    getResponseImageHistoryById
 } from '../controllers/stasiunHistory.controller.js';
 
 const router = Router();
@@ -17,7 +18,10 @@ router.get('/bycode', getStationHistoryByCode);
 // GET /api/station-history/station/:id - Get station history by station ID
 router.get('/station/:id', getStationHistoryById);
 
-// GET /api/station-history/station/:id - Get station history by station ID
+// PUT /api/station-history/station/:id - Get station history by station ID
 router.put('/station/:id', updateStationHistoryById);
+
+// GET /api/station-history/station/:id - Get station history by station ID
+router.get('/:id/response', getResponseImageHistoryById);
 
 export default router;

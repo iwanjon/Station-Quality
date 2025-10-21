@@ -42,11 +42,15 @@ services:
         condition: service_started
       history-app:
         condition: service_healthy
+    volumes:
+      - ./server:/app:ro
+      - /app/node_modules
         
     # Ini adalah cara paling andal untuk memastikan urutan eksekusi yang benar:
     # 1. Jalankan db:setup (migrate & seed) terlebih dahulu.
     # 2. Setelah selesai, baru jalankan PM2 untuk memulai server dan scheduler.
     command: sh -c "npm run db:setup && pm2-runtime start ecosystem.config.cjs"
+    # command: sh -c "npm run db:setup && npm run dev"
 
 
   history-app:
@@ -67,6 +71,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+    volumes:
+      - ./history_app:/app:ro
+      - ./history_app/static/public/response:/app/static/public/response:rw
     # Ini adalah cara paling andal untuk memastikan urutan eksekusi yang benar:
     # 1. Jalankan db:setup (migrate & seed) terlebih dahulu.
     # 2. Setelah selesai, baru jalankan PM2 untuk memulai server dan scheduler.
@@ -77,7 +85,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
   client:
     build:
