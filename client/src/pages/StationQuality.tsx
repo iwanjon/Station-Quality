@@ -10,8 +10,7 @@ import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import CardContainer from "../components/Card.tsx";
-// import { useNavigate, Link } from "react-router-dom";
-import { Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import axiosServer from "../utilities/AxiosServer.tsx";
 import StatusBadge from "../components/StatusBadge";
 import dayjs from "dayjs";
@@ -203,7 +202,7 @@ const StationQuality = () => {
   const [filters, setFilters] = useState<Record<string, any>>({});
   const [filterConfig, setFilterConfig] = useState<Record<string, FilterConfig>>({});
   const [globalFilter, setGlobalFilter] = useState<string>("");
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
 
   const fetchStationMetadata = async () => {
     try {

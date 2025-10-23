@@ -6,12 +6,11 @@ import DataTable from "../components/DataTable.tsx";
 import TableFilters from "../components/TableFilters";
 import type { FilterConfig } from "../components/TableFilters";
 import type { ColumnDef } from "@tanstack/react-table";
-// import { useNavigate, Link } from "react-router-dom";
-import { Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import axiosServer from "../utilities/AxiosServer.tsx";
 import dayjs from "dayjs";
 import CardContainer from "../components/Card.tsx";
-// import StatusBadge from "../components/StatusBadge";
+import StatusBadge from "../components/StatusBadge";
 
 // --- tipe & interface (sinkron dengan StationQuality) ---
 interface QCSummary {
@@ -52,13 +51,12 @@ interface StasiunDenganSummary extends StationMetadata {
 const StationPerformance = () => {
   const [stationData, setStationData] = useState<StationMetadata[]>([]);
   const [qcSummaryData, setQcSummaryData] = useState<QCSummary[]>([]);
-  // const [setSiteQualityMap] = useState<Record<string, string>>({});
-  // const [siteQualityMap, setSiteQualityMap] = useState<Record<string, string>>({});
+  const [siteQualityMap, setSiteQualityMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<Record<string, any>>({});
   const [filterConfig, setFilterConfig] = useState<Record<string, FilterConfig>>({});
   const [globalFilter, setGlobalFilter] = useState<string>("");
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
 
   const fetchStationMetadata = async () => {
     try {
@@ -96,7 +94,7 @@ const StationPerformance = () => {
         }
       })
     );
-    // setSiteQualityMap(map);
+    setSiteQualityMap(map);
   };
 
   useEffect(() => {

@@ -2,7 +2,7 @@
 import type { ReactNode } from 'react'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
-// import Sidebar from '../components/Sidebar'
+import Sidebar from '../components/Sidebar'
 interface Props {
   children: ReactNode
   className?: string
@@ -13,7 +13,7 @@ const MainLayout = ({ children, className }: Props) => {
   return (
     <div className="flex min-h-screen">
       <div className='z-50'>
-        {/* <Sidebar /> */}
+        <Sidebar />
       </div>
 
       {/* content column */}

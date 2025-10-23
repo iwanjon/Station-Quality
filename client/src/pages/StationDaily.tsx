@@ -39,8 +39,7 @@ const triangleIcon = (color: string) => L.divIcon({
     className: "", html: `<div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:12px solid ${color};position:relative;"><div style="position:absolute;left:-7px;top:-1px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:14px solid #222;z-index:-1;"></div></div>`,
     iconSize: [14, 14], iconAnchor: [7, 14],
 });
-// const getColorByResult = (result: string | null) => "#14b8a6";
-const getColorByResult = () => "#14b8a6";
+const getColorByResult = (result: string | null) => "#14b8a6";
 
 function ResetMapView({ center, zoom }: { center: [number, number], zoom: number }) {
   const map = useMap();
@@ -186,22 +185,22 @@ const StationDaily = () => {
     }
   };
 
-  // const InfoItem = ({ label, value }: { label: string, value: string | number | null }) => (
-  //   <div className="flex justify-between border-b border-gray-200 py-1 text-xs">
-  //     <dt className="font-medium text-gray-600">{label}</dt>
-  //     <dd className="text-gray-900 font-semibold text-right">{value ?? '-'}</dd>
-  //   </div>
-  // );
+  const InfoItem = ({ label, value }: { label: string, value: string | number | null }) => (
+    <div className="flex justify-between border-b border-gray-200 py-1 text-xs">
+      <dt className="font-medium text-gray-600">{label}</dt>
+      <dd className="text-gray-900 font-semibold text-right">{value ?? '-'}</dd>
+    </div>
+  );
   
-  // const columns = [
-  //   { accessorKey: "channel", header: "Channel" }, { accessorKey: "rms", header: "RMS" },
-  //   { accessorKey: "amplitude_ratio", header: "Amp. Ratio" }, { accessorKey: "num_gap", header: "Gaps" },
-  //   { accessorKey: "num_overlap", header: "Overlaps" }, { accessorKey: "num_spikes", header: "Spikes" },
-  //   { accessorKey: "linear_dead_channel", header: "Linear Dead" }, { accessorKey: "gsn_dead_channel", header: "GSN Dead" },
-  //   { accessorKey: "sp_percentage", header: "% Short Period" }, { accessorKey: "bw_percentage", header: "% Body Wave" },
-  //   { accessorKey: "lp_percentage", header: "% Long Period" }, { accessorKey: "perc_below_nlnm", header: "% Below NLNM" },
-  //   { accessorKey: "perc_above_nhnm", header: "% Above NHNM" },
-  // ];
+  const columns = [
+    { accessorKey: "channel", header: "Channel" }, { accessorKey: "rms", header: "RMS" },
+    { accessorKey: "amplitude_ratio", header: "Amp. Ratio" }, { accessorKey: "num_gap", header: "Gaps" },
+    { accessorKey: "num_overlap", header: "Overlaps" }, { accessorKey: "num_spikes", header: "Spikes" },
+    { accessorKey: "linear_dead_channel", header: "Linear Dead" }, { accessorKey: "gsn_dead_channel", header: "GSN Dead" },
+    { accessorKey: "sp_percentage", header: "% Short Period" }, { accessorKey: "bw_percentage", header: "% Body Wave" },
+    { accessorKey: "lp_percentage", header: "% Long Period" }, { accessorKey: "perc_below_nlnm", header: "% Below NLNM" },
+    { accessorKey: "perc_above_nhnm", header: "% Above NHNM" },
+  ];
   
   const ChartGridSection = ({ title, children }: { title: string; children: React.ReactNode; }) => (
     <div className="mb-4 bg-white p-2 rounded-lg shadow">
@@ -390,7 +389,7 @@ const StationDaily = () => {
                 >
                   <ResetMapView center={[stationMeta.lintang, stationMeta.bujur]} zoom={16} />
                   <TileLayer attribution='&copy; <a href="https://osm.org/copyright">OSM</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/>
-                  <Marker position={[stationMeta.lintang, stationMeta.bujur]} icon={triangleIcon(getColorByResult())}>
+                  <Marker position={[stationMeta.lintang, stationMeta.bujur]} icon={triangleIcon(getColorByResult(null))}>
                     <Popup><b>Stasiun: {stationMeta.kode_stasiun}</b></Popup>
                   </Marker>
                 </MapContainer>
