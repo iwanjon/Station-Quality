@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     # secret_key: str
     SQLALCHEMY_DATABASE_URL:str
     INV_URL:str
+    LOKI_URL:str
+    LOG_FILE_PATH:str
 
     class Config:
         env_file = ".env"  # Optional if you're using python-dotenv

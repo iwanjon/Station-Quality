@@ -7,6 +7,9 @@ from models.models import StasiunHistory, Stasiun
 from databases.database import SessionLocal
 from core.save_to_db import get_station_history
 import json
+import logging
+
+log = logging.getLogger("station_history")
 
 router = APIRouter()
 
@@ -48,6 +51,7 @@ async def read_todo(db: db_dependency, stasiun_code:str):
 
     stasiun:Stasiun|None = db.query(Stasiun).filter(Stasiun.kode_stasiun == stasiun_code).first()
 
+    log.info(stasiun.__dict__)
     
     if not stasiun :
         raise HTTPException(status_code=404, detail='Stasiun not found.')
@@ -70,13 +74,15 @@ async def update_todo( db: db_dependency,
     #     raise HTTPException(status_code=401, detail='Authentication Failed')
     stasiun:Stasiun|None = db.query(Stasiun).filter(Stasiun.kode_stasiun == stasiun_code).first()
     
+    log.info("station_data: {}".format(stasiun.__dict__))
+    
     if not stasiun :
         raise HTTPException(status_code=404, detail='Stasiun not found.')
     
     
     history_data = get_station_history(stasiun_code,True)
 
-  
+    log.info("history_data: {}".format(history_data))
     
     for ind, i in enumerate(history_data):
         exist_history:StasiunHistory|None = db.query(StasiunHistory).filter(StasiunHistory.sensor_name == i[2], StasiunHistory.digitizer_name == i[3], StasiunHistory.start_date == i[6], StasiunHistory.channel==i[1]).first()
@@ -129,6 +135,8 @@ async def update_todo( db: db_dependency,
         
 
     db.commit()
+    
+    log.info("station history updated")
 
 
 
