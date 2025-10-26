@@ -5,7 +5,7 @@ CREATE TABLE `stasiun_history` (
   `channel` varchar(10),
   `sensor_name` text,
   `digitizer_name` text,
-  `total_gain` integer,
+  `total_gain` bigint,
   `input_unit` varchar(10),
   `start_date` datetime,
   `end_date` datetime,

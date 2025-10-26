@@ -47,7 +47,7 @@ class TodoRequest(BaseModel):
 
 
 @router.get("/stasiun_history/{stasiun_code}", status_code=status.HTTP_200_OK)
-async def read_todo(db: db_dependency, stasiun_code:str):
+async def get_station_history(db: db_dependency, stasiun_code:str):
 
     stasiun:Stasiun|None = db.query(Stasiun).filter(Stasiun.kode_stasiun == stasiun_code).first()
 
@@ -68,7 +68,7 @@ async def read_todo(db: db_dependency, stasiun_code:str):
 
 
 @router.put("/stasiun_history/{stasiun_code}", status_code=status.HTTP_204_NO_CONTENT)
-async def update_todo( db: db_dependency,
+async def update_station_history( db: db_dependency,
                       stasiun_code: str):
     # if user is None:
     #     raise HTTPException(status_code=401, detail='Authentication Failed')

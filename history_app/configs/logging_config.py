@@ -65,31 +65,21 @@ from config import settings
 # SQLALCHEMY_DATABASE_URL = 'sqlite:///./todosapp.db'
 
 
-# --- Define Your Settings ---
-LOKI_URL = settings.LOKI_URL
-# This path should be an absolute path on your Linux server
+# #--- Define Your Settings ---
+# LOKI_URL = settings.LOKI_URL
+# #This path should be an absolute path on your Linux server
 LOG_FILE_PATH = settings.LOG_FILE_PATH
 
-# LOKI_TAGS = {
-#     "application": "fastapi-app",
-#     "environment": "development"
-# }
 
-# # --- 1. Create the Loki Handler ---
+
+# #Create an instance of the custom handler
 # loki_handler = LokiHandler(
+#     # url=os.environ["LOKI_URL"],
 #     url=LOKI_URL,
-#     labels=LOKI_TAGS,
-#     version="1"
+#     labels={"application": "Test", "environment": "Develop"},
+#     label_keys={},
+#     timeout=10,
 # )
-
-# Create an instance of the custom handler
-loki_handler = LokiHandler(
-    # url=os.environ["LOKI_URL"],
-    url=LOKI_URL,
-    labels={"application": "Test", "environment": "Develop"},
-    label_keys={},
-    timeout=10,
-)
 
 # --- 2. Create the Console (default) Handler ---
 console_formatter = logging.Formatter(
@@ -105,7 +95,7 @@ console_handler.setFormatter(console_formatter)
 os.makedirs(os.path.dirname(LOG_FILE_PATH), exist_ok=True) 
 
 file_formatter = logging.Formatter(
-    fmt="%(asctime)s - %(name)s - %(levelname)-8s - %(message)s",
+    fmt="%(asctime)s - [%(funcName)s:%(lineno)d] - %(name)s - %(levelname)-8s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S"
 )
 
@@ -129,7 +119,7 @@ def setup_logging():
         logger.setLevel(logging.INFO)
         
         # Add all three handlers
-        logger.addHandler(loki_handler)
+        # logger.addHandler(loki_handler)
         logger.addHandler(console_handler)
         logger.addHandler(file_handler)  # <-- ADDED THIS LINE
         
