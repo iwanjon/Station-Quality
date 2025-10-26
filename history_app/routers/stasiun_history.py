@@ -47,15 +47,15 @@ class TodoRequest(BaseModel):
 
 
 @router.get("/stasiun_history/{stasiun_code}", status_code=status.HTTP_200_OK)
-async def get_station_history(db: db_dependency, stasiun_code:str):
+async def getstationhistory(db: db_dependency, stasiun_code:str):
 
     stasiun:Stasiun|None = db.query(Stasiun).filter(Stasiun.kode_stasiun == stasiun_code).first()
 
-    log.info(stasiun.__dict__)
     
     if not stasiun :
         raise HTTPException(status_code=404, detail='Stasiun not found.')
     
+    log.info(stasiun.__dict__)
     
     stasiun_hist = db.query(StasiunHistory).filter(StasiunHistory.stasiun_id == stasiun.stasiun_id).all()
     
@@ -68,17 +68,17 @@ async def get_station_history(db: db_dependency, stasiun_code:str):
 
 
 @router.put("/stasiun_history/{stasiun_code}", status_code=status.HTTP_204_NO_CONTENT)
-async def update_station_history( db: db_dependency,
+async def updatestationhistory( db: db_dependency,
                       stasiun_code: str):
     # if user is None:
     #     raise HTTPException(status_code=401, detail='Authentication Failed')
     stasiun:Stasiun|None = db.query(Stasiun).filter(Stasiun.kode_stasiun == stasiun_code).first()
     
-    log.info("station_data: {}".format(stasiun.__dict__))
     
     if not stasiun :
         raise HTTPException(status_code=404, detail='Stasiun not found.')
     
+    log.info("station_data: {}".format(stasiun.__dict__))
     
     history_data = get_station_history(stasiun_code,True)
 
