@@ -56,7 +56,7 @@ import logging
 import logging.handlers  # Import the handlers module
 import os
 import sys
-from loki_logger_handler.loki_logger_handler import LokiLoggerHandler as LokiHandler # We import the handler directly
+# from loki_logger_handler.loki_logger_handler import LokiLoggerHandler as LokiHandler # We import the handler directly
 from config import settings
 
 
