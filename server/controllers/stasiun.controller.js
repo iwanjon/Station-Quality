@@ -2,6 +2,8 @@ import pool from '../config/database.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import logger from '../utils/logger.js'; // Import the logger (using the correct .js extension)
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -9,7 +11,7 @@ const __dirname = path.dirname(__filename);
 // Get all stasiun data with JOIN
 export const getAllStasiun = async (req, res) => {
     try {
-        console.log('Fetching all stasiun data');
+        logger.info('Fetching all stasiun data');
         const [rows] = await pool.query(`
             SELECT 
                 s.stasiun_id,

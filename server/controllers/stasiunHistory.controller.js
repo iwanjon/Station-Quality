@@ -3,6 +3,7 @@ import axios from 'axios';
 import { ensureTrailingSlash } from '../utils/pathHelper.js';
 
 import { ensureCleanStartingSlash } from '../utils/pathHelper.js';
+import logger from '../utils/logger.js';
 // Get station history by station code
 export const getStationHistoryByCode = async (req, res) => {
     try {
@@ -58,8 +59,11 @@ export const getStationHistoryByCode = async (req, res) => {
 
 // Get all station history data
 export const getAllStationHistory = async (req, res) => {
+    logger.info('Fetching all station history data');
+    logger.error('Fetching all station history data');
+
+
     try {
-        console.log('Fetching all station history data');
         const [rows] = await pool.query(`
             SELECT
                 h.history_id,
@@ -90,7 +94,7 @@ export const getAllStationHistory = async (req, res) => {
             message: 'All station history data retrieved successfully'
         });
     } catch (error) {
-        console.error("DB Error:", error);
+        logger.error("DB Error:", error);
         res.status(500).json({
             success: false,
             message: 'Failed to retrieve station history data',
@@ -101,6 +105,7 @@ export const getAllStationHistory = async (req, res) => {
 
 // Get station history by station ID
 export const getStationHistoryById = async (req, res) => {
+    logger.info("abc")
     try {
         const { id } = req.params;
 

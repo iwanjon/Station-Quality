@@ -58,11 +58,30 @@ import os
 import sys
 # from loki_logger_handler.loki_logger_handler import LokiLoggerHandler as LokiHandler # We import the handler directly
 from config import settings
-
+import json
 
 # SQLALCHEMY_DATABASE_URL = settings.SQLALCHEMY_DATABASE_URL or ""
 # SQLALCHEMY_DATABASE_URL = 'mysql+pymysql://root:admin@localhost/test'
 # SQLALCHEMY_DATABASE_URL = 'sqlite:///./todosapp.db'
+
+
+class JSONFormatter(logging.Formatter):
+    def format(self, record):
+        log_record = {
+            "timestamp": self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+            "name": record.name,
+            "message": record.getMessage(),
+            "funcName": record.funcName,
+            "lineno": record.lineno,
+            "filename": record.filename,
+        }
+
+        # Include exception info if present
+        if record.exc_info:
+            log_record["exception"] = self.formatException(record.exc_info)
+
+        return json.dumps(log_record, ensure_ascii=False)
 
 
 # #--- Define Your Settings ---
@@ -94,10 +113,14 @@ console_handler.setFormatter(console_formatter)
 # On Linux, you might need to handle permissions for /var/log separately.
 os.makedirs(os.path.dirname(LOG_FILE_PATH), exist_ok=True) 
 
-file_formatter = logging.Formatter(
+file_formatter = JSONFormatter(
     fmt="%(asctime)s - [%(funcName)s:%(lineno)d] - %(name)s - %(levelname)-8s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S"
 )
+# file_formatter = logging.Formatter(
+#     fmt="%(asctime)s - [%(funcName)s:%(lineno)d] - %(name)s - %(levelname)-8s - %(message)s",
+#     datefmt="%Y-%m-%d %H:%M:%S"
+# )
 
 # Use WatchedFileHandler. This handler detects when the file
 # is moved by logrotate and re-opens the log.
