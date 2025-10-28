@@ -29,7 +29,8 @@ export async function runLatencyTask() {
 
   try {
     // Panggil API internal di server-app. Docker akan mengarahkan 'server-app' ke kontainer yang benar.
-    const response = await axios.get('http://server-app:5000/api/dashboard/slmon/laststatus');
+    // const response = await axios.get('http://server-app:5000/api/dashboard/slmon/laststatus');
+    const response = await axios.get('http://localhost:5000/api/dashboard/slmon/laststatus');
     const features = response.data?.features;
 
     if (!features || features.length === 0) {
