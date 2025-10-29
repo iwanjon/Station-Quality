@@ -1,10 +1,10 @@
-from typing import Annotated
+# # from typing import Annotated
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+# from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends, HTTPException, Path
 from starlette import status
 from models.models import StasiunHistory, Stasiun
-from databases.database import SessionLocal
+from databases.database import db_dependency
 from core.save_to_db import get_station_history
 import json
 import logging
@@ -14,15 +14,15 @@ log = logging.getLogger("station_history")
 router = APIRouter()
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# def get_db():
+#     db = SessionLocal()
+#     try:
+#         yield db
+#     finally:
+#         db.close()
 
 
-db_dependency = Annotated[Session, Depends(get_db)]
+# db_dependency = Annotated[Session, Depends(get_db)]
 
 
 
