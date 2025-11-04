@@ -11,6 +11,11 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, Respon
 
 // --- INTERFACES ---
 
+interface SlmonMap extends SlmonStatus, QCSummaryBase {
+  type: "Feature";
+
+}
+
 interface SlmonStatus {
   type: "Feature";
   properties: {
@@ -39,19 +44,22 @@ interface SlmonFeatureCollection {
   features: SlmonStatus[];
 }
 
-interface QCSummary {
-  date: string;
+interface QCSummaryBase {
   code: string;
   quality_percentage: number | null;
-  result: string;
+  result: string |null;
   site_quality: string | null;
+  latencyStrings: string[];
+}
+
+interface QCSummary extends QCSummaryBase{
+  date: string;
   details: string;
   network: string;
   geometry: {
     type: string;
     coordinates: [number, number, number];
   };
-  latencyStrings: string[];
   primaryLatency: number | null;
   primaryColor: string;
 }
@@ -70,13 +78,14 @@ const triangleIcon = (color: string) =>
     iconAnchor: [7, 14],
   });
 
-const getStatusTextEn = (result: string): string => {
+const getStatusTextEn = (result: string|null): string => {
   switch (result) {
     case "Baik": return "Good";
     case "Cukup Baik": return "Fair";
     case "Buruk": return "Bad";
     case "No Data": return "No Data";
     case "Mati": return "Mati";
+    case null : return "Mati";
     default: return result;
   }
 };
@@ -94,13 +103,51 @@ const parseLatencyToSeconds = (latencyString?: string | null): number | null => 
   return value; // Anggap sebagai detik jika tidak ada satuan
 };
 
+// // Fungsi ini menentukan warna segitiga di peta berdasarkan aturan baru.
+// const getTriangleColor = (station: QCSummary): string => {
+//   // Ambil dan parse latency 1, 2, dan 3
+//   const latenciesInSeconds = [
+//     parseLatencyToSeconds(station.latencyStrings[0]),
+//     parseLatencyToSeconds(station.latencyStrings[1]),
+//     parseLatencyToSeconds(station.latencyStrings[2]),
+//   ];
+
+//   // Saring untuk mendapatkan nilai latensi yang valid (bukan null)
+//   const validLatencies = latenciesInSeconds.filter(
+//     (sec): sec is number => sec !== null
+//   );
+
+//   // Aturan 1: Hitam jika latency1 adalah "NA"
+//   if (station.latencyStrings[0]?.toUpperCase() === "NA" || validLatencies.length === 0) {
+//     return "#222222"; // Black
+//   }
+
+//   // Cari nilai terkecil dari latensi yang valid
+//   const minLatencySec = Math.min(...validLatencies);
+
+//   // Aturan 2: Hitam jika latensi terkecil >= 1 hari
+//   if (minLatencySec >= 86400) return "#222222"; // Black
+//   // Aturan 3: Hijau jika < 10 detik
+//   if (minLatencySec < 10) return "#16a34a"; // Green
+//   // Aturan 4: Kuning jika < 1 menit
+//   if (minLatencySec < 60) return "#facc15"; // Yellow
+//   // Aturan 5: Oranye jika < 3 menit
+//   if (minLatencySec < 180) return "#fb923c"; // Orange
+//   // Aturan 6: Merah jika < 30 menit
+//   if (minLatencySec < 1800) return "#ef4444"; // Red
+  
+//   // Default: Abu-abu jika >= 30 menit dan < 1 hari
+//   return "#979797"; // Gray
+// };
+
+
 // Fungsi ini menentukan warna segitiga di peta berdasarkan aturan baru.
-const getTriangleColor = (station: QCSummary): string => {
+const getTriangleColor = <T extends { latencyStrings: string[] }>(input: T): string => {
   // Ambil dan parse latency 1, 2, dan 3
   const latenciesInSeconds = [
-    parseLatencyToSeconds(station.latencyStrings[0]),
-    parseLatencyToSeconds(station.latencyStrings[1]),
-    parseLatencyToSeconds(station.latencyStrings[2]),
+    parseLatencyToSeconds(input.latencyStrings[0]),
+    parseLatencyToSeconds(input.latencyStrings[1]),
+    parseLatencyToSeconds(input.latencyStrings[2]),
   ];
 
   // Saring untuk mendapatkan nilai latensi yang valid (bukan null)
@@ -109,7 +156,7 @@ const getTriangleColor = (station: QCSummary): string => {
   );
 
   // Aturan 1: Hitam jika latency1 adalah "NA"
-  if (station.latencyStrings[0]?.toUpperCase() === "NA" || validLatencies.length === 0) {
+  if (input.latencyStrings[0]?.toUpperCase() === "NA" || validLatencies.length === 0) {
     return "#222222"; // Black
   }
 
@@ -130,6 +177,8 @@ const getTriangleColor = (station: QCSummary): string => {
   // Default: Abu-abu jika >= 30 menit dan < 1 hari
   return "#979797"; // Gray
 };
+
+
 
 // Komponen legend yang telah disinkronkan dengan logika warna baru.
 const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummary[]; totalStationCount: number }) => {
@@ -298,6 +347,7 @@ const QUALITY_LABELS = [
 ];
 
 const Dashboard = () => {
+  const [slmondatamap, setslmondatamap] = useState<SlmonMap[]>([]);
   const [combinedData, setCombinedData] = useState<QCSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [totalStationCount, setTotalStationCount] = useState<number>(0);
@@ -329,6 +379,11 @@ const Dashboard = () => {
         const slmonStation = slmonMap.get(station.code);
         const allLatencyStrings: string[] = [];
         
+        // console.log("smon")
+        // console.log(slmonStation);
+        // console.log("station")
+        // console.log(station);
+
         if (slmonStation) {
           for (let i = 1; i <= 6; i++) {
             const latencyKey = `latency${i}` as keyof typeof slmonStation.properties;
@@ -345,6 +400,55 @@ const Dashboard = () => {
         };
       });
 
+      const slmonDataMap = slmonData.map((station) => {
+        // let slmonmap:SlmonMap;
+
+        const abc = [station.properties.latency1 || "N/A",
+          station.properties.latency2  || "N/A",
+          station.properties.latency3  || "N/A",
+          station.properties.latency4  || "N/A",
+          station.properties.latency5  || "N/A",
+          station.properties.latency6  || "N/A"
+        ]
+        
+        const slmonmap:SlmonMap ={
+          ...station,
+          code:station.properties.sta,
+          latencyStrings:abc, 
+          quality_percentage:null,
+          result: null,
+          site_quality:null
+        }
+        const qcsummary = qcData.find((sta) => sta.code === slmonmap.code) || null;
+
+
+        slmonmap.quality_percentage = qcsummary ? qcsummary.quality_percentage:null
+        slmonmap.result = qcsummary ? qcsummary.result : null
+        slmonmap.site_quality = qcsummary ? qcsummary.site_quality : null
+
+        // const slmonStation = slmonMap.get(station.code);
+        // const allLatencyStrings: string[] = [];
+        
+
+        // if (slmonStation) {
+        //   for (let i = 1; i <= 6; i++) {
+        //     const latencyKey = `latency${i}` as keyof typeof slmonStation.properties;
+        //     const latencyValue = slmonStation.properties[latencyKey] || "N/A";
+        //     allLatencyStrings.push(latencyValue);
+        //   }
+        // }
+
+        // return {
+        //   ...station,
+        //   latencyStrings: allLatencyStrings,
+        //   primaryLatency: null,
+        //   primaryColor: '',
+        // };
+        return slmonmap
+      });
+
+      // console.log(slmonDataMap[0])
+      setslmondatamap(slmonDataMap)
       setCombinedData(finalData);
     } catch (err) {
       console.error("Gagal memuat atau menggabungkan data:", err);
@@ -387,6 +491,10 @@ const Dashboard = () => {
   // --- PERBAIKAN LOGIKA ON/OFF ---
   const totalOff = combinedData.filter(s => getTriangleColor(s) === "#222222").length;
   const totalOn = combinedData.length - totalOff;
+
+  // --- PERBAIKAN LOGIKA ON/OFF ---
+  const totalOffSlmon = slmondatamap.filter(s => getTriangleColor(s) === "#222222").length;
+  const totalOnSlmon = slmondatamap.length - totalOff;
 
   const goodCount = combinedData.filter((s) => s.result === "Baik").length;
   const fairCount = combinedData.filter((s) => s.result === "Cukup Baik").length;
@@ -456,7 +564,8 @@ const Dashboard = () => {
     };
     fetchQuality();
   }, []);
-
+// console.log(slmondatamap)
+  // console.log(combinedData)
   return (
     <MainLayout>
       <h1 className="text-left text-2xl font-bold mt-0 mb-2 ml-1">Dashboard</h1>
@@ -472,10 +581,12 @@ const Dashboard = () => {
                 style={{ minHeight: 375, maxHeight: 393, margin: "0.06rem" }}
               >
                 <TileLayer attribution='&copy; <a href="https://osm.org/copyright">OSM</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                {combinedData.map((s, idx) => (
+                {slmondatamap.map((s, idx) => (
+                
+                //  {combinedData.map((s, idx) => (
                   <Marker
                     key={idx}
-                    position={[s.geometry.coordinates[1], s.geometry.coordinates[0]]}
+                    position={[Number(s.geometry.coordinates[1]), Number(s.geometry.coordinates[0])]}
                     icon={triangleIcon(getTriangleColor(s))}
                   >
                     <Popup>
@@ -512,17 +623,23 @@ const Dashboard = () => {
               <p className="text-2xl font-bold">{isLoading ? "..." : inactiveCount}</p>
             </div>
           </div>
+
           <div className="bg-white rounded p-2 text-center border border-gray-300 shadow">
             <p className="text-xs font-semibold">OPERATIONAL</p>
-            <p className="text-3xl font-bold mb-1">{isLoading ? "..." : combinedData.length}</p>
+            {/* <p className="text-3xl font-bold mb-1">{isLoading ? "..." : combinedData.length}</p> */}
+            <p className="text-3xl font-bold mb-1">{isLoading ? "..." : totalStationCount}</p>
             <div className="grid grid-cols-2 gap-1">
               <div className="bg-green-600 text-white rounded p-1">
                 <p className="text-[10px] font-bold">ON</p>
-                <p className="text-lg font-bold">{isLoading ? "..." : totalOn}</p>
+                {/* <p className="text-lg font-bold">{isLoading ? "..." : totalOn}</p> */}
+                <p className="text-lg font-bold">{isLoading ? "..." : totalOnSlmon}</p>
+                {/* <p className="text-lg font-bold">{isLoading ? "..." : registeredCount}</p> */}
               </div>
               <div className="bg-black text-white rounded p-1">
                 <p className="text-[10px] font-bold">OFF</p>
-                <p className="text-lg font-bold">{isLoading ? "..." : totalOff}</p>
+                {/* <p className="text-lg font-bold">{isLoading ? "..." : totalOff}</p> */}
+                <p className="text-lg font-bold">{isLoading ? "..." : totalOffSlmon}</p>
+                {/* <p className="text-lg font-bold">{isLoading ? "..." : inactiveCount}</p> */}
               </div>
             </div>
           </div>
