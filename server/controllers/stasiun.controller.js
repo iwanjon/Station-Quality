@@ -4,6 +4,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import logger from '../utils/logger.js'; // Import the logger (using the correct .js extension)
 
+import debug from 'debug';
+
+const appDebug = debug('app:server');
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -190,6 +194,7 @@ export const getStasiunByCode = async (req, res) => {
 
 // Update stasiun by code
 export const updateStasiunByCode = async (req, res) => {
+
     try {
         const { code } = req.params;
         const updateData = req.body;
@@ -274,6 +279,7 @@ export const updateStasiunByCode = async (req, res) => {
         console.log('🚫 Forbidden fields removed:', forbiddenFields);
         console.log('✅ Fields that will be updated:', Object.keys(filteredData));
 
+        // debugger;
         // Check if there are any fields to update
         if (Object.keys(filteredData).length === 0) {
             return res.status(400).json({
@@ -281,7 +287,7 @@ export const updateStasiunByCode = async (req, res) => {
                 message: 'No valid fields to update'
             });
         }
-
+    // debugger;
         // Build dynamic UPDATE query
         const setClause = Object.keys(filteredData)
             .map(key => `${key} = ?`)

@@ -181,7 +181,8 @@ const getTriangleColor = <T extends { latencyStrings: string[] }>(input: T): str
 
 
 // Komponen legend yang telah disinkronkan dengan logika warna baru.
-const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummary[]; totalStationCount: number }) => {
+const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummaryBase[]; totalStationCount: number }) => {
+// const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummary[]; totalStationCount: number }) => {
   const countByCategory = {
     "<10s": 0,    // Green
     "<1m": 0,     // Yellow
@@ -465,7 +466,7 @@ const Dashboard = () => {
     fetchData(); // Panggil data saat komponen pertama kali dimuat
 
     // Set interval untuk memanggil ulang fetchData setiap 10 detik
-    const intervalId = setInterval(fetchData, 10000);
+    const intervalId = setInterval(fetchData, 30000);
 
     // Membersihkan interval saat komponen di-unmount
     return () => clearInterval(intervalId);
@@ -494,7 +495,7 @@ const Dashboard = () => {
 
   // --- PERBAIKAN LOGIKA ON/OFF ---
   const totalOffSlmon = slmondatamap.filter(s => getTriangleColor(s) === "#222222").length;
-  const totalOnSlmon = slmondatamap.length - totalOff;
+  const totalOnSlmon = slmondatamap.length - totalOffSlmon;
 
   const goodCount = combinedData.filter((s) => s.result === "Baik").length;
   const fairCount = combinedData.filter((s) => s.result === "Cukup Baik").length;
@@ -605,7 +606,8 @@ const Dashboard = () => {
                   </Marker>
                 ))}
               </MapContainer>
-              <MapLegend stationData={combinedData} totalStationCount={totalStationCount} />
+              <MapLegend stationData={slmondatamap} totalStationCount={totalStationCount} />
+              {/* <MapLegend stationData={combinedData} totalStationCount={totalStationCount} /> */}
             </div>
           </div>
         </div>

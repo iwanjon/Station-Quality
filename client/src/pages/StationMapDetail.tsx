@@ -747,7 +747,7 @@ const StationMapDetail = () => {
           onSuccess={handleEditSuccess}
           fieldsToEdit={
             editingSection === 'site'
-              ? ['lintang', 'bujur', 'elevasi', 'tahun_instalasi', 'jaringan', 'upt_penanggung_jawab']
+              ? ['lintang', 'bujur', 'elevasi', 'tahun_instalasi', 'jaringan', 'upt_penanggung_jawab', 'status']
               : editingSection === 'location'
               ? ['lokasi', 'provinsi', 'keterangan', 'access_shelter']
               : editingSection === 'shelter'

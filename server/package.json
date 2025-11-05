@@ -14,7 +14,8 @@
     "seed:force": "node scripts/seed.js --force",
     "db:setup": "npm run migrate && npm run seed",
     "db:reset": "npm run migrate:reset && npm run seed:force",
-    "db:fresh": "npm run db:reset"
+    "db:fresh": "npm run db:reset",
+    "debug": "nodemon --inspect server.js"
   },
   "keywords": [],
   "author": "",
@@ -23,6 +24,7 @@
     "axios": "^1.12.2",
     "cors": "^2.8.5",
     "dayjs": "^1.11.13",
+    "debug": "^4.4.3",
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
     "multer": "^2.0.2",
