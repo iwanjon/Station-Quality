@@ -476,10 +476,12 @@ const StationAvailability = () => {
                     >
                       {(() => {
                         const currentDate = new Date();
+                       
                         const currentYear = currentDate.getFullYear();
-                        const currentMonth = currentDate.getMonth();
+                      
+                        const currentMonth = currentDate.getMonth() +1;
+                      
                         const months = [];
-                        
                         for (let year = currentYear; year >= currentYear - 1; year--) {
                           const maxMonth = year === currentYear ? currentMonth - 1 : 11;
                           for (let month = maxMonth; month >= 0; month--) {
@@ -509,7 +511,7 @@ const StationAvailability = () => {
                       {(() => {
                         const currentDate = new Date();
                         const currentYear = currentDate.getFullYear();
-                        const currentMonth = currentDate.getMonth();
+                        const currentMonth = currentDate.getMonth()+1;
                         const months = [];
                         
                         for (let year = currentYear; year >= currentYear - 1; year--) {
