@@ -451,6 +451,59 @@ const StationAvailability = () => {
     return columns;
   }, [selectedMonth]);
 
+
+ const handleDownloadCSV = () => {
+
+ 
+  // Step 1: Collect all unique months across the entire dataset
+  const allMonths = new Set<string>(); // Using a Set to ensure unique months
+
+  filteredData.forEach((item) => {
+    Object.keys(item.monthlyData).forEach((month) => {
+      allMonths.add(month); // Add each month to the set
+    });
+  });
+
+  // Convert the set to an array and sort months (optional, depending on your preference)
+  const months = Array.from(allMonths).sort();
+
+  // Step 2: Map the months to their full names with the year (e.g., "2025-09" -> "September 2025")
+  const formatMonth = (month: string) => {
+    const date = new Date(month);
+    const options = { year: 'numeric', month: 'long' } as const;
+    return date.toLocaleDateString('en-US', options); // Output as "Month Year"
+  };
+
+  // Step 3: Prepare the CSV content with the header row
+  let csvContent = 'kode,' + months.map(formatMonth).join(',') + '\n';
+
+  // Step 4: Loop through the data to generate the rows
+  filteredData.forEach((item) => {
+    const values = months.map((month) => {
+      // If the month exists in the current item's monthlyData, return the value
+      // Otherwise, return an empty string (or zero, depending on your preference)
+      return item.monthlyData[month] !== null ? item.monthlyData[month] : ''; 
+    });
+
+    // Create a row with the kode followed by the values for each month
+    csvContent += `${item.kode},${values.join(',')}\n`;
+  });
+
+  // return csvContent;
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "station_quality.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
+
+//  console.log(filteredData)
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <MainLayout>
@@ -626,6 +679,14 @@ const StationAvailability = () => {
             <p className="text-center text-gray-500 text-sm py-4">Loading data...</p>
           ) : (
             <div className="overflow-x-auto text-xs">
+              <div className="flex justify-between items-center mb-4">
+            <button
+              onClick={handleDownloadCSV}
+              className="bg-green-600 text-white rounded-lg px-3 py-2.5 hover:bg-green-700 transition duration-300 text-sm"
+            >
+              Export CSV
+            </button>
+          </div>
               <div className="min-w-full">
                 <DataTable columns={columns} data={filteredData} />
               </div>
