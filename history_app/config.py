@@ -12,5 +12,6 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"  # Optional if you're using python-dotenv
+        extra='ignore'    # This is the key setting
 
 settings = Settings()
