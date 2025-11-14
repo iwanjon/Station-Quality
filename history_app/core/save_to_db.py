@@ -2,7 +2,7 @@ from typing import List
 from fastapi import HTTPException
 import matplotlib
 # matplotlib.use('tkagg')
-matplotlib.use("Agg")
+# matplotlib.use("Agg")
 from matplotlib.gridspec import GridSpec
 import pandas as pd
 import numpy as np
@@ -13,6 +13,7 @@ import urllib.request
 import os
 from obspy.core.inventory.response import CoefficientsTypeResponseStage
 from obspy.core.inventory.response import PolesZerosResponseStage
+import matplotlib.pyplot as plt
 
 from datetime import datetime
 import logging
@@ -24,6 +25,7 @@ from obspy.core.util.obspy_types import (ComplexWithUncertainties,
                                          FloatWithUncertaintiesAndUnit,
                                          ObsPyException,
                                          ZeroSamplingRate)
+from matplotlib.figure import Figure
 
 from static_variable import (
                         STATIC,
@@ -568,12 +570,17 @@ def instrument_meta(inv, sta, save_response=None):
             file_path = os.path.join(STATIC_FOLDER, file_name+".jpg")
             print(file_path, STATIC_FOLDER)
             try:
-                i.response.plot(0.05, outfile=file_path)
+                plt.close("all")
+                respo:Response = i.response
+                figur:Figure|any = respo.plot(0.001, outfile=file_path)
+                figur.clear()
+                del figur
+                plt.close()
+                plt.close("all")
             except Exception as e:
                 log.error(e)
                 file_name=None
         # aaa.plot(0.01, outfile=file_name+".jpg")
-    
         channel_data =  [
                 sta,
                 code, 
@@ -594,6 +601,9 @@ def instrument_meta(inv, sta, save_response=None):
         channel_full_data.append(channel_data)
         # except Exception as e:
         #     log.info(" ======== error in ========= {} {}".format(e, vars(i)))
+
+    
+    plt.close("all")
     return channel_full_data
     # return channel_data
 
@@ -691,14 +701,14 @@ def get_sensor_type(dict_sensor):
 #     return False
 
 
-if __name__ == "__main__":
-    process_waveform_plot(
-        station_file="stasiun.xlsx",
-        network="IA",
-        # start_datetime="2025-08-04T17:00:00",
-        start_datetime="2025-08-07T12:00:00",
-        end_datetime="2025-08-07T17:00:00"
-    )
+# if __name__ == "__main__":
+#     process_waveform_plot(
+#         station_file="stasiun.xlsx",
+#         network="IA",
+#         # start_datetime="2025-08-04T17:00:00",
+#         start_datetime="2025-08-07T12:00:00",
+#         end_datetime="2025-08-07T17:00:00"
+#     )
 
 
 # inv[0]._stations[0].channels[0].data_logger.__dict__
