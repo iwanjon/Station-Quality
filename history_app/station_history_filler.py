@@ -1,3 +1,4 @@
+import argparse
 import requests
 from dotenv import load_dotenv
 import os
@@ -20,6 +21,38 @@ UPDATE_HISTORY_STATION_PATH=os.getenv("UPDATE_HISTORY_STATION_PATH")
 
 
 def run_app():
+    
+    # Create an ArgumentParser object
+    parser = argparse.ArgumentParser(description="Process some configuration.")
+    
+    # Define the --config argument to specify the path to the .env file
+    parser.add_argument('--config', type=str, help='Path to the configuration file', required=True)
+    
+    # Parse the arguments
+    args = parser.parse_args()
+
+    # Load environment variables from the specified .env file
+    if os.path.exists(args.config):
+        load_dotenv(dotenv_path=args.config)
+        print(f"Loaded environment variables from: {args.config}")
+    else:
+        print(f"Error: The configuration file {args.config} was not found!")
+        return
+
+    # You can now access environment variables like this:
+    RANGE = os.getenv('RANGE')  # Replace with your actual variable name
+    if RANGE:
+        log.info(f"RANGE: {RANGE}")
+    else:
+        log.error("RANGE is not set! in env")   
+        return 
+    
+    start, end = map(int, RANGE.split(":"))
+    slice_obj = slice(start, end)
+
+    # op=[1,2,3,4,5,6,7,8,9]
+    # print(op[slice_obj])
+    
     try:
         log.info("start request")
         all_station = requests.get(GET_STATIONS_PATH)
@@ -28,8 +61,15 @@ def run_app():
         log.error(traceback.print_exc()) 
         return
     
-    number_of_station = len(all_station.json())
-    for no , i in enumerate(all_station.json()):
+    number_of_origin_station = len(all_station.json())
+    if number_of_origin_station == 0:
+        log.error("number station is zero")
+        return
+    
+    process_stations = all_station.json()[slice_obj]
+    number_of_station = len(process_stations)
+    
+    for no , i in enumerate(process_stations):
         # if no == 5:
         #     return
         # from pdb import set_trace as sstt
