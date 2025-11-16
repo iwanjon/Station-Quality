@@ -39,7 +39,7 @@ export const getStationHistoryByCode = async (req, res) => {
             FROM stasiun_history h
             INNER JOIN stasiun s ON h.stasiun_id = s.stasiun_id
             WHERE s.kode_stasiun = ?
-            ORDER BY h.created_at DESC
+            ORDER BY h.status DESC, TRIM(h.input_unit) ASC , h.channel ASC
         `, [code]);
 
         res.json({

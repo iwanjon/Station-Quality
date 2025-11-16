@@ -581,26 +581,28 @@ def instrument_meta(inv, sta, save_response=None):
                 log.error(e)
                 file_name=None
         # aaa.plot(0.01, outfile=file_name+".jpg")
-        channel_data =  [
-                sta,
-                code, 
-                sensor_type, 
-                datalogger_type,
-                final_constant,
-                i.response.instrument_sensitivity.input_units,
-                i.start_date,
-                i.end_date,
-                0 if i.end_date else 1, 
-                latitude,
-                longitude,
-                elevation,
-                sampling_rate,
-                paz_det,
-                STATIC+"/"+RESPONSE_PATH_URL+file_name+".jpg" if file_name else None
-                ]
-        channel_full_data.append(channel_data)
-        # except Exception as e:
-        #     log.info(" ======== error in ========= {} {}".format(e, vars(i)))
+
+        try:
+            channel_data =  [
+                    sta,
+                    code, 
+                    sensor_type, 
+                    datalogger_type,
+                    final_constant,
+                    i.response.instrument_sensitivity.input_units,
+                    i.start_date,
+                    i.end_date,
+                    0 if i.end_date else 1, 
+                    latitude,
+                    longitude,
+                    elevation,
+                    sampling_rate,
+                    paz_det,
+                    STATIC+"/"+RESPONSE_PATH_URL+file_name+".jpg" if file_name else None
+                    ]
+            channel_full_data.append(channel_data)
+        except Exception as e:
+            log.info(" ======== error in ========= error : {} , channel : {} , response :{}".format(e, vars(i), vars(i.response)))
 
     
     plt.close("all")
