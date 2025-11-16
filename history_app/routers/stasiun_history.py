@@ -125,7 +125,7 @@ async def updatestationhistory( db: db_dependency,
     for ind, i in enumerate(history_data):
         date_formated = round_datetime(i[6])
         # str_date_formated =  date_formated.strftime("%Y-%m-%dT%H:%M:%S") + "Z"
-        exist_history:StasiunHistory|None = db.query(StasiunHistory).filter(StasiunHistory.sensor_name == i[2], StasiunHistory.digitizer_name == i[3], StasiunHistory.start_date == date_formated, StasiunHistory.channel==i[1]).first()
+        exist_history:StasiunHistory|None = db.query(StasiunHistory).filter(StasiunHistory.sensor_name == i[2], StasiunHistory.digitizer_name == i[3], StasiunHistory.start_date == date_formated, StasiunHistory.channel==i[1], StasiunHistory.stasiun_id == stasiun.stasiun_id).first()
         dumps13 = json.dumps(i[13], default=encode_complex_pairs, ensure_ascii=False)
         # loads13 = json.loads(dumps13, object_hook=decode_complex_pairs)
         loads13 = json.loads(dumps13)
