@@ -111,6 +111,7 @@ async def updatestationhistory( db: db_dependency,
             new_hist.response_path = i[14]
             
             db.add(new_hist)
+            db.commit()
         # elif exist_history.end_date != i[7]:
         else:
             exist_history.stasiun_id = stasiun.stasiun_id
@@ -130,11 +131,12 @@ async def updatestationhistory( db: db_dependency,
             exist_history.response_path = i[14]
             
             db.add(exist_history)
+            db.commit()
         # else:
         #     continue
         
 
-    db.commit()
+    # db.commit()
     
     log.info("station history updated")
 
