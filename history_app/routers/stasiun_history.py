@@ -95,7 +95,9 @@ async def updatestationhistory( db: db_dependency,
         # loads13 = json.loads(dumps13, object_hook=decode_complex_pairs)
         loads13 = json.loads(dumps13)
         print(ind)
-     
+        log.info("exist history and vairble input")
+        log.info("{} , {} ,{} ,{} ,{} ".format(i[2],  i[3], i[6], i[1]))
+        log.info(exist_history)
         if not exist_history:
             new_hist = StasiunHistory()
             
@@ -114,6 +116,8 @@ async def updatestationhistory( db: db_dependency,
             new_hist.sampling_rate = i[12]
             new_hist.paz = loads13
             new_hist.response_path = i[14]
+            log.info("new_hist object")
+            log.info(new_hist.__dict__)
             
             db.add(new_hist)
             db.flush()
