@@ -96,7 +96,7 @@ async def updatestationhistory( db: db_dependency,
         loads13 = json.loads(dumps13)
         print(ind)
         log.info("exist history and vairble input")
-        log.info("{} , {} ,{} ,{} ,{} ".format(i[2],  i[3], i[6], i[1]))
+        log.info("{} , {} ,{} ,{} ".format(i[2],  i[3], i[6], i[1]))
         log.info(exist_history)
         if not exist_history:
             new_hist = StasiunHistory()
