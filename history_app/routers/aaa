@@ -1,0 +1,14 @@
+INFO     2025-11-16 14:46:07 - exist history and vairble input
+INFO     2025-11-16 14:46:07 - Titan_Nanometrics Titan , Quanterra_Quanterra Q8 ,2023-08-06T07:45:29.525000Z ,HNZ
+INFO     2025-11-16 14:46:07 - None
+INFO     2025-11-16 14:46:07 - new_hist object
+
+INFO     2025-11-16 14:49:54 - exist history and vairble input
+INFO     2025-11-16 14:49:54 - EQMet , Quanterra_Quanterra ,2020-10-01T00:00:00.000000Z ,SHE
+INFO     2025-11-16 14:49:54 - <models.models.StasiunHistory object at 0x000001CBE122ED50>
+INFO     2025-11-16 14:49:54 - station history updated
+
+INFO     2025-11-16 14:46:07 - {'_sa_instance_state': <sqlalchemy.orm.state.InstanceState object at 0x000001CBE1A5B850>, 'stasiun_id': 11, 'channel': 'HNZ', 'sensor_name': 'Titan_Nanometrics Titan', 'digitizer_name': 'Quanterra_Quanterra Q8', 'total_gain': 213909.30000000002, 'input_unit': 'm/s', 'start_date': datetime.datetime(2023, 8, 6, 7, 45, 29, 525000), 'end_date': None, 'status': 1, 'latitude': -1.323, 'longitude': 133.912, 'elevation': 2013.0, 'sampling_rate': 100.0, 'paz': {'_pz_transfer_function_type': 'LAPLACE (RADIANS/SECOND)', '_normalization_frequency': 1.0, 'normalization_factor': 1.00772e+18, '_zeros': [{'__type__': 'complex', 're': -515.0, 'im': 0.0}], '_poles': [{'__type__': 'complex', 're': -977.0, 'im': -328.0}, {'__type__': 'complex', 're': -977.0, 'im': 328.0}, {'__type__': 'complex', 're': -1486.0, 'im': -2512.0}, {'__type__': 'complex', 're': -1486.0, 'im': 2512.0}, {'__type__': 'complex', 're': -5736.0, 'im': -4946.0}, {'__type__': 'complex', 're': -5736.0, 'im': 4946.0}], 'stage_sequence_number': 1, 'input_units': 'm/s', 'output_units': 'V', 'input_units_description': None, 'output_units_description': None, 'resource_id': None, 'resource_id2': 'NRL/Nanometrics/Titan_CG4g_FV20Vp_OWDifferential_HF430_SG0.510_STgroundAccel/1', 'stage_gain': 0.51, 'stage_gain_frequency': 1.0, 'name': 'NRL/Nanometrics/Titan_CG4g_FV20Vp_OWDifferential_HF430_SG0.510_STgroundAccel/1', 'description': None, 'decimation_input_sample_rate': None, 'decimation_factor': None, 'decimation_offset': None, 'decimation_delay': None, 'decimation_correction': None}, 'response_path': 'static/public/response/ANAPI_HNZ_TitanNanometricsTitan_QuanterraQuanterraQ8_213909.jpg'}
+INFO     2025-11-16 14:46:07 - new station history inserted
+INFO:     127.0.0.1:50095 - "PUT /stasiun_history/ANAPI HTTP/1.1" 204 No Content
+INFO     2025-11-16 14:46:07 - 127.0.0.1:50095 - "PUT /stasiun_history/ANAPI HTTP/1.1" 204

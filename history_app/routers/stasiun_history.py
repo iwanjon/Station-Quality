@@ -8,7 +8,7 @@ from databases.database import db_dependency
 from core.save_to_db import get_station_history
 import json
 import logging
-
+from datetime import datetime, timedelta
 log = logging.getLogger("station_history")
 
 router = APIRouter()
@@ -24,7 +24,36 @@ router = APIRouter()
 
 # db_dependency = Annotated[Session, Depends(get_db)]
 
+def round_datetime(dt: datetime) -> datetime:
+    """
+    Rounds a datetime string to the nearest second based on milliseconds.
+    If milliseconds are < 50, it rounds down; otherwise, it rounds up.
 
+    Args:
+    - date_str (str): The datetime string in ISO format, e.g., "2023-08-06T07:45:29.525000Z"
+    
+    Returns:
+    - datetime: The rounded datetime object.
+    """
+    # Convert the string to a datetime object
+    # dt = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+    
+    # Check the milliseconds and round accordingly
+    if dt.microsecond // 1000 >= 50:
+        # Round up (add 1 second)
+        dt_rounded = (dt + timedelta(seconds=1)).replace(microsecond=0)
+    else:
+        # Round down (remove microseconds)
+        dt_rounded = dt.replace(microsecond=0)
+    
+    return dt_rounded
+
+# # Example Usage
+# date_str = "2023-08-06T07:45:29.525000Z"
+# rounded_dt = round_datetime(date_str)
+
+# print("Original datetime:", date_str)
+# print("Rounded datetime:", rounded_dt)
 
 
 def encode_complex_pairs(obj):
@@ -67,6 +96,9 @@ async def getstationhistory(db: db_dependency, stasiun_code:str):
 
 
 
+
+
+
 @router.put("/stasiun_history/{stasiun_code}", status_code=status.HTTP_204_NO_CONTENT)
 async def updatestationhistory( db: db_dependency,
                       stasiun_code: str):
@@ -89,8 +121,11 @@ async def updatestationhistory( db: db_dependency,
 
     log.info("history_data: {}".format(history_data))
     
+    
     for ind, i in enumerate(history_data):
-        exist_history:StasiunHistory|None = db.query(StasiunHistory).filter(StasiunHistory.sensor_name == i[2], StasiunHistory.digitizer_name == i[3], StasiunHistory.start_date == i[6], StasiunHistory.channel==i[1]).first()
+        date_formated = round_datetime(i[6])
+        # str_date_formated =  date_formated.strftime("%Y-%m-%dT%H:%M:%S") + "Z"
+        exist_history:StasiunHistory|None = db.query(StasiunHistory).filter(StasiunHistory.sensor_name == i[2], StasiunHistory.digitizer_name == i[3], StasiunHistory.start_date == date_formated, StasiunHistory.channel==i[1]).first()
         dumps13 = json.dumps(i[13], default=encode_complex_pairs, ensure_ascii=False)
         # loads13 = json.loads(dumps13, object_hook=decode_complex_pairs)
         loads13 = json.loads(dumps13)
