@@ -117,7 +117,8 @@ async def updatestationhistory( db: db_dependency,
             
             db.add(new_hist)
             db.flush()
-            # db.commit()
+            db.commit()
+            log.info("new station history inserted")
         # elif exist_history.end_date != i[7]:
         else:
             exist_history.stasiun_id = stasiun.stasiun_id
@@ -138,21 +139,21 @@ async def updatestationhistory( db: db_dependency,
             
             db.add(exist_history)
             db.flush()
-            # db.commit()
+            db.commit()
+            log.info("station history updated")
         # else:
         #     continue
         
     # Step 4: Commit all changes at the end
-    try:
-        db.commit()
-        log.info("Station history updated successfully.")
-    except Exception as e:
-        db.rollback()  # Rollback in case of failure
-        log.error(f"Failed to commit changes: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+    # try:
+    #     db.commit()
+    #     log.info("Station history updated successfully.")
+    # except Exception as e:
+    #     db.rollback()  # Rollback in case of failure
+    #     log.error(f"Failed to commit changes: {e}")
+    #     raise HTTPException(status_code=500, detail="Internal server error")
     # db.commit()
     
-    # log.info("station history updated")
 
 
 
