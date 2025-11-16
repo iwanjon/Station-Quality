@@ -74,9 +74,14 @@ async def updatestationhistory( db: db_dependency,
     #     raise HTTPException(status_code=401, detail='Authentication Failed')
     stasiun:Stasiun|None = db.query(Stasiun).filter(Stasiun.kode_stasiun == stasiun_code).first()
     
-    
     if not stasiun :
         raise HTTPException(status_code=404, detail='Stasiun not found.')
+    
+    if stasiun_code != "AAFM":
+        stasiun2:Stasiun|None = db.query(Stasiun).filter(Stasiun.kode_stasiun == "AAFM").first()
+    if not stasiun2 :
+        log.info("AAFM IS DISSAPIER")
+        log.info(stasiun.kode_stasiun)
     
     log.info("station_data: {}".format(stasiun.__dict__))
     
@@ -111,7 +116,8 @@ async def updatestationhistory( db: db_dependency,
             new_hist.response_path = i[14]
             
             db.add(new_hist)
-            db.commit()
+            db.flush()
+            # db.commit()
         # elif exist_history.end_date != i[7]:
         else:
             exist_history.stasiun_id = stasiun.stasiun_id
@@ -131,14 +137,22 @@ async def updatestationhistory( db: db_dependency,
             exist_history.response_path = i[14]
             
             db.add(exist_history)
-            db.commit()
+            db.flush()
+            # db.commit()
         # else:
         #     continue
         
-
+    # Step 4: Commit all changes at the end
+    try:
+        db.commit()
+        log.info("Station history updated successfully.")
+    except Exception as e:
+        db.rollback()  # Rollback in case of failure
+        log.error(f"Failed to commit changes: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
     # db.commit()
     
-    log.info("station history updated")
+    # log.info("station history updated")
 
 
 
