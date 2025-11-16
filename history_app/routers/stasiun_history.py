@@ -79,9 +79,9 @@ async def updatestationhistory( db: db_dependency,
     
     if stasiun_code != "AAFM":
         stasiun2:Stasiun|None = db.query(Stasiun).filter(Stasiun.kode_stasiun == "AAFM").first()
-    if not stasiun2 :
-        log.info("AAFM IS DISSAPIER")
-        log.info(stasiun.kode_stasiun)
+        if not stasiun2 :
+            log.info("AAFM IS DISSAPIER")
+            log.info(stasiun.kode_stasiun)
     
     log.info("station_data: {}".format(stasiun.__dict__))
     
