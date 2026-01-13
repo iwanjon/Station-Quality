@@ -572,14 +572,14 @@ const Dashboard = () => {
       <h1 className="text-left text-2xl font-bold mt-0 mb-2 ml-1">Dashboard</h1>
       <div className="flex flex-col lg:flex-row gap-3">
         {/* BAGIAN KIRI: PETA */}
-        <div className="lg:w-2/3 w-full">
-          <div className="bg-white rounded-lg shadow p-1 h-[395px]">
+        <div className="lg:w-3/4 w-full">
+          <div className="bg-white rounded-lg shadow p-1 h-[450px] ">
             <div className="relative w-full h-full px-2 pb-2 pt-1">
               <MapContainer
-                center={[-2.5, 118]}
+                center={[-2.5, 117]}
                 zoom={5}
                 className="w-full h-full rounded-md"
-                style={{ minHeight: 375, maxHeight: 393, margin: "0.06rem" }}
+                style={{ minHeight: 400, maxHeight: 440, margin: "0.06rem" }}
               >
                 <TileLayer attribution='&copy; <a href="https://osm.org/copyright">OSM</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 {slmondatamap.map((s, idx) => (
@@ -613,7 +613,7 @@ const Dashboard = () => {
         </div>
 
         {/* BAGIAN KANAN: STATUS & STACKED BAR */}
-        <div className="lg:w-1/3 w-full flex flex-col gap-2">
+        <div className="lg:w-1/4 w-full flex flex-col gap-2">
           {/* Status Cards */}
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-white rounded p-2 text-center border border-gray-300 shadow">

@@ -409,7 +409,7 @@ const StationQuality = () => {
         <CardContainer className="mb-4 p-3">
           <div className="flex flex-col lg:flex-row gap-3">
             {/* Kolom Grafik Donat */}
-            <div className="lg:w-1/3 w-full h-[320px] flex flex-col items-center justify-center p-2">
+            <div className="lg:w-1/4 w-full h-[405px] flex flex-col items-center justify-center p-2">
               <h2 className="text-lg font-bold mb-2">Ringkasan Status Stasiun</h2>
               <div className="w-full h-full max-w-xs">
                 <QualityDonutChart data={dataStasiunLengkap} />
@@ -417,8 +417,8 @@ const StationQuality = () => {
             </div>
 
             {/* Kolom Peta */}
-            <div className="lg:w-2/3 w-full h-[320px] relative">
-              <MapContainer center={[-2.5, 118]} zoom={5} className="w-full h-full rounded-lg">
+            <div className="lg:w-3/4 w-full h-[405px] relative">
+              <MapContainer center={[-2.2, 117]} zoom={5} className="w-full h-full rounded-lg">
                 <TileLayer
                   attribution='&copy; <a href="https://osm.org/copyright">OSM</a>'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
