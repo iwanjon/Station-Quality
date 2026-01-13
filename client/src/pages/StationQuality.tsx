@@ -38,6 +38,11 @@ export interface StasiunDenganSummary extends StationMetadata {
   quality_percentage: number | null;
 }
 
+export interface StasiunDenganSummaryextends extends StasiunDenganSummary {
+  quality_percentage: number | null;
+    site_quality: string | null;
+}
+
 export interface StationMetadata {
   stasiun_id: number;
   net: string;
@@ -319,13 +324,37 @@ const StationQuality = () => {
       }));
   }, [filteredData]);
 
+    // 1. Convert the Record to an array of [key, value] pairs
+  const siteQualityMapArray = Object.entries(siteQualityMap);
+  let filteredSiteQualityMapArray 
+
+
+
   const handleDownloadCSV = () => {
-    const dataToDownload = filteredData.map(item => ({
-      ...item,
-      // summary_kualitas: getStatusText(item.result, item.quality_percentage),
-      summary_kualitas: item.result,
-      persentase_kualitas: item.quality_percentage !== null ? `${item.quality_percentage.toFixed(1)}%` : 'N/A',
-    }));
+    // console.log(siteQualityMapArray)
+    // console.log("ekokop")
+    const dataToDownload = filteredData.map(item => {
+          // 2. Filter the entries
+        filteredSiteQualityMapArray = siteQualityMapArray.filter(([key]) => {
+          // Keep entries where the value is NOT 'admin'
+          return  key == item.kode_stasiun ;
+        });
+        // console.log(filteredSiteQualityMapArray[0]);
+        let sq;
+        if (filteredSiteQualityMapArray[0]){
+           sq = filteredSiteQualityMapArray[0][1];
+        } else {
+            sq = "-";
+        }
+        return ({
+        ...item,
+        // summary_kualitas: getStatusText(item.result, item.quality_percentage),
+        summary_kualitas: item.result,
+        persentase_kualitas: item.quality_percentage !== null ? `${item.quality_percentage.toFixed(1)}%` : 'N/A',
+        site_quality : sq
+      })  
+    });
+    
     if (dataToDownload.length === 0) return;
 
     const headers = Object.keys(dataToDownload[0]).join(",");
