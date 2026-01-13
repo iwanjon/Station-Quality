@@ -168,6 +168,15 @@ class LatencyHistory(Base):
 
 
 
+    
+class MetadataXMLPath(Base):
+    __tablename__ = 'metadata_XML_path'
+
+    id = Column(Integer, primary_key=True, index=True)
+    path = Column(Text, nullable=False)
+    updated_at = Column(DateTime)
+
+
 
 # "sta",
 #     'Channel', 

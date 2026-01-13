@@ -39,6 +39,10 @@ async function createDatabase() {
 }
 
 async function runMigrations(reset = false) {
+
+  console.log(reset);
+  console.log("et");
+
   const connection = await mysql.createConnection({
     ...dbConfig,
     database: process.env.MYSQL_NAME || 'station_quality_control'
@@ -65,8 +69,12 @@ async function runMigrations(reset = false) {
 
       await connection.execute('SET FOREIGN_KEY_CHECKS = 0');
       
+      console.log(tables);
+      
       for (const table of tables) {
-        await connection.execute(`DROP TABLE IF EXISTS \`${table.table_name}\``);
+        console.log(table.TABLE_NAME);
+        await connection.execute(`DROP TABLE IF EXISTS \`${table.TABLE_NAME}\``);
+        // await connection.execute(`DROP TABLE IF EXISTS \`${table.table_name}\``);
       }
       
       await connection.execute('SET FOREIGN_KEY_CHECKS = 1');
@@ -88,7 +96,42 @@ async function runMigrations(reset = false) {
         [filename]
       );
 
-      if (existing.length === 0 || reset) {
+      if (!reset){
+
+                
+        console.log(`📝 Running migration without reset: ${filename}`);
+        
+        const filePath = path.join(migrationsPath, filename);
+        const sql = await fs.readFile(filePath, 'utf8');
+        
+        const statements = sql
+          .split(';')
+          .map(stmt => stmt.trim())
+          .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+
+        for (const statement of statements) {
+          try {
+              await connection.execute(statement);
+          } catch (error){
+            console.error('❌ Migration error without reset:', error.message);
+          }
+        }
+
+        try {
+          await connection.execute(
+            'INSERT INTO migrations (filename) VALUES (?)',
+            [filename]
+          );
+           
+        }
+        catch (error){
+            console.error('❌ error insert to migration table without reset:', error.message);
+        }
+
+        console.log(`✅ Migration completed: ${filename}`);
+
+      }
+      else if (existing.length === 0 || reset) {
         console.log(`📝 Running migration: ${filename}`);
         
         const filePath = path.join(migrationsPath, filename);
@@ -109,7 +152,7 @@ async function runMigrations(reset = false) {
         );
 
         console.log(`✅ Migration completed: ${filename}`);
-      }
+      } 
     }
 
   } catch (error) {
@@ -156,6 +199,7 @@ async function main() {
     const shouldMigrate = process.env.DB_MIGRATE === 'true';
     const reset = process.argv.includes('--reset');
     const status = process.argv.includes('--status');
+    const recreate_db = process.argv.includes('--recreate-db');
 
     if (status) {
       await showMigrationStatus();
@@ -168,7 +212,9 @@ async function main() {
     }
 
     console.log('🚀 Starting database migration...');
-    await createDatabase();
+    if (recreate_db){
+      await createDatabase();
+    }
     await runMigrations(reset);
     console.log('✅ Migration completed successfully!');
     

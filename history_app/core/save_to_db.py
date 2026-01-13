@@ -387,9 +387,6 @@ def get_station_history(
     save_response = None
 
 ):
-
-
-
     inv = download_inventory_from_api(station_code)
     if inv is None:
         raise HTTPException(status_code=400, detail='stasiun inventory not found.')
@@ -397,10 +394,30 @@ def get_station_history(
     station_list = instrument_meta(inv, station_code, save_response=save_response)
 
     # print(station_list)
-
-    
     return station_list
     # print(f"📄 Hasil disimpan ke {output_excel}")
+
+def get_station_location(
+    station_code: str,
+
+):
+    inv = download_inventory_from_api(station_code)
+    if inv is None:
+        raise HTTPException(status_code=400, detail='stasiun inventory not found.')
+
+    # from pdb import set_trace as sstt
+    # sstt()
+    
+    station_location = []
+    station_latitude = inv[0][0].latitude or 0
+    station_longitude = inv[0][0].longitude or 0
+    station_elevation = inv[0][0].elevation or 0
+    
+    station_location.append(station_latitude)
+    station_location.append(station_longitude)
+    station_location.append(station_elevation)
+    
+    return station_location
 
 
 def get_polesZerosResponseStage(inv, tr):
@@ -637,30 +654,47 @@ def create_xlsx(data_list:List):
     df.to_excel('all'+str(int(timestamp_float))+".xlsx", index=False) # index=False prevents writing the DataFrame index to Excel
 
 def get_digitizer_type(dict_data_logger):
-    datalogger_type =""
+    # datalogger_type =""
 
-    if not dict_data_logger.get("manufacturer") and not dict_data_logger.get("type"):
-        datalogger_type = ""
-    elif not dict_data_logger.get("manufacturer"):
-        datalogger_type = str(dict_data_logger.get("type"))
-    elif not dict_data_logger.get("type"):
-        datalogger_type = str(dict_data_logger.get("manufacturer")) 
-    else:
-        datalogger_type = str(dict_data_logger.get("manufacturer")) +"_"+ str(dict_data_logger.get("type"))
+    # if not dict_data_logger.get("manufacturer") and not dict_data_logger.get("type"):
+    #     datalogger_type = "NRL/Quanterra/Q330Splus.1.40.below100"
+    # elif not dict_data_logger.get("manufacturer"):
+    #     datalogger_type = str(dict_data_logger.get("type"))
+    # elif not dict_data_logger.get("type"):
+    #     datalogger_type = str(dict_data_logger.get("manufacturer")) 
+    # else:
+    #     datalogger_type = str(dict_data_logger.get("manufacturer")) +"_"+ str(dict_data_logger.get("type"))
     
+
+    datalogger_type = get_priority_value(dict_data_logger, priority_keys)
+    # from pdb import set_trace as sstt
+    # sstt()
     return datalogger_type
 
 def get_sensor_type(dict_sensor):
-        sensor_type = ""
-        if not dict_sensor.get("model") and not dict_sensor.get("type"):
-            sensor_type = ""
-        elif not dict_sensor.get("model"):
-            sensor_type = str(dict_sensor.get("type"))
-        elif not dict_sensor.get("type"):
-            sensor_type = str(dict_sensor.get("model")) 
-        else:
-            sensor_type = str(dict_sensor.get("model")) +"_"+ str(dict_sensor.get("type"))
+        # sensor_type = ""
+        # if not dict_sensor.get("model") and not dict_sensor.get("type"):
+        #     sensor_type = ""
+        # elif not dict_sensor.get("model"):
+        #     sensor_type = str(dict_sensor.get("type"))
+        # elif not dict_sensor.get("type"):
+        #     sensor_type = str(dict_sensor.get("model")) 
+        # else:
+        #     sensor_type = str(dict_sensor.get("model")) +"_"+ str(dict_sensor.get("type"))
+
+        sensor_type = get_priority_value(dict_sensor, priority_keys)
+        # from pdb import set_trace as sstt
+        # sstt()
         return sensor_type
+
+priority_keys = ["manufacturer", "vendor", "type", "resource_id"]
+
+def get_priority_value(data, keys):
+    for key in keys:
+        value = data.get(key)
+        if value not in (None, "", []):
+            return value
+    return ""
 
 # def get_data_save_to_db(inv, tr):
 #     channel = tr.stats.channel

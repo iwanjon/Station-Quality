@@ -148,6 +148,7 @@ router.get("/data/detail/:stationId/:date", async (req, res) => {
 router.get("/summary/:date", async (req, res) => {
   const { date } = req.params;
   const cacheKey = `qc-summary:${date}`;
+  // console.log(cacheKey)
 
   try {
     const data = await cached(cacheKey, 60 * 60, () =>

@@ -155,3 +155,9 @@ ehthumbs.db
 **/public/**/*.jpg
 **/public/**/*.jpeg
 **/public/**/*.png
+**/test/**/*.png
+**/test/**/*.jpg
+**/test/**/*.jpeg
+
+.env*
+**/ignore/**

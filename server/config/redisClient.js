@@ -28,7 +28,7 @@ const createRedisClient = () => {
   });
 
   redisClient.on("error", (err) => {
-    console.warn("⚠️ Redis Client Error:", err.message);
+    // console.warn("⚠️ Redis Client Error:", err.message);
     isConnected = false;
     // Start periodic reconnection if not already running
     if (!reconnectInterval) {

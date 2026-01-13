@@ -301,6 +301,7 @@ export const getStationAvailabilityByCode = async (req, res) => {
       
       start_date = startDate.toISOString().split('T')[0];
       end_date = today.toISOString().split('T')[0]; // Hari ini
+      console.log(start_date. end_date)
     }
 
     // Generate cache key berdasarkan station code dan date range

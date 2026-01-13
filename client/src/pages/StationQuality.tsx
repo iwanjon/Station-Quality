@@ -219,6 +219,8 @@ const StationQuality = () => {
   const fetchQCSummary = async () => {
     try {
       const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
+      console.log(yesterday)
+      console.log("dfdfdf")
       const response = await axiosServer.get(`/api/qc/summary/${yesterday}`);
       setQcSummaryData(response.data);
     } catch (error) {

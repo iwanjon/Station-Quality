@@ -3,12 +3,16 @@ from pydantic import BaseModel, Field
 # from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends, HTTPException, Path
 from starlette import status
-from models.models import StasiunHistory, Stasiun
+from helpers.helper import clear_static_images_only
+from models.models import MetadataXMLPath, StasiunHistory, Stasiun
 from databases.database import db_dependency
 from core.save_to_db import get_station_history
 import json
 import logging
 from datetime import datetime, timedelta
+from config import settings
+
+
 log = logging.getLogger("station_history")
 
 router = APIRouter()
@@ -109,11 +113,31 @@ async def updatestationhistory( db: db_dependency,
     if not stasiun :
         raise HTTPException(status_code=404, detail='Stasiun not found.')
     
-    if stasiun_code != "AAFM":
-        stasiun2:Stasiun|None = db.query(Stasiun).filter(Stasiun.kode_stasiun == "AAFM").first()
-        if not stasiun2 :
-            log.info("AAFM IS DISSAPIER")
-            log.info(stasiun.kode_stasiun)
+    # if stasiun_code != "AAFM":
+    #     stasiun2:Stasiun|None = db.query(Stasiun).filter(Stasiun.kode_stasiun == "AAFM").first()
+    #     if not stasiun2 :
+    #         log.info("AAFM IS DISSAPIER")
+    #         log.info(stasiun.kode_stasiun)
+    xml_url = settings.INV_URL
+    xml_path:MetadataXMLPath|None = db.query(MetadataXMLPath).filter(MetadataXMLPath.path == xml_url).first()
+
+    # renew data when xml path is updated in .env
+    if not xml_path:
+        delete_count = db.query(MetadataXMLPath).delete()
+        log.info("========= deleted MetadataXMLPath row {} ========".format(delete_count))
+        new_xml_path = MetadataXMLPath()
+        new_xml_path.path = xml_url
+        new_xml_path.updated_at = datetime.now()
+        
+        db.add(new_xml_path)
+        db.flush()
+        db.commit()
+        
+        delete_count = db.query(StasiunHistory).delete()
+        log.info("========= deleted StasiunHistory row {} ========".format(delete_count))
+        
+        deleted_static_images = clear_static_images_only()
+        log.info("========= deleted deleted_static_images {} ========".format(deleted_static_images))
     
     log.info("station_data: {}".format(stasiun.__dict__))
     

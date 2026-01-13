@@ -9,6 +9,10 @@ async function setupDatabase() {
   const migrateOnly = process.argv.includes('--migrate-only');
   const seedOnly = process.argv.includes('--seed-only');
 
+  console.log(reset);
+  console.log("reset");
+  console.log(migrateOnly);
+
   try {
     console.log('🚀 Starting database setup...\n');
 
@@ -38,4 +42,14 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   setupDatabase();
 }
 
+
+// Check if script is run directly
+import { fileURLToPath } from 'url';
+const scriptPath = fileURLToPath(import.meta.url);
+const isMainModule = process.argv[1] === scriptPath || 
+                    process.argv[1].replace(/\\/g, '/') === scriptPath.replace(/\\/g, '/');
+
+if (isMainModule) {
+  setupDatabase();
+}
 export { setupDatabase };

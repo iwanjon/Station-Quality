@@ -15,6 +15,7 @@
     "db:setup": "npm run migrate && npm run seed",
     "db:reset": "npm run migrate:reset && npm run seed:force",
     "db:fresh": "npm run db:reset",
+    "dbt": "node scripts/db-setup.js --migrate-only=false",
     "debug": "nodemon --inspect server.js"
   },
   "keywords": [],

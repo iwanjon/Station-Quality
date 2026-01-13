@@ -280,6 +280,19 @@ const StationDaily = () => {
               </div>
             </div>
 
+            {/* {!loadingSiteQuality && siteQualityData && (
+              <div className={
+                `min-w-[90px] rounded px-3 py-2 text-sm font-semibold flex items-center justify-center ` +
+                (siteQualityData.site_quality === 'Very Good' || siteQualityData.site_quality === 'Good'
+                  ? 'bg-green-100 text-green-800'
+                  : siteQualityData.site_quality === 'Fair'
+                    ? 'bg-yellow-100 text-yellow-800'
+                    : 'bg-red-100 text-red-800')
+              }>
+                {siteQualityData.site_quality}
+              </div>
+            )} */}
+
             {!loadingSiteQuality && siteQualityData && (
               <div className={
                 `min-w-[90px] rounded px-3 py-2 text-sm font-semibold flex items-center justify-center ` +
