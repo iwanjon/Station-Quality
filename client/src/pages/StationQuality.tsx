@@ -314,6 +314,16 @@ const StationQuality = () => {
     return dataSource;
   }, [dataStasiunLengkap, filters, globalFilter]);
 
+  // 
+  const dataWithSiteQuality = useMemo(() => {
+    return filteredData.map(row => ({
+      ...row,
+      site_quality: siteQualityMap[row.kode_stasiun] ?? "-",
+    }));
+  }, [filteredData, siteQualityMap]);
+
+  // 
+
   const stationPositions = useMemo(() => {
     return filteredData
       .filter((s) => s.lintang && s.bujur)
@@ -383,9 +393,11 @@ const StationQuality = () => {
     { accessorKey: "prioritas", header: "Prioritas" },
     { accessorKey: "upt_penanggung_jawab", header: "UPT" },
     {
+      accessorFn: row => row.result,
       id: "summary",
       header: "Summary Kualitas",
       cell: ({ row }) => {
+        
         // Konversi result Indonesia ke label Inggris untuk StatusBadge
         const { result } = row.original;
         let label = "-";
@@ -400,18 +412,50 @@ const StationQuality = () => {
         );
       },
     },
+    // {
+    //   id: "site_quality",
+    //   header: "Site Quality",
+    //   cell: ({ row }) => {
+    //     const code = row.original.kode_stasiun;
+    //     const siteQuality = siteQualityMap[code] || "-";
+    //     // console.log(row)
+    //     return (
+    //         <span className="block w-full py-1 rounded-sm text-[11px] font-bold text-center bg-blue-50 text-blue-800">
+    //         {siteQuality}
+    //       </span>
+    //     );
+    //   },
+    // },
+    // {
+    //   id: "site_quality",
+    //   header: "Site Quality",
+    //   accessorFn: (row) => {
+    //     const code = row.kode_stasiun;
+    //     // console.log(siteQualityMap[code])
+    //     return siteQualityMap[code] || "-";
+    //   },
+    //   cell: ({ getValue }) => {
+    //     const siteQuality = getValue<string>();
+    //   // cell: (row) => {
+    //   //   console.log(row)
+    //   //   const siteQuality = row.getValue<string>();
+
+    //     return (
+    //       <span className="block w-full py-1 rounded-sm text-[11px] font-bold text-center bg-blue-50 text-blue-800">
+    //         {siteQuality}
+    //       </span>
+    //     );
+    //   },
+    // },
     {
+      accessorKey: "site_quality",
       id: "site_quality",
       header: "Site Quality",
-      cell: ({ row }) => {
-        const code = row.original.kode_stasiun;
-        const siteQuality = siteQualityMap[code] || "-";
-        return (
-            <span className="block w-full py-1 rounded-sm text-[11px] font-bold text-center bg-blue-50 text-blue-800">
-            {siteQuality}
-          </span>
-        );
-      },
+      cell: ({ getValue }) => (
+        <span className="block w-full py-1 rounded-sm text-[11px] font-bold text-center bg-blue-50 text-blue-800">
+          {getValue<string>()}
+        </span>
+      ),
     },
     {
       id: "detail",
@@ -493,7 +537,7 @@ const StationQuality = () => {
           {!loading && (
             <DataTable
               columns={columns}
-              data={filteredData}
+              data={dataWithSiteQuality}
               globalFilter={globalFilter}
               setGlobalFilter={setGlobalFilter}
             />
