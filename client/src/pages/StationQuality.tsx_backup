@@ -3,17 +3,18 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
 import MainLayout from "../layouts/MainLayout.tsx";
 import DataTable from "../components/DataTable.tsx";
-import TableFilters from "../components/TableFilters";
-import type { FilterConfig } from "../components/TableFilters";
+import TableFilters from "../components/TableFilters.tsx";
+import type { FilterConfig } from "../components/TableFilters.tsx";
 import type { ColumnDef } from "@tanstack/react-table";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import CardContainer from "../components/Card.tsx";
-import { Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import axiosServer from "../utilities/AxiosServer.tsx";
-import StatusBadge from "../components/StatusBadge";
+import StatusBadge from "../components/StatusBadge.tsx";
 import dayjs from "dayjs";
+
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -26,16 +27,20 @@ const STATUS_CONFIG: { [key: string]: { label: string; color: string; textColor:
   "default": { label: "N/A", color: "#9ca3af", textColor: "text-white" },
 };
 
+// Interface data QC Summary
 interface QCSummary {
   code: string;
   quality_percentage: number | null;
   result: string;
 }
 
-export interface StationDataComplete extends StationMetadata {
+export interface StasiunDenganSummary extends StationMetadata {
   quality_percentage: number | null;
-  site_quality: string;
-  result: string;
+}
+
+export interface StasiunDenganSummaryextends extends StasiunDenganSummary {
+  quality_percentage: number | null;
+    site_quality: string | null;
 }
 
 export interface StationMetadata {
@@ -62,19 +67,22 @@ export interface StationMetadata {
   result: string | null;
 }
 
+// Fungsi ikon segitiga 
 const triangleIcon = (color: string) =>
   L.divIcon({
     className: "",
     html: `
       <div style="
-        width: 0; height: 0; 
+        width: 0; 
+        height: 0; 
         border-left: 6px solid transparent; 
         border-right: 6px solid transparent; 
         border-bottom: 12px solid ${color};
         position: relative;
       ">
         <div style="
-          position: absolute; left: -7px; top: -1px;
+          position: absolute;
+          left: -7px; top: -1px;
           width: 0; height: 0;
           border-left: 7px solid transparent;
           border-right: 7px solid transparent;
@@ -87,6 +95,7 @@ const triangleIcon = (color: string) =>
     iconAnchor: [7, 14],
   });
 
+// [DIUBAH] Fungsi pewarnaan sekarang menggunakan STATUS_CONFIG
 const getColorByResult = (result: string | null): string => {
   return STATUS_CONFIG[result || "default"]?.color || STATUS_CONFIG.default.color;
 };
@@ -96,7 +105,7 @@ const MapLegend = () => {
     { label: "Good", color: STATUS_CONFIG["Baik"].color },
     { label: "Fair", color: STATUS_CONFIG["Cukup Baik"].color },
     { label: "Poor", color: STATUS_CONFIG["Buruk"].color },
-    { label: "No Data", color: STATUS_CONFIG["Mati"].color },
+    { label: "No Data", color: STATUS_CONFIG["Mati"].color }, // Gabungkan
   ];
 
   return (
@@ -122,11 +131,8 @@ const MapLegend = () => {
   );
 };
 
-// [FIXED COMPONENT] 
-// 1. Added useMemo for 'dataForChart' to stabilize the object reference.
-// 2. Added useMemo for 'options'.
-// 3. Added a safety check for empty data to prevent initial render crashes.
-const QualityDonutChart = ({ data }: { data: StationDataComplete[] }) => {
+// Komponen untuk Grafik Donat
+const QualityDonutChart = ({ data }: { data: StasiunDenganSummary[] }) => {
   const chartData = useMemo(() => {
     const categories: { [key: string]: { count: number; color: string } } = {
       "GOOD": { count: 0, color: STATUS_CONFIG["Baik"].color },
@@ -135,15 +141,23 @@ const QualityDonutChart = ({ data }: { data: StationDataComplete[] }) => {
       "NO DATA": { count: 0, color: STATUS_CONFIG["No Data"].color },
     };
 
-    if (!data) return [];
+    // Debug/insight: hitung semua nilai result mentah untuk verifikasi
+    const rawCounts: Record<string, number> = {};
+    let ignoredNonMapped = 0;
 
     data.forEach(station => {
-      const r = station.result;
+      const r = station.result ?? "null";
+      rawCounts[r] = (rawCounts[r] || 0) + 1;
+
       if (r === "Baik") categories["GOOD"].count++;
       else if (r === "Cukup Baik") categories["FAIR"].count++;
       else if (r === "Buruk") categories["POOR"].count++;
-      else if (r === "Mati" || r === "No Data") categories["NO DATA"].count++;
+      else if (r === "Mati") categories["NO DATA"].count++; 
+      else ignoredNonMapped++; 
     });
+
+    // Tampilkan ringkasan singkat di console untuk debugging (bisa dihapus nanti)
+    console.debug("QualityDonutChart - raw result breakdown:", rawCounts, "ignoredNonMapped:", ignoredNonMapped);
 
     return Object.entries(categories).map(([label, { count, color }]) => ({
       label: `${label} (${count})`,
@@ -152,7 +166,7 @@ const QualityDonutChart = ({ data }: { data: StationDataComplete[] }) => {
     }));
   }, [data]);
 
-  const dataForChart = useMemo(() => ({
+  const dataForChart = {
     labels: chartData.map(d => d.label),
     datasets: [
       {
@@ -163,24 +177,27 @@ const QualityDonutChart = ({ data }: { data: StationDataComplete[] }) => {
         borderWidth: 2,
       },
     ],
-  }), [chartData]);
+  };
 
-  const options = useMemo(() => ({
+
+  const options = {
     responsive: true,
     maintainAspectRatio: false,
     cutout: '70%',
     plugins: {
-      legend: { position: 'bottom' as const, labels: { boxWidth: 15, padding: 15 } },
+      legend: {
+        position: 'bottom' as const,
+        labels: {
+          boxWidth: 15,
+          padding: 15,
+        },
+      },
     },
-  }), []);
-
-  // [Safety Guard] If data is loading or empty, prevent Chart.js from exploding
-  if (!data || data.length === 0) {
-    return <div className="flex items-center justify-center h-full text-gray-400 text-sm">Loading Chart...</div>;
-  }
+  };
 
   return <Doughnut data={dataForChart} options={options} />;
 };
+
 
 const StationQuality = () => {
   const [stationData, setStationData] = useState<StationMetadata[]>([]);
@@ -190,6 +207,7 @@ const StationQuality = () => {
   const [filters, setFilters] = useState<Record<string, any>>({});
   const [filterConfig, setFilterConfig] = useState<Record<string, FilterConfig>>({});
   const [globalFilter, setGlobalFilter] = useState<string>("");
+  const navigate = useNavigate();
 
   const fetchStationMetadata = async () => {
     try {
@@ -206,6 +224,8 @@ const StationQuality = () => {
   const fetchQCSummary = async () => {
     try {
       const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
+      console.log(yesterday)
+      console.log("dfdfdf")
       const response = await axiosServer.get(`/api/qc/summary/${yesterday}`);
       setQcSummaryData(response.data);
     } catch (error) {
@@ -213,18 +233,15 @@ const StationQuality = () => {
     }
   };
 
+  // Ambil site_quality untuk semua stasiun
   const fetchAllSiteQuality = async (stationCodes: string[]) => {
     const map: Record<string, string> = {};
-    if (stationCodes.length === 0) return;
-    
     await Promise.all(
       stationCodes.map(async (code) => {
         try {
           const res = await axiosServer.get(`/api/qc/site/detail/${code}`);
           if (res.data && res.data[0] && res.data[0].site_quality) {
             map[code] = res.data[0].site_quality;
-          } else {
-             map[code] = "-";
           }
         } catch {
           map[code] = "-";
@@ -236,7 +253,9 @@ const StationQuality = () => {
 
   useEffect(() => {
     const savedFilters = localStorage.getItem('stationQualityFilters');
-    if (savedFilters) setFilters(JSON.parse(savedFilters));
+    if (savedFilters) {
+      setFilters(JSON.parse(savedFilters));
+    }
     fetchStationMetadata();
     fetchQCSummary();
   }, []);
@@ -245,60 +264,53 @@ const StationQuality = () => {
     if (stationData.length > 0) {
       const codes = stationData.map(s => s.kode_stasiun);
       fetchAllSiteQuality(codes);
-    }
-  }, [stationData]);
+      // console.log(dataWithSiteQuality)
 
-  // --- CORE DATA MERGING ---
-  const allMergedData = useMemo<StationDataComplete[]>(() => {
-    if (stationData.length === 0) return [];
-    
-    const summaryMap = new Map(qcSummaryData.map(item => [item.code, item]));
-
-    return stationData.map(station => {
-      const summary = summaryMap.get(station.kode_stasiun);
-      const siteQ = siteQualityMap[station.kode_stasiun] ?? "-";
-      
-      return {
-        ...station,
-        quality_percentage: summary ? summary.quality_percentage : null,
-        result: summary ? summary.result : (station.result || "No Data"), 
-        site_quality: siteQ,
+      const getUniqueOptions = (key: keyof StationMetadata): string[] => {
+        const allValues = stationData.map(item => item[key]);
+  
+        return [...new Set(allValues)].filter(Boolean).sort() as string[];
       };
-    });
-  }, [stationData, qcSummaryData, siteQualityMap]);
-
-  // --- FILTER CONFIG ---
-  useEffect(() => {
-    if (allMergedData.length > 0) {
-      const getUniqueOptions = (key: keyof StationDataComplete): string[] => {
-        const allValues = allMergedData.map(item => String(item[key] || ""));
-        return [...new Set(allValues)].filter(v => v !== "" && v !== "null").sort();
-      };
+      // const getUniqueOptions2 = (key: keyof StasiunDenganSummaryextends): string[] => {
+      //   const allValues = dataWithSiteQuality.map(item => item[key]);
+  
+      //   return [...new Set(allValues)].filter(Boolean).sort() as string[];
+      // };
 
       const dynamicFilterConfig: Record<string, FilterConfig> = {
         prioritas: { label: "Prioritas", type: "multi", options: getUniqueOptions("prioritas") },
         upt_penanggung_jawab: { label: "UPT", type: "multi", options: getUniqueOptions("upt_penanggung_jawab") },
         jaringan: { label: "Jaringan", type: "multi", options: getUniqueOptions("jaringan") },
         provinsi: { label: "Provinsi", type: "multi", options: getUniqueOptions("provinsi") },
-        result: { label: "Summary", type: "multi", options: getUniqueOptions("result") }, 
-        site_quality: { label: "Site Quality", type: "multi", options: getUniqueOptions("site_quality") },
+        // summary: { label: "Summary", type: "multi", options: getUniqueOptions("prioritas") },
+        // site: { label: "Site", type: "multi", options: getUniqueOptions("prioritas") },
       };
-      
       setFilterConfig(dynamicFilterConfig);
     }
-  }, [allMergedData]); 
+  }, [stationData, filters]);
 
-  // --- FILTERING ---
+  const dataStasiunLengkap = useMemo<StasiunDenganSummary[]>(() => {
+    if (stationData.length === 0) return [];
+    const summaryMap = new Map(qcSummaryData.map(item => [item.code, item]));
+    return stationData.map(station => {
+      const summary = summaryMap.get(station.kode_stasiun);
+      return {
+        ...station,
+        quality_percentage: summary ? summary.quality_percentage : null,
+        result: summary ? summary.result : station.result,
+      };
+    });
+  }, [stationData, qcSummaryData]);
+
   const filteredData = useMemo(() => {
     const activeFilterKeys = Object.keys(filters).filter(key => filters[key] && filters[key].length > 0);
-    let dataSource = allMergedData;
+    let dataSource = dataStasiunLengkap;
 
     if (activeFilterKeys.length > 0) {
       dataSource = dataSource.filter(station =>
-        activeFilterKeys.every(key => {
-           const val = String(station[key as keyof StationDataComplete]); 
-           return filters[key].includes(val);
-        })
+        activeFilterKeys.every(key =>
+          filters[key].includes(station[key as keyof StationMetadata])
+        )
       );
     }
 
@@ -309,7 +321,17 @@ const StationQuality = () => {
       );
     }
     return dataSource;
-  }, [allMergedData, filters, globalFilter]);
+  }, [dataStasiunLengkap, filters, globalFilter]);
+
+  // 
+  const dataWithSiteQuality = useMemo(() => {
+    return filteredData.map(row => ({
+      ...row,
+      site_quality: siteQualityMap[row.kode_stasiun] ?? "-",
+    }));
+  }, [filteredData, siteQualityMap]);
+
+  // 
 
   const stationPositions = useMemo(() => {
     return filteredData
@@ -321,16 +343,39 @@ const StationQuality = () => {
       }));
   }, [filteredData]);
 
-  const handleDownloadCSV = () => {
-    if (filteredData.length === 0) return;
+    // 1. Convert the Record to an array of [key, value] pairs
+  const siteQualityMapArray = Object.entries(siteQualityMap);
+  let filteredSiteQualityMapArray 
 
-    const dataToDownload = filteredData.map(item => ({
-      ...item,
-      summary_kualitas: item.result,
-      persentase_kualitas: item.quality_percentage !== null ? `${item.quality_percentage.toFixed(1)}%` : 'N/A',
-      site_quality: item.site_quality
-    }));
+
+
+  const handleDownloadCSV = () => {
+    // console.log(siteQualityMapArray)
+    // console.log("ekokop")
+    const dataToDownload = filteredData.map(item => {
+          // 2. Filter the entries
+        filteredSiteQualityMapArray = siteQualityMapArray.filter(([key]) => {
+          // Keep entries where the value is NOT 'admin'
+          return  key == item.kode_stasiun ;
+        });
+        // console.log(filteredSiteQualityMapArray[0]);
+        let sq;
+        if (filteredSiteQualityMapArray[0]){
+           sq = filteredSiteQualityMapArray[0][1];
+        } else {
+            sq = "-";
+        }
+        return ({
+        ...item,
+        // summary_kualitas: getStatusText(item.result, item.quality_percentage),
+        summary_kualitas: item.result,
+        persentase_kualitas: item.quality_percentage !== null ? `${item.quality_percentage.toFixed(1)}%` : 'N/A',
+        site_quality : sq
+      })  
+    });
     
+    if (dataToDownload.length === 0) return;
+
     const headers = Object.keys(dataToDownload[0]).join(",");
     const csvContent = headers + "\n" + dataToDownload.map((row: any) =>
       Object.values(row)
@@ -348,25 +393,27 @@ const StationQuality = () => {
     document.body.removeChild(link);
   };
 
-  const columns: ColumnDef<StationDataComplete>[] = [
+  const columns: ColumnDef<StasiunDenganSummary>[] = [
     { accessorKey: "stasiun_id", header: "No" },
     { accessorKey: "kode_stasiun", header: "Kode Stasiun" },
     { accessorKey: "lokasi", header: "Lokasi" },
-    { accessorKey: "provinsi", header: "Province" },
+    { accessorKey: "provinsi", header: "Province" }, // Tambahkan kolom province di sebelah lokasi
     { accessorKey: "jaringan", header: "Group" },
     { accessorKey: "prioritas", header: "Prioritas" },
     { accessorKey: "upt_penanggung_jawab", header: "UPT" },
     {
-      accessorKey: "result", 
-      id: "result", 
+      accessorFn: row => row.result,
+      id: "summary",
       header: "Summary Kualitas",
       cell: ({ row }) => {
-        const result = row.original.result;
+        
+        // Konversi result Indonesia ke label Inggris untuk StatusBadge
+        const { result } = row.original;
         let label = "-";
         if (result === "Baik") label = "Good";
         else if (result === "Cukup Baik") label = "Fair";
         else if (result === "Buruk") label = "Poor";
-        else if (result === "Mati" || result === "No Data") label = "No Data";
+        else if (result === "Mati" || result === null) label = "No Data";
         return (
           <div className="flex flex-col justify-center">
             <StatusBadge value={label} />
@@ -374,8 +421,44 @@ const StationQuality = () => {
         );
       },
     },
+    // {
+    //   id: "site_quality",
+    //   header: "Site Quality",
+    //   cell: ({ row }) => {
+    //     const code = row.original.kode_stasiun;
+    //     const siteQuality = siteQualityMap[code] || "-";
+    //     // console.log(row)
+    //     return (
+    //         <span className="block w-full py-1 rounded-sm text-[11px] font-bold text-center bg-blue-50 text-blue-800">
+    //         {siteQuality}
+    //       </span>
+    //     );
+    //   },
+    // },
+    // {
+    //   id: "site_quality",
+    //   header: "Site Quality",
+    //   accessorFn: (row) => {
+    //     const code = row.kode_stasiun;
+    //     // console.log(siteQualityMap[code])
+    //     return siteQualityMap[code] || "-";
+    //   },
+    //   cell: ({ getValue }) => {
+    //     const siteQuality = getValue<string>();
+    //   // cell: (row) => {
+    //   //   console.log(row)
+    //   //   const siteQuality = row.getValue<string>();
+
+    //     return (
+    //       <span className="block w-full py-1 rounded-sm text-[11px] font-bold text-center bg-blue-50 text-blue-800">
+    //         {siteQuality}
+    //       </span>
+    //     );
+    //   },
+    // },
     {
       accessorKey: "site_quality",
+      id: "site_quality",
       header: "Site Quality",
       cell: ({ getValue }) => (
         <span className="block w-full py-1 rounded-sm text-[11px] font-bold text-center bg-blue-50 text-blue-800">
@@ -400,41 +483,44 @@ const StationQuality = () => {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <MainLayout>
+        {/* Judul serupa dashboard */}
         <h1 className="text-left text-2xl font-bold mt-0 mb-2 ml-1">
           Stasiun Quality
         </h1>
 
         <CardContainer className="mb-4 p-3">
           <div className="flex flex-col lg:flex-row gap-3">
+            {/* Kolom Grafik Donat */}
             <div className="lg:w-1/4 w-full h-[405px] flex flex-col items-center justify-center p-2">
               <h2 className="text-lg font-bold mb-2">Ringkasan Status Stasiun</h2>
               <div className="w-full h-full max-w-xs">
-                {/* Passing 'allMergedData' allows the chart to show total statistics.
-                  If you want the chart to respect filters, pass 'filteredData' instead.
-                */}
-                <QualityDonutChart data={allMergedData} />
+                <QualityDonutChart data={dataStasiunLengkap} />
               </div>
             </div>
 
+            {/* Kolom Peta */}
             <div className="lg:w-3/4 w-full h-[405px] relative">
               <MapContainer center={[-2.2, 117]} zoom={5} className="w-full h-full rounded-lg">
                 <TileLayer
                   attribution='&copy; <a href="https://osm.org/copyright">OSM</a>'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                {stationPositions.map((station, idx) => (
-                  <Marker
-                    key={idx}
-                    position={station.coords}
-                    icon={triangleIcon(getColorByResult(station.data.result))}
-                  >
-                    <Popup>
-                      <b>Stasiun: {station.data.kode_stasiun}</b><br />
-                      Status: {station.data.result}<br />
-                      {station.data.quality_percentage !== null && `Kualitas: ${station.data.quality_percentage.toFixed(1)}%`}
-                    </Popup>
-                  </Marker>
-                ))}
+                {stationPositions.map((station, idx) => {
+                  const { result, kode_stasiun, quality_percentage } = station.data;
+                  return (
+                    <Marker
+                      key={idx}
+                      position={station.coords}
+                      icon={triangleIcon(getColorByResult(result))}
+                    >
+                      <Popup>
+                        <b>Stasiun: {kode_stasiun}</b><br />
+                        Status: {result}<br />
+                        {quality_percentage !== null && `Kualitas: ${quality_percentage.toFixed(1)}%`}
+                      </Popup>
+                    </Marker>
+                  );
+                })}
                 <MapLegend />
               </MapContainer>
             </div>
@@ -460,7 +546,7 @@ const StationQuality = () => {
           {!loading && (
             <DataTable
               columns={columns}
-              data={filteredData}
+              data={dataWithSiteQuality}
               globalFilter={globalFilter}
               setGlobalFilter={setGlobalFilter}
             />
