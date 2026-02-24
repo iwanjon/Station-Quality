@@ -32,26 +32,12 @@ interface SiteQualityData {
   site_quality: string;
 }
 
-// Interface baru untuk data status stasiun
-interface StationStatusData {
-  date: string;
-  code: string;
-  quality_percentage: number;
-  result: string;
-  details: string;
-  network: string;
-  site_quality: string | null;
-  network_group: string;
-  balai: number;
-  upt: string;
-  communication: string;
-  digitizer: string;
-  year: number;
-}
+// [DIHAPUS] dummyStationInfo tidak diperlukan lagi
+// const dummyStationInfo = { ... };
 
 const triangleIcon = (color: string) => L.divIcon({
-  className: "", html: `<div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:12px solid ${color};position:relative;"><div style="position:absolute;left:-7px;top:-1px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:14px solid #222;z-index:-1;"></div></div>`,
-  iconSize: [14, 14], iconAnchor: [7, 14],
+    className: "", html: `<div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:12px solid ${color};position:relative;"><div style="position:absolute;left:-7px;top:-1px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:14px solid #222;z-index:-1;"></div></div>`,
+    iconSize: [14, 14], iconAnchor: [7, 14],
 });
 const getColorByResult = (result: string | null) => "#14b8a6";
 
@@ -118,6 +104,7 @@ const StationDaily = () => {
   const navigate = useNavigate();
   const [stationList, setStationList] = useState<string[]>([]);
   const [selectedStation, setSelectedStation] = useState(stationCode || '');
+  // [DIUBAH] Menggunakan interface StationData yang lebih lengkap
   const [stationMeta, setStationMeta] = useState<StationData | null>(null);
   const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
   const [selectedDate, setSelectedDate] = useState(yesterday);
@@ -125,10 +112,6 @@ const StationDaily = () => {
   const [loadingTable, setLoadingTable] = useState(false);
   const [siteQualityData, setSiteQualityData] = useState<SiteQualityData | null>(null);
   const [loadingSiteQuality, setLoadingSiteQuality] = useState(true);
-
-  // State baru untuk Station Status table
-  const [stationStatusData, setStationStatusData] = useState<StationStatusData | null>(null);
-  const [loadingStatus, setLoadingStatus] = useState(false);
 
   useEffect(() => {
     axiosServer.get("/api/stasiun").then((res) => {
@@ -190,37 +173,8 @@ const StationDaily = () => {
           return { channel: ch, ...rowData };
         });
         setTableData(rows);
+        console.log(rows);
       }).catch(() => setTableData([])).finally(() => setLoadingTable(false));
-  }, [selectedStation, selectedDate]);
-
-  // useEffect Baru untuk Get Response API Status
-  useEffect(() => {
-    if (!selectedStation || !selectedDate) { 
-        setStationStatusData(null); 
-        return; 
-    }
-    setLoadingStatus(true);
-    
-    // TODO: GANTI URL "/api/station-status" DENGAN ENDPOINT API ACTUAL KAMU
-    axiosServer.get(`/api/qc/summary/2026-02-13`) 
-      .then((res) => {
-        const dataArray: StationStatusData[] = res.data || [];
-        // Filter array API response mencocokkan "code" dengan selectedStation
-        const currentStationStatus = dataArray.find((d) => d.code === selectedStation);
-        
-        if (currentStationStatus) {
-            setStationStatusData(currentStationStatus);
-        } else {
-            setStationStatusData(null);
-        }
-      })
-      .catch((err) => {
-        console.error("Gagal mengambil data status stasiun:", err);
-        setStationStatusData(null);
-      })
-      .finally(() => {
-        setLoadingStatus(false);
-      });
   }, [selectedStation, selectedDate]);
   
   useEffect(() => { setSelectedDate(yesterday); }, [selectedStation]);
@@ -231,6 +185,23 @@ const StationDaily = () => {
       navigate(`/station-daily/${newStationCode}`);
     }
   };
+
+  const InfoItem = ({ label, value }: { label: string, value: string | number | null }) => (
+    <div className="flex justify-between border-b border-gray-200 py-1 text-xs">
+      <dt className="font-medium text-gray-600">{label}</dt>
+      <dd className="text-gray-900 font-semibold text-right">{value ?? '-'}</dd>
+    </div>
+  );
+  
+  const columns = [
+    { accessorKey: "channel", header: "Channel" }, { accessorKey: "rms", header: "RMS" },
+    { accessorKey: "amplitude_ratio", header: "Amp. Ratio" }, { accessorKey: "num_gap", header: "Gaps" },
+    { accessorKey: "num_overlap", header: "Overlaps" }, { accessorKey: "num_spikes", header: "Spikes" },
+    { accessorKey: "linear_dead_channel", header: "Linear Dead" }, { accessorKey: "gsn_dead_channel", header: "GSN Dead" },
+    { accessorKey: "sp_percentage", header: "% Short Period" }, { accessorKey: "bw_percentage", header: "% Body Wave" },
+    { accessorKey: "lp_percentage", header: "% Long Period" }, { accessorKey: "perc_below_nlnm", header: "% Below NLNM" },
+    { accessorKey: "perc_above_nhnm", header: "% Above NHNM" },
+  ];
   
   const ChartGridSection = ({ title, children }: { title: string; children: React.ReactNode; }) => (
     <div className="mb-4 bg-white p-2 rounded-lg shadow">
@@ -310,6 +281,19 @@ const StationDaily = () => {
               </div>
             </div>
 
+            {/* {!loadingSiteQuality && siteQualityData && (
+              <div className={
+                `min-w-[90px] rounded px-3 py-2 text-sm font-semibold flex items-center justify-center ` +
+                (siteQualityData.site_quality === 'Very Good' || siteQualityData.site_quality === 'Good'
+                  ? 'bg-green-100 text-green-800'
+                  : siteQualityData.site_quality === 'Fair'
+                    ? 'bg-yellow-100 text-yellow-800'
+                    : 'bg-red-100 text-red-800')
+              }>
+                {siteQualityData.site_quality}
+              </div>
+            )} */}
+
             {!loadingSiteQuality && siteQualityData && (
               <div className={
                 `min-w-[90px] rounded px-3 py-2 text-sm font-semibold flex items-center justify-center ` +
@@ -333,7 +317,6 @@ const StationDaily = () => {
             </div>
           </div>
         </header>
-        
         <main className="grid grid-cols-1 lg:grid-cols-7 gap-2">
           <div className="bg-white p-2 rounded-lg shadow-md space-y-4 lg:col-span-3 ml-2">
             {/* Station Information */}
@@ -459,62 +442,6 @@ const StationDaily = () => {
           })}
         </ChartGridSection>
 
-        {/* --- TABEL BARU: Station Status Summary --- */}
-        <section className="bg-white p-2 rounded-lg shadow overflow-x-auto mb-4">
-          <h2 className="text-base font-bold mb-2 text-gray-800">Station Status Summary</h2>
-          {loadingStatus ? (
-            <div className="text-center text-gray-500 py-4 text-sm">Memuat data status...</div>
-          ) : stationStatusData ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full border border-gray-300 text-center table-fixed">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="border border-gray-300 p-2 text-sm font-semibold w-24">Date</th>
-                    <th className="border border-gray-300 p-2 text-sm font-semibold w-24">Quality (%)</th>
-                    <th className="border border-gray-300 p-2 text-sm font-semibold w-24">Result</th>
-                    <th className="border border-gray-300 p-2 text-sm font-semibold">Details</th>
-                    <th className="border border-gray-300 p-2 text-sm font-semibold w-32">Communication</th>
-                    <th className="border border-gray-300 p-2 text-sm font-semibold w-40">Digitizer</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="hover:bg-gray-50">
-                    <td className="border border-gray-300 p-2 text-sm">
-                      {dayjs(stationStatusData.date).format('YYYY-MM-DD')}
-                    </td>
-                    <td className="border border-gray-300 p-2 text-sm">
-                      {stationStatusData.quality_percentage}%
-                    </td>
-                    <td className="border border-gray-300 p-2 text-sm">
-                      <span className={
-                        `px-2 py-1 rounded text-xs font-semibold whitespace-nowrap ` + 
-                        (stationStatusData.result === 'Mati' ? 'bg-red-100 text-red-800' :
-                         stationStatusData.result === 'Buruk' ? 'bg-orange-100 text-orange-800' : 
-                         'bg-green-100 text-green-800')
-                      }>
-                        {stationStatusData.result}
-                      </span>
-                    </td>
-                    <td className="border border-gray-300 p-2 text-sm text-left">
-                      {stationStatusData.details || '-'}
-                    </td>
-                    <td className="border border-gray-300 p-2 text-sm">
-                      {stationStatusData.communication || '-'}
-                    </td>
-                    <td className="border border-gray-300 p-2 text-sm">
-                      {stationStatusData.digitizer || '-'}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center text-gray-500 py-4 text-sm border border-gray-300 rounded bg-gray-50">
-              No status data available
-            </div>
-          )}
-        </section>
-
         <section className="bg-white p-2 rounded-lg shadow overflow-x-auto">
           <h2 className="text-base font-bold mb-2 text-gray-800">Channel Details</h2>
           {loadingTable ? (
@@ -537,6 +464,7 @@ const StationDaily = () => {
                 <tbody>
                   {tableData && tableData.length > 0 ? (
                     tableData.map((row, idx) =>{ 
+                      // console.log("Current row data:", row); // Your log goes here
                       return (
                       <tr key={idx} className="hover:bg-gray-50">
                         {simpleTableColumns.map((col) => (
