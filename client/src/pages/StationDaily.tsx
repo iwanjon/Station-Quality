@@ -110,7 +110,13 @@ const ImageLoader = ({ srcUrl, alt }: { srcUrl: string; alt: string }) => {
   return objectUrl ? <img src={objectUrl} alt={alt} className="w-full h-full object-contain" /> : null;
 };
 
-const CHANNELS_FULL = ["SHE", "SHN", "SHZ"];
+// const CHANNELS_FULL = ["SHE", "SHN", "BHZ"];
+const CHANNEL_PRIORITIES = [
+  ["SHE", "SHN", "SHZ"],
+  ["BHE", "BHN", "BHZ"],
+  ["HHE", "HHN", "HHZ"],
+  ["E", "N", "Z"]
+];
 const CHANNELS_API = ["E", "N", "Z"];
 
 const StationDaily = () => {
@@ -181,17 +187,45 @@ const StationDaily = () => {
       });
   }, [stationCode]);
 
-  useEffect(() => {
+  // useEffect(() => {
+  //   if (!selectedStation || !selectedDate) { setTableData([]); return; }
+  //   setLoadingTable(true);
+  //   axiosServer.get(`/api/qc/data/detail/${selectedStation}/${selectedDate}`).then((res) => {
+  //       const rows = CHANNELS_FULL.map((ch) => {
+  //         const rowData = (res.data || []).find((d: any) => d.channel === ch);
+  //         return { channel: ch, ...rowData };
+  //       });
+  //       setTableData(rows);
+  //     }).catch(() => setTableData([])).finally(() => setLoadingTable(false));
+  // }, [selectedStation, selectedDate]);
+
+
+
+useEffect(() => {
     if (!selectedStation || !selectedDate) { setTableData([]); return; }
     setLoadingTable(true);
     axiosServer.get(`/api/qc/data/detail/${selectedStation}/${selectedDate}`).then((res) => {
-        const rows = CHANNELS_FULL.map((ch) => {
-          const rowData = (res.data || []).find((d: any) => d.channel === ch);
+        const data = res.data || [];
+        const availableChannels = data.map((d: any) => d.channel);
+        
+        // Find the highest priority channel group available in the response
+        let activeChannels = ["SHE", "SHN", "SHZ"]; // Fallback default
+        for (const group of CHANNEL_PRIORITIES) {
+          if (group.some(ch => availableChannels.includes(ch))) {
+            activeChannels = group;
+            break;
+          }
+        }
+
+        const rows = activeChannels.map((ch) => {
+          const rowData = data.find((d: any) => d.channel === ch);
           return { channel: ch, ...rowData };
         });
         setTableData(rows);
       }).catch(() => setTableData([])).finally(() => setLoadingTable(false));
   }, [selectedStation, selectedDate]);
+
+
 
   // useEffect Baru untuk Get Response API Status
   useEffect(() => {
