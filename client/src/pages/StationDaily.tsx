@@ -202,7 +202,7 @@ const StationDaily = () => {
     setLoadingStatus(true);
     
     // TODO: GANTI URL "/api/station-status" DENGAN ENDPOINT API ACTUAL KAMU
-    axiosServer.get(`/api/qc/summary/2026-02-13`) 
+    axiosServer.get(`/api/qc/summary/${selectedDate}`) 
       .then((res) => {
         const dataArray: StationStatusData[] = res.data || [];
         // Filter array API response mencocokkan "code" dengan selectedStation
