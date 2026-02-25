@@ -133,9 +133,6 @@ const StationDaily = () => {
   const [loadingSiteQuality, setLoadingSiteQuality] = useState(true);
 
   // State baru untuk Station Status table
-
-// State baru untuk Station Status table
-  const [allStationsStatus, setAllStationsStatus] = useState<StationStatusData[]>([]); // <-- TAMBAHKAN INI
   const [stationStatusData, setStationStatusData] = useState<StationStatusData | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(false);
 
@@ -231,73 +228,35 @@ useEffect(() => {
 
 
   // useEffect Baru untuk Get Response API Status
-  // useEffect(() => {
-  //   if (!selectedStation || !selectedDate) { 
-  //       setStationStatusData(null); 
-  //       return; 
-  //   }
-  //   setLoadingStatus(true);
-    
-  //   // TODO: GANTI URL "/api/station-status" DENGAN ENDPOINT API ACTUAL KAMU
-  //   axiosServer.get(`/api/qc/summary/${selectedDate}`) 
-  //     .then((res) => {
-  //       const dataArray: StationStatusData[] = res.data || [];
-  //       // Filter array API response mencocokkan "code" dengan selectedStation
-  //       const currentStationStatus = dataArray.find((d) => d.code === selectedStation);
-        
-  //       if (currentStationStatus) {
-  //           setStationStatusData(currentStationStatus);
-  //       } else {
-  //           setStationStatusData(null);
-  //       }
-  //     })
-  //     .catch((err) => {
-  //       console.error("Gagal mengambil data status stasiun:", err);
-  //       setStationStatusData(null);
-  //     })
-  //     .finally(() => {
-  //       setLoadingStatus(false);
-  //     });
-  // }, [selectedStation, selectedDate]);
-  
-
-// 1. Fetch data dari API HANYA ketika tanggal (selectedDate) berubah
   useEffect(() => {
-    if (!selectedDate) { 
-        setAllStationsStatus([]); 
+    if (!selectedStation || !selectedDate) { 
+        setStationStatusData(null); 
         return; 
     }
     setLoadingStatus(true);
     
-    // Pastikan endpoint ini sesuai dengan API kamu yang menerima parameter tanggal
+    // TODO: GANTI URL "/api/station-status" DENGAN ENDPOINT API ACTUAL KAMU
     axiosServer.get(`/api/qc/summary/${selectedDate}`) 
       .then((res) => {
         const dataArray: StationStatusData[] = res.data || [];
-        setAllStationsStatus(dataArray); // Simpan semua data stasiun untuk tanggal ini
+        // Filter array API response mencocokkan "code" dengan selectedStation
+        const currentStationStatus = dataArray.find((d) => d.code === selectedStation);
+        
+        if (currentStationStatus) {
+            setStationStatusData(currentStationStatus);
+        } else {
+            setStationStatusData(null);
+        }
       })
       .catch((err) => {
         console.error("Gagal mengambil data status stasiun:", err);
-        setAllStationsStatus([]);
+        setStationStatusData(null);
       })
       .finally(() => {
         setLoadingStatus(false);
       });
-  }, [selectedDate]); // <-- Hanya fetch ulang jika selectedDate berubah
+  }, [selectedStation, selectedDate]);
   
-  // 2. Update tabel HANYA dengan memfilter data lokal ketika stasiun berubah
-  useEffect(() => {
-    if (!selectedStation || allStationsStatus.length === 0) {
-        setStationStatusData(null);
-        return;
-    }
-    
-    // Cari data stasiun yang dipilih dari state lokal, tanpa hit API
-    const currentStationStatus = allStationsStatus.find((d) => d.code === selectedStation);
-    setStationStatusData(currentStationStatus || null);
-    
-  }, [selectedStation, allStationsStatus]); // <-- Jalan otomatis jika station ganti atau data baru selesai di-fetch
-
-
   useEffect(() => { setSelectedDate(yesterday); }, [selectedStation]);
 
   const handleStationChange = (event: React.ChangeEvent<HTMLSelectElement>) => {

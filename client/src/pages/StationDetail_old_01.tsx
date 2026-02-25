@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axiosServer from "../utilities/AxiosServer";
 import ChartSlide from "../components/ChartSlide";
@@ -51,6 +51,7 @@ const getStatusColor = (status: string) => {
 };
 
 const CHANNELS = ["E", "N", "Z"];
+const CHANNELS_FULL = ["SHE", "SHN", "SHZ"];
 
 const formatDateTick = (tickItem: string) => dayjs(tickItem).format("DD-MMM");
 
@@ -62,8 +63,11 @@ const StationDetail = () => {
   const [selectedStation, setSelectedStation] = useState<string | undefined>(stationCode);
 
   const [qcData, setQcData] = useState<QCData[]>([]);
-  // Inisialisasi summaryData diubah menjadi kosong, kita akan populate semua variasi prioritas di fetch
-  const [summaryData, setSummaryData] = useState<Record<string, SummaryDataItem[]>>({});
+  const [summaryData, setSummaryData] = useState<Record<string, SummaryDataItem[]>>({
+    SHE: [],
+    SHN: [],
+    SHZ: [],
+  });
   const [loadingSummary, setLoadingSummary]= useState(true);
 
   const [loading, setLoading] = useState(true);
@@ -136,15 +140,14 @@ const StationDetail = () => {
       setLoadingSummary(true);
       try {
         const res = await axiosServer.get(`/api/qc/summary/7days/${stationCode}`);
-        // Populate untuk semua kombinasi prioritas agar dynamic logic membaca data dengan aman
         setSummaryData({
-          SHE: res.data, SHN: res.data, SHZ: res.data,
-          BHE: res.data, BHN: res.data, BHZ: res.data,
-          HHE: res.data, HHN: res.data, HHZ: res.data,
+          SHE: res.data,
+          SHN: res.data,
+          SHZ: res.data,
         });
       } catch (err) {
         console.error("Gagal memuat data summary:", err);
-        setSummaryData({});
+        setSummaryData({ SHE: [], SHN: [], SHZ: [] });
       } finally {
         setLoadingSummary(false);
       }
@@ -163,33 +166,9 @@ const StationDetail = () => {
     interval: 0, 
   };
 
-  // --- LOGIC PENENTUAN PRIORITAS CHANNEL ---
-  const activeChannels = useMemo(() => {
-    const available = Array.from(new Set(qcData.map((d) => d.channel.toUpperCase())));
-    
-    // Prioritas pencarian: SH > BH > HH
-    const getBest = (comp: string) => {
-      if (available.includes(`SH${comp}`)) return `SH${comp}`;
-      if (available.includes(`BH${comp}`)) return `BH${comp}`;
-      if (available.includes(`HH${comp}`)) return `HH${comp}`;
-      return `SH${comp}`; // Default fallback jika data channel kosong
-    };
-
-    return {
-      E: getBest("E"),
-      N: getBest("N"),
-      Z: getBest("Z"),
-    } as Record<string, string>;
-  }, [qcData]);
-
-  // Digunakan untuk render bagian Summary (menggantikan CHANNELS_FULL hardcode)
-  const activeChannelsFull = [activeChannels.E, activeChannels.N, activeChannels.Z];
-
-  // Grouping sekarang dipastikan strict sesuai best channel yang didapat dari prioritas
   const groupedByChannel = CHANNELS.reduce<Record<string, QCData[]>>(
     (acc, ch) => {
-      const targetChannel = activeChannels[ch];
-      acc[ch] = qcData.filter((d) => d.channel.toUpperCase() === targetChannel);
+      acc[ch] = qcData.filter((d) => d.channel.toUpperCase().includes(ch));
       return acc;
     },
     {}
@@ -273,7 +252,7 @@ const StationDetail = () => {
                  </svg>
                </div>
              </div>
-            </div>
+           </div>
           <div className="flex flex-col items-end">
             <div className="flex space-x-1 rounded bg-gray-200 p-0.5">
               <button
@@ -303,7 +282,7 @@ const StationDetail = () => {
             <div className="text-center text-gray-500 text-xs">Memuat summary...</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              {activeChannelsFull.map((channel) => (
+              {CHANNELS_FULL.map((channel) => (
                 <div key={channel} className="flex flex-col items-center">
                   <h3 className="text-sm font-semibold text-center mb-1">{channel}</h3>
                   <div className="inline-flex flex-col items-center">
@@ -343,11 +322,11 @@ const StationDetail = () => {
             <div key={`rms-${ch}`}>
               <ChartSlide
                 channel={ch}
-                titlePrefix={`RMS - ${activeChannels[ch]}`}
+                titlePrefix={`RMS - SH${ch}`}
                 data={groupedByChannel[ch]}
                 lines={[{ dataKey: "rms", stroke: "#6366f1" }]}
                 height={180}
-                xAxisProps={xAxisConfig}
+                xAxisProps={xAxisConfig} // <-- PROP BARU DITERUSKAN
               />
             </div>
           ))}
@@ -358,7 +337,7 @@ const StationDetail = () => {
             <div key={`amp-${ch}`}>
               <ChartSlide
                 channel={ch}
-                titlePrefix={`Amplitude Ratio - ${activeChannels[ch]}`}
+                titlePrefix="Amplitude Ratio"
                 data={groupedByChannel[ch]}
                 lines={[
                   {
@@ -367,7 +346,7 @@ const StationDetail = () => {
                   },
                 ]}
                 height={180}
-                xAxisProps={xAxisConfig} 
+                xAxisProps={xAxisConfig} // <-- PROP BARU DITERUSKAN
               />
             </div>
           ))}
@@ -378,12 +357,12 @@ const StationDetail = () => {
             <div key={`gaps-${ch}`}>
               <ChartSlide
                 channel={ch}
-                titlePrefix={`Gaps - ${activeChannels[ch]}`}
+                titlePrefix="Gaps"
                 data={groupedByChannel[ch]}
                 lines={[{ dataKey: "num_gap", stroke: "#f97316" }]}
                 yAxisProps={{ domain: [0, 24], tickCount: 7 }}
                 height={180}
-                xAxisProps={xAxisConfig} 
+                xAxisProps={xAxisConfig} // <-- PROP BARU DITERUSKAN
               />
             </div>
           ))}
@@ -394,12 +373,12 @@ const StationDetail = () => {
             <div key={`spikes-${ch}`}>
               <ChartSlide
                 channel={ch}
-                titlePrefix={`Spikes - ${activeChannels[ch]}`}
+                titlePrefix="Spikes"
                 data={groupedByChannel[ch]}
                 lines={[{ dataKey: "num_spikes", stroke: "#ef4444" }]}
                 yAxisProps={{ domain: [0, 24], tickCount: 7 }}
                 height={180}
-                xAxisProps={xAxisConfig} 
+                xAxisProps={xAxisConfig} // <-- PROP BARU DITERUSKAN
               />
             </div>
           ))}
@@ -410,16 +389,16 @@ const StationDetail = () => {
             <div key={`sbl-${ch}`}>
               <ChartSlide
                 channel={ch}
-                titlePrefix={`SP / BW / LP - ${activeChannels[ch]}`}
+                titlePrefix="SP / BW / LP"
                 data={groupedByChannel[ch]}
                 lines={[
                   { dataKey: "sp_percentage", stroke: "#6366f1" },
-                  { dataKey: "bw_percentage", stroke: "#10b981" },
+                  { dataKey: "bw_percentage", stroke: "#10b81" },
                   { dataKey: "lp_percentage", stroke: "#f59e0b" },
                 ]}
                 yAxisProps={{ domain: [50, 120] }}
                 height={180}
-                xAxisProps={xAxisConfig} 
+                xAxisProps={xAxisConfig} // <-- PROP BARU DITERUSKAN
               />
             </div>
           ))}
@@ -432,7 +411,7 @@ const StationDetail = () => {
             <div key={`nlnm-nhnm-${ch}`}>
               <ChartSlide
                 channel={ch}
-                titlePrefix={`% Below NLNM & % Above NHNM - ${activeChannels[ch]}`}
+                titlePrefix={`% Below NLNM & % Above NHNM - SH${ch}`}
                 data={groupedByChannel[ch]}
                 lines={[
                   { dataKey: "perc_below_nlnm", stroke: "#10b981" },
@@ -440,7 +419,7 @@ const StationDetail = () => {
                 ]}
                 yAxisProps={{ domain: [0, 100] }}
                 height={180}
-                xAxisProps={xAxisConfig} 
+                xAxisProps={xAxisConfig} // <-- PROP BARU DITERUSKAN
               />
             </div>
           ))}
@@ -451,14 +430,14 @@ const StationDetail = () => {
             <div key={`ldc-${ch}`}>
               <ChartSlide
                 channel={ch}
-                titlePrefix={`Linear Dead Channel - ${activeChannels[ch]}`}
+                titlePrefix={`Linear Dead Channel - SH${ch}`}
                 data={groupedByChannel[ch]}
                 lines={[
                   { dataKey: "linear_dead_channel", stroke: "#6366f1" },
                 ]}
                 yAxisProps={{ domain: [0, "auto"] }}
                 height={180}
-                xAxisProps={xAxisConfig} 
+                xAxisProps={xAxisConfig} // <-- PROP BARU DITERUSKAN
               />
             </div>
           ))}
@@ -469,7 +448,7 @@ const StationDetail = () => {
             <div key={`gsn-${ch}`}>
               <ChartSlide
                 channel={ch}
-                titlePrefix={`GSN Dead Channel - ${activeChannels[ch]}`}
+                titlePrefix={`GSN Dead Channel - SH${ch}`}
                 data={groupedByChannel[ch]}
                 lines={[
                   { dataKey: "gsn_dead_channel", stroke: "#f59e0b" },

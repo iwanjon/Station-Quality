@@ -8,19 +8,18 @@ import ChartSlide from "./ChartSlide";
 // Tipe data yang dibutuhkan
 type FormattedLatencyData = {
   date: string;
-  latency: number | null;
+  latency: number | null; // Latency bisa null jika tidak ada data
 };
 
+// Ubah dari CHANNELS full ke komponen axis dan prefix prioritas
 const COMPONENTS = ["E", "N", "Z"];
 const PREFIXES = ["SH", "BH", "HH"];
 
 // Komponen Utama
 const LazyLatencyChart = ({ stationCode }: { stationCode?: string }) => {
+  // Ubah state untuk menyimpan tidak hanya array data, tapi juga channel string mana yang akhirnya digunakan
   const [latencyData, setLatencyData] = useState<Record<string, { channel: string, data: FormattedLatencyData[] }>>({});
   const [isLoading, setIsLoading] = useState(true);
-  
-  // --- STATE BARU UNTUK SKALA Y ---
-  const [maxYScale, setMaxYScale] = useState<number>(600); 
 
   const { ref, inView } = useInView({
     triggerOnce: true,
@@ -32,12 +31,10 @@ const LazyLatencyChart = ({ stationCode }: { stationCode?: string }) => {
       if (!stationCode) { setIsLoading(false); return; }
       try {
         const allLatencyData: Record<string, { channel: string, data: FormattedLatencyData[] }> = {};
-        
-        // --- VARIABEL UNTUK MENYIMPAN NILAI TERTINGGI DARI SEMUA CHANNEL ---
-        let globalMaxLatency = 0; 
 
+        // Fetch pararel per axis (E, N, Z), tapi di dalam masing-masing axis, cari berurutan SH -> BH -> HH
         const fetchPromises = COMPONENTS.map(async (comp) => {
-          let finalChannel = `SH${comp}`; 
+          let finalChannel = `SH${comp}`; // Default fallback
           let finalData: FormattedLatencyData[] = [];
 
           for (const prefix of PREFIXES) {
@@ -46,27 +43,19 @@ const LazyLatencyChart = ({ stationCode }: { stationCode?: string }) => {
               const response = await axiosServer.get(`/api/metadata/latency/${stationCode}/${targetChannel}`);
               const rawData = response.data;
 
+              // Jika data ditemukan dan tidak kosong, set hasil dan break loop agar tidak fetch prioritas di bawahnya
               if (rawData && Object.keys(rawData).length > 0) {
                 finalChannel = targetChannel;
                 finalData = Object.entries(rawData)
                   .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
-                  .map(([ts, val]) => {
-                    const parsedLatency = val === null || val === undefined ? null : (val as number);
-                    
-                    // Cek dan update nilai globalMaxLatency jika data ini lebih tinggi
-                    if (parsedLatency !== null && parsedLatency > globalMaxLatency) {
-                      globalMaxLatency = parsedLatency;
-                    }
-
-                    return {
-                      date: dayjs(ts).format('YYYY-MM-DD HH:mm'),
-                      latency: parsedLatency,
-                    };
-                  });
+                  .map(([ts, val]) => ({
+                    date: dayjs(ts).format('YYYY-MM-DD HH:mm'),
+                    latency: val === null || val === undefined ? null : (val as number),
+                  }));
                 break; 
               }
             } catch (err) {
-              // Abaikan error dan coba prefix selanjutnya
+              // Abaikan error (misal 404 Not Found), biarkan loop mencoba prefix selanjutnya
             }
           }
 
@@ -75,15 +64,6 @@ const LazyLatencyChart = ({ stationCode }: { stationCode?: string }) => {
 
         await Promise.all(fetchPromises);
         setLatencyData(allLatencyData);
-
-        // --- HITUNG SKALA Y DINAMIS ---
-        // Karena kita ingin nilai tertinggi (globalMax) berada di 80% tinggi chart,
-        // Kita bagi max value dengan 0.8. 
-        // Fallback ke 10 jika datanya 0 agar chart tidak error (domain: [0, 0])
-        const calculatedMaxY = globalMaxLatency > 0 ? Math.ceil(globalMaxLatency / 0.8) : 10;
-        
-        setMaxYScale(calculatedMaxY);
-
       } catch (err) { 
         console.error("Error fetching latency data:", err); 
       } finally { 
@@ -96,12 +76,13 @@ const LazyLatencyChart = ({ stationCode }: { stationCode?: string }) => {
     }
   }, [inView, stationCode, isLoading]);
   
+  // --- KONFIGURASI BARU UNTUK X-AXIS ---
   const xAxisConfig = {
     tickFormatter: (tickItem: string) => dayjs(tickItem).format("DD-MMM"),
     angle: -45,
     textAnchor: "end",
     height: 50,
-    interval: 'preserveStartEnd', 
+    interval: 'preserveStartEnd', // Opsi agar label tidak terlalu padat
   };
 
   return (
@@ -120,13 +101,10 @@ const LazyLatencyChart = ({ stationCode }: { stationCode?: string }) => {
                 <div key={comp}>
                   <ChartSlide
                     channel={channelInfo.channel}
-                    titlePrefix="Latency" // <-- Diperbaiki agar tidak double "Latency - BHE - BHE"
+                    titlePrefix={`Latency - ${channelInfo.channel}`} // Title disesuaikan dinamis
                     data={channelInfo.data}
                     lines={[{ dataKey: "latency", stroke: ["#8b5cf6", "#ec4899", "#f97316"][idx] }]}
-                    
-                    // --- APPLY SKALA Y YANG SAMA KE SEMUA CHART ---
-                    yAxisProps={{ domain: [0, maxYScale] }} 
-                    
+                    yAxisProps={{ domain: [0, 600] }}
                     referenceLines={[{ y: 180, label: "", stroke: "black" }]}
                     height={180}
                     xAxisProps={xAxisConfig} 
