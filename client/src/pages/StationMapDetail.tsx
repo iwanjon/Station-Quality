@@ -504,7 +504,7 @@ const StationMapDetail = () => {
                           <td className="px-3 py-2">{station.tipe_shelter || '-'}</td>
                         </tr>
                         <tr>
-                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Installation Sensor Type</td>
+                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Accelerometer</td>
                           <td className="px-3 py-2">{station.accelerometer || '-'}</td>
                         </tr>
                         <tr>
