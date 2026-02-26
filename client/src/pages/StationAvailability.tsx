@@ -223,7 +223,43 @@ const StationAvailability = () => {
   const [data, setData] = useState<Station[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiInfo, setApiInfo] = useState<ApiInfo | null>(null);
+  // const [selectedMonth, setSelectedMonth] = useState<DateRange>(() => {
+  //   const today = new Date();
+  //   let endYear = today.getFullYear();
+  //   let endMonth = today.getMonth() - 1; // Bulan lalu (0-based)
+  //   if (endMonth < 0) {
+  //     endMonth = 11;
+  //     endYear -= 1;
+  //   }
+  //   // Start: 12 bulan sebelum endMonth
+  //   let startMonth = endMonth - 11;
+  //   let startYear = endYear;
+  //   if (startMonth < 0) {
+  //     startMonth += 12;
+  //     startYear -= 1;
+  //   }
+  //   return {
+  //     startYear,
+  //     startMonth,
+  //     endYear,
+  //     endMonth
+  //   };
+  // });
+
+
+  // 1. Modify the initial state to check sessionStorage first
   const [selectedMonth, setSelectedMonth] = useState<DateRange>(() => {
+    // Check if we have a saved date range in this browser session
+    const saved = sessionStorage.getItem("stationAvailabilityDate");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse saved date, falling back to default");
+      }
+    }
+
+    // Default calculation (your original logic)
     const today = new Date();
     let endYear = today.getFullYear();
     let endMonth = today.getMonth() - 1; // Bulan lalu (0-based)
@@ -245,6 +281,14 @@ const StationAvailability = () => {
       endMonth
     };
   });
+
+  // 2. Add this right below your useState declarations to save changes
+  useEffect(() => {
+    sessionStorage.setItem("stationAvailabilityDate", JSON.stringify(selectedMonth));
+  }, [selectedMonth]);
+
+
+
   const [filters, setFilters] = useState<Record<string, string[]>>({
     kode: [],
     availabilityCategory: [],
@@ -324,7 +368,53 @@ const StationAvailability = () => {
     };
   }, [data]);
 
-  useEffect(() => {
+  // useEffect(() => {
+  //   setLoading(true);
+
+  //   const firstDayOfRange = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
+  //   const lastDayOfRange = new Date(selectedMonth.endYear, selectedMonth.endMonth + 1, 0);
+
+  //   // Avoid timezone conversion issues by using local date components
+  //   const start_date = `${firstDayOfRange.getFullYear()}-${String(firstDayOfRange.getMonth() + 1).padStart(2, '0')}-${String(firstDayOfRange.getDate()).padStart(2, '0')}`;
+  //   const end_date = `${lastDayOfRange.getFullYear()}-${String(lastDayOfRange.getMonth() + 1).padStart(2, '0')}-${String(lastDayOfRange.getDate()).padStart(2, '0')}`;
+
+  //   axiosServer
+  //     .get("/api/availability", {
+  //       params: {
+  //         start_date,
+  //         end_date
+  //       },
+  //     })
+  //     .then((res) => {
+  //       const apiResponse: APIResponse = res.data;
+
+  //       if (apiResponse.success) {
+  //         // Process data to calculate statistics per station
+  //         const processedStations = processStationData(apiResponse, selectedMonth);
+
+  //         // Convert to Station format for table
+  //         const stations = convertToStationFormat(processedStations);
+
+  //         setData(stations);
+
+  //         // Set API info for display
+  //         setApiInfo({
+  //           cached: apiResponse.cached,
+  //           totalStations: apiResponse.meta.stationCount,
+  //           dateRange: `${apiResponse.meta.dateRange.start_date} to ${apiResponse.meta.dateRange.end_date}`
+  //         });
+  //       } else {
+  //         setData([]);
+  //       }
+  //     })
+  //     .catch(() => {
+  //       setData([]);
+  //     })
+  //     .finally(() => setLoading(false));
+  // }, [selectedMonth]);
+
+
+useEffect(() => {
     setLoading(true);
 
     const firstDayOfRange = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
@@ -334,6 +424,24 @@ const StationAvailability = () => {
     const start_date = `${firstDayOfRange.getFullYear()}-${String(firstDayOfRange.getMonth() + 1).padStart(2, '0')}-${String(firstDayOfRange.getDate()).padStart(2, '0')}`;
     const end_date = `${lastDayOfRange.getFullYear()}-${String(lastDayOfRange.getMonth() + 1).padStart(2, '0')}-${String(lastDayOfRange.getDate()).padStart(2, '0')}`;
 
+    // 1. Create a unique cache key based on the selected dates
+    const cacheKey = `station_data_${start_date}_${end_date}`;
+    
+    // 2. Check if we already have this data saved in sessionStorage
+    const savedDataString = sessionStorage.getItem(cacheKey);
+    if (savedDataString) {
+      try {
+        const savedData = JSON.parse(savedDataString);
+        setData(savedData.stations);
+        setApiInfo(savedData.apiInfo);
+        setLoading(false);
+        return; // Exit early! We don't need to make the API call.
+      } catch (e) {
+        console.error("Failed to parse cached API data, fetching fresh data...", e);
+      }
+    }
+
+    // 3. If no cached data, fetch from the API as normal
     axiosServer
       .get("/api/availability", {
         params: {
@@ -350,15 +458,22 @@ const StationAvailability = () => {
 
           // Convert to Station format for table
           const stations = convertToStationFormat(processedStations);
-
-          setData(stations);
-
-          // Set API info for display
-          setApiInfo({
+          
+          const newApiInfo = {
             cached: apiResponse.cached,
             totalStations: apiResponse.meta.stationCount,
             dateRange: `${apiResponse.meta.dateRange.start_date} to ${apiResponse.meta.dateRange.end_date}`
-          });
+          };
+
+          setData(stations);
+          setApiInfo(newApiInfo);
+
+          // 4. Save the successfully processed data to sessionStorage for next time
+          sessionStorage.setItem(cacheKey, JSON.stringify({
+            stations: stations,
+            apiInfo: newApiInfo
+          }));
+
         } else {
           setData([]);
         }
@@ -368,6 +483,9 @@ const StationAvailability = () => {
       })
       .finally(() => setLoading(false));
   }, [selectedMonth]);
+
+
+
 
   // Memoize columns generation
   const columns = useMemo((): ColumnDef<Station>[] => {

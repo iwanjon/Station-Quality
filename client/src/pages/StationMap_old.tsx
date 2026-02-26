@@ -12,7 +12,7 @@ import TableFilters from "../components/TableFilters";
 import FieldGuidelines from "../components/FieldGuidelines";
 import { Link } from "react-router-dom";
 import { Download, Upload, FileText } from "lucide-react";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import type { CellContext } from "@tanstack/react-table";
 
 // Tipe data station
 interface Stasiun {
@@ -23,11 +23,11 @@ interface Stasiun {
   bujur: number;
   elevasi: number;
   lokasi: string;
-  provinsi: string;
-  upt_penanggung_jawab: string;
+  provinsi: string; // field sebenarnya
+  upt_penanggung_jawab: string; // field sebenarnya
   status: string;
   tahun_instalasi: number;
-  jaringan: string;
+  jaringan: string; // field sebenarnya
   prioritas: string;
   keterangan: string | null;
   accelerometer: string;
@@ -99,7 +99,7 @@ const StationMap = () => {
     networks: string[];
   } | null>(null);
 
-  // Filter states
+  // Filter states - consolidated into single object for TableFilters
   const [filters, setFilters] = useState<Record<string, string | string[]>>({
     provinsi: [],
     upt: [],
@@ -108,10 +108,10 @@ const StationMap = () => {
     status: []
   });
 
-  // Upgraded: Broader search term state instead of just 'searchKode'
-  const [searchTerm, setSearchTerm] = useState<string>("");
+  // Separate state for station code search (text input)
+  const [searchKode, setSearchKode] = useState<string>("");
 
-  // Upgraded: Added new columns to visibility state
+  // Column visibility states
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
     net: true,
     kode_stasiun: true,
@@ -122,9 +122,6 @@ const StationMap = () => {
     tahun_instalasi: true,
     lintang: true,
     bujur: true,
-    prioritas: true,
-    digitizer_komunikasi: true,
-    jaringan: true, // <--- ADD THIS LINE
   });
 
   // Selected station for card display
@@ -138,28 +135,70 @@ const StationMap = () => {
     }));
   };
 
+  // Generate CSV template for station creation
   const handleDownloadTemplate = () => {
+    // Define CSV headers based on station fields
     const headers = [
-      "net", "kode_stasiun", "lintang", "bujur", "elevasi", "lokasi",
-      "provinsi", "upt_penanggung_jawab", "status", "tahun_instalasi",
-      "jaringan", "prioritas", "keterangan", "accelerometer",
-      "digitizer_komunikasi", "tipe_shelter", "lokasi_shelter",
-      "penjaga_shelter", "kondisi_shelter", "assets_shelter",
-      "access_shelter", "photo_shelter", "penggantian_terakhir_alat", "is_sample"
+      "net",
+      "kode_stasiun",
+      "lintang",
+      "bujur",
+      "elevasi",
+      "lokasi",
+      "provinsi",
+      "upt_penanggung_jawab",
+      "status",
+      "tahun_instalasi",
+      "jaringan",
+      "prioritas",
+      "keterangan",
+      "accelerometer",
+      "digitizer_komunikasi",
+      "tipe_shelter",
+      "lokasi_shelter",
+      "penjaga_shelter",
+      "kondisi_shelter",
+      "assets_shelter",
+      "access_shelter",
+      "photo_shelter",
+      "penggantian_terakhir_alat",
+      "is_sample"
     ];
 
+    // Create sample data row with detailed comments
     const sampleData = [
-      "IA", "ABC123", "-6.2088", "106.8456", "100", "Jakarta Pusat",
-      "DKI Jakarta", "UPT Jakarta", "aktif", "2020", "BMKG", "P1",
-      "Sample station description", "installed", "installed", "bunker",
-      "outside_BMKG_office", "ada", "baik", "GPS, Solar Panel, Battery",
-      "Easy access, 24/7 available", "shelter_photo.jpg", "2023-01-15", "true"
+      "IA", // net - Network code: "IA" or "II"
+      "ABC123", // kode_stasiun - Unique station code
+      "-6.2088", // lintang - Latitude (decimal format)
+      "106.8456", // bujur - Longitude (decimal format)
+      "100", // elevasi - Elevation in meters
+      "Jakarta Pusat", // lokasi - Full address/location
+      "DKI Jakarta", // provinsi - EXACT province name from database (see View Valid Options)
+      "UPT Jakarta", // upt_penanggung_jawab - EXACT UPT name from database (see View Valid Options)
+      "aktif", // status - Station status: "aktif" or "nonaktif"
+      "2020", // tahun_instalasi - Installation year
+      "BMKG", // jaringan - EXACT network name from database (see View Valid Options)
+      "P1", // prioritas - Priority level: "P1", "P2", or "P3"
+      "Sample station description", // keterangan - Description/notes
+      "installed", // accelerometer - Accelerometer: "installed" or "not_installed"
+      "installed", // digitizer_komunikasi - Communication equipment: "installed" or "not_installed"
+      "bunker", // tipe_shelter - Shelter type: "bunker", "posthole", or "surface"
+      "outside_BMKG_office", // lokasi_shelter - Shelter location: "outside_BMKG_office" or "inside_BMKG_office"
+      "ada", // penjaga_shelter - Shelter guard: "ada" or "tidak_ada"
+      "baik", // kondisi_shelter - Shelter condition: "baik", "rusak_ringan", or "rusak_berat"
+      "GPS, Solar Panel, Battery", // assets_shelter - Shelter assets
+      "Easy access, 24/7 available", // access_shelter - Shelter access information
+      "shelter_photo.jpg", // photo_shelter - Shelter photo filename
+      "2023-01-15", // penggantian_terakhir_alat - Last equipment replacement date (YYYY-MM-DD)
+      "true" // is_sample - Mark as sample (true/false)
     ];
 
+    // Create CSV content with headers and sample data
     const csvContent = [headers, sampleData]
       .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(","))
       .join("\n");
 
+    // Create and download file
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
@@ -171,6 +210,7 @@ const StationMap = () => {
     document.body.removeChild(link);
   };
 
+  // Fetch foreign key options
   const fetchForeignKeyOptions = async () => {
     try {
       const response = await axiosServer.get('/api/stasiun/foreign-key-options');
@@ -182,6 +222,7 @@ const StationMap = () => {
     }
   };
 
+  // Handle CSV file import
   const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -195,11 +236,14 @@ const StationMap = () => {
       formData.append('csvFile', file);
 
       const response = await axiosServer.post('/api/stasiun/import-csv', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
 
       if (response.data.success) {
         setImportSuccess(`Successfully imported ${response.data.insertedCount} stations`);
+        // Refresh data
         const stationsResponse = await axiosServer.get("/api/stasiun");
         setData(stationsResponse.data);
       } else {
@@ -210,41 +254,78 @@ const StationMap = () => {
       setImportError('Failed to import CSV file');
     } finally {
       setImportLoading(false);
+      // Reset file input
       event.target.value = '';
     }
   };
-
   const handleExportCSV = () => {
     if (filteredData.length === 0) {
       alert("Tidak ada data untuk diekspor");
       return;
     }
 
+    // Define CSV headers
     const headers = [
-      "Net", "Kode Stasiun", "Lokasi", "Provinsi", "UPT", "Status",
-      "Tahun Instalasi", "Lintang", "Bujur", "Elevasi", "Jaringan",
-      "Prioritas", "Keterangan", "Accelerometer", "Digitizer Komunikasi",
-      "Tipe Shelter", "Lokasi Shelter", "Penjaga Shelter", "Kondisi Shelter",
-      "Assets Shelter", "Access Shelter", "Photo Shelter",
-      "Penggantian Terakhir Alat", "Updated At"
+      "Net",
+      "Kode Stasiun", 
+      "Lokasi",
+      "Provinsi",
+      "UPT",
+      "Status",
+      "Tahun Instalasi",
+      "Lintang",
+      "Bujur",
+      "Elevasi",
+      "Jaringan",
+      "Prioritas",
+      "Keterangan",
+      "Accelerometer",
+      "Digitizer Komunikasi",
+      "Tipe Shelter",
+      "Lokasi Shelter",
+      "Penjaga Shelter",
+      "Kondisi Shelter",
+      "Assets Shelter",
+      "Access Shelter",
+      "Photo Shelter",
+      "Penggantian Terakhir Alat",
+      "Updated At"
     ];
 
+    // Convert data to CSV rows
     const csvRows = filteredData.map(station => [
-      station.net, station.kode_stasiun, station.lokasi, station.provinsi,
-      station.upt_penanggung_jawab, station.status, station.tahun_instalasi,
-      station.lintang, station.bujur, station.elevasi, station.jaringan,
-      station.prioritas, station.keterangan || "", station.accelerometer,
-      station.digitizer_komunikasi, station.tipe_shelter || "",
-      station.lokasi_shelter, station.penjaga_shelter, station.kondisi_shelter || "",
-      station.assets_shelter || "", station.access_shelter || "",
-      station.photo_shelter || "", station.penggantian_terakhir_alat || "",
+      station.net,
+      station.kode_stasiun,
+      station.lokasi,
+      station.provinsi,
+      station.upt_penanggung_jawab,
+      station.status,
+      station.tahun_instalasi,
+      station.lintang,
+      station.bujur,
+      station.elevasi,
+      station.jaringan,
+      station.prioritas,
+      station.keterangan || "",
+      station.accelerometer,
+      station.digitizer_komunikasi,
+      station.tipe_shelter || "",
+      station.lokasi_shelter,
+      station.penjaga_shelter,
+      station.kondisi_shelter || "",
+      station.assets_shelter || "",
+      station.access_shelter || "",
+      station.photo_shelter || "",
+      station.penggantian_terakhir_alat || "",
       station.updated_at
     ]);
 
+    // Combine headers and rows
     const csvContent = [headers, ...csvRows]
       .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(","))
       .join("\n");
 
+    // Create and download file
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
@@ -270,25 +351,19 @@ const StationMap = () => {
       });
   }, []);
 
-  // Upgraded: Broadened filter to search across multiple fields
+  // Filter data berdasarkan All filter
   const filteredData = data && Array.isArray(data) ? data.filter((station) => {
-    const searchLower = searchTerm.toLowerCase();
-    const matchesSearch = searchTerm === "" || 
-      station.kode_stasiun?.toLowerCase().includes(searchLower) ||
-      station.lokasi?.toLowerCase().includes(searchLower) ||
-      station.provinsi?.toLowerCase().includes(searchLower) ||
-      station.upt_penanggung_jawab?.toLowerCase().includes(searchLower);
-
     return (
-      matchesSearch &&
       (filters.prioritas.length === 0 || filters.prioritas.includes(station.prioritas)) &&
       (filters.provinsi.length === 0 || filters.provinsi.includes(station.provinsi)) &&
       (filters.upt.length === 0 || filters.upt.includes(station.upt_penanggung_jawab)) &&
       (filters.tahun_instalasi.length === 0 || filters.tahun_instalasi.includes(String(station.tahun_instalasi))) &&
-      (filters.status.length === 0 || filters.status.includes(station.status))
+      (filters.status.length === 0 || filters.status.includes(station.status)) &&
+      (searchKode === "" || station.kode_stasiun.toLowerCase().includes(searchKode.toLowerCase()))
     );
   }) : [];
 
+  // Get all available options from data (not filtered)
   const allOptions = useMemo(() => {
     if (!data || !Array.isArray(data)) return { provinsi: [], upt: [], tahun: [], prioritas: [], status: [] };
 
@@ -301,99 +376,88 @@ const StationMap = () => {
     };
   }, [data]);
 
+  // Filter configuration for TableFilters component
   const filterConfig = useMemo(() => ({
-    provinsi: { label: "Province", type: "multi" as const, options: allOptions.provinsi },
-    upt: { label: "UPT", type: "multi" as const, options: allOptions.upt },
-    tahun_instalasi: { label: "Installation Year", type: "multi" as const, options: allOptions.tahun.map(String) },
-    prioritas: { label: "Priority", type: "multi" as const, options: allOptions.prioritas },
-    status: { label: "Status", type: "multi" as const, options: allOptions.status }
+    provinsi: {
+      label: "Province",
+      type: "multi" as const,
+      options: allOptions.provinsi
+    },
+    upt: {
+      label: "UPT",
+      type: "multi" as const,
+      options: allOptions.upt
+    },
+    tahun_instalasi: {
+      label: "Installation Year",
+      type: "multi" as const,
+      options: allOptions.tahun.map(String)
+    },
+    prioritas: {
+      label: "Priority",
+      type: "multi" as const,
+      options: allOptions.prioritas
+    },
+    status: {
+      label: "Status",
+      type: "multi" as const,
+      options: allOptions.status
+    }
   }), [allOptions]);
 
+  // Default center Indonesia
   const center: [number, number] = [-2.5, 118];
 
-  // Upgraded: Added new columns & enabled sorting
-  const columns: ColumnDef<Stasiun>[] = [
+  const columns = [
     {
       header: "Net",
       accessorKey: "net",
-      enableSorting: true,
-      cell: (info) => info.getValue(),
-    },
-    // ---> ADD THE JARINGAN COLUMN HERE <---
-    {
-      header: "Network",
-      accessorKey: "jaringan", 
-      enableSorting: true,
-      cell: (info) => info.getValue(),
+      cell: (info: CellContext<Stasiun, unknown>) => info.getValue(),
     },
     {
       header: "Station Code",
       accessorKey: "kode_stasiun",
-      enableSorting: true,
-      cell: (info) => info.getValue(),
+      cell: (info: CellContext<Stasiun, unknown>) => info.getValue(),
     },
     {
       header: "Location",
       accessorKey: "lokasi",
-      enableSorting: true,
-      cell: (info) => info.getValue(),
+      cell: (info: CellContext<Stasiun, unknown>) => info.getValue(),
     },
     {
       header: "Province",
       accessorKey: "provinsi",
-      enableSorting: true,
-      cell: (info) => info.getValue(),
+      cell: (info: CellContext<Stasiun, unknown>) => info.getValue(),
     },
     {
       header: "UPT",
       accessorKey: "upt_penanggung_jawab",
-      enableSorting: true,
-      cell: (info) => info.getValue(),
+      cell: (info: CellContext<Stasiun, unknown>) => info.getValue(),
     },
     {
       header: "Status",
       accessorKey: "status",
-      enableSorting: true,
-      cell: (info) => info.getValue(),
-    },
-    {
-      header: "Priority",
-      accessorKey: "prioritas",
-      enableSorting: true,
-      cell: (info) => info.getValue(),
-    },
-    {
-      header: "Digi/Comm",
-      accessorKey: "digitizer_komunikasi",
-      enableSorting: true,
-      cell: (info) => info.getValue(),
+      cell: (info: CellContext<Stasiun, unknown>) => info.getValue(),
     },
     {
       header: "Installation Year",
       accessorKey: "tahun_instalasi",
-      enableSorting: true,
-      cell: (info) => info.getValue(),
+      cell: (info: CellContext<Stasiun, unknown>) => info.getValue(),
     },
     {
       header: "Latitude",
       accessorKey: "lintang",
-      enableSorting: true,
-      cell: (info) => info.getValue(),
+      cell: (info: CellContext<Stasiun, unknown>) => info.getValue(),
     },
     {
       header: "Longitude",
       accessorKey: "bujur",
-      enableSorting: true,
-      cell: (info) => info.getValue(),
+      cell: (info: CellContext<Stasiun, unknown>) => info.getValue(),
     },
   ];
 
   // Filter columns based on visibility
-  const visibleColumnsArray = columns.filter(column => {
-    // Note: fallback to true if the accessorKey is somehow missing from state
-    const key = (column as any).accessorKey;
-    return key ? visibleColumns[key] : true;
-  });
+  const visibleColumnsArray = columns.filter(column => visibleColumns[column.accessorKey]);
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -483,18 +547,18 @@ const StationMap = () => {
           <div className="w-80 p-4 flex-shrink-0 border-r border-gray-200">
             <h3 className="text-lg font-bold mb-4">Advanced Filter</h3>
 
-            {/* Global Search Input */}
+            {/* Station Code Search */}
             <div className="mb-4">
               <label htmlFor="search-kode" className="font-semibold text-sm mb-1 block">
-                Search Data:
+                Station Code:
               </label>
               <input
                 id="search-kode"
                 type="text"
                 className="border rounded px-2 py-1 text-sm w-full"
-                placeholder="Search by code, location, or UPT..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Input station code..."
+                value={searchKode}
+                onChange={(e) => setSearchKode(e.target.value)}
               />
             </div>
 
@@ -576,8 +640,8 @@ const StationMap = () => {
           <div className="flex justify-between items-center mb-4">            
             {/* Column Visibility Controls */}
             <div className="flex flex-wrap gap-2 text-sm">
-              <span className="font-medium text-gray-700 flex items-center">Show/Hide Column(s):</span>
-              {columns.map((column: any) => (
+              <span className="font-medium text-gray-700">Show/Hide Column(s):</span>
+              {columns.map((column) => (
                 <button
                   key={column.accessorKey}
                   onClick={() => toggleColumnVisibility(column.accessorKey)}
@@ -586,17 +650,15 @@ const StationMap = () => {
                       ? 'bg-blue-100 border-blue-300 text-blue-700 hover:bg-blue-200'
                       : 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200'
                   }`}
-                  title={`${visibleColumns[column.accessorKey] ? 'Hide' : 'Show'} ${column.header as string}`}
+                  title={`${visibleColumns[column.accessorKey] ? 'Hide' : 'Show'} ${column.header}`}
                 >
-                  {column.header as React.ReactNode}
+                  {column.header}
                 </button>
               ))}
             </div>
           </div>
-          <div className="overflow-x-auto w-full pb-2">
-            <DataTable columns={visibleColumnsArray} data={filteredData} />
-          </div>
-          {/* <DataTable columns={visibleColumnsArray} data={filteredData} /> */}
+          
+          <DataTable columns={visibleColumnsArray} data={filteredData} />
         </div>
 
         {/* Import/Export Controls */}
@@ -604,6 +666,7 @@ const StationMap = () => {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-800">Data Management</h2>
             <div className="flex gap-3">
+              {/* Download Template Button */}
               <button
                 onClick={handleDownloadTemplate}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
@@ -613,6 +676,7 @@ const StationMap = () => {
                 Download Template
               </button>
 
+              {/* Show Foreign Key Options Button */}
               <button
                 onClick={fetchForeignKeyOptions}
                 className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
@@ -622,6 +686,7 @@ const StationMap = () => {
                 View Valid Options
               </button>
 
+              {/* Import CSV Button */}
               <div className="relative">
                 <input
                   type="file"
@@ -646,6 +711,7 @@ const StationMap = () => {
             </div>
           </div>
 
+          {/* Import Status Messages */}
           {importError && (
             <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-700 text-sm">{importError}</p>
@@ -657,6 +723,7 @@ const StationMap = () => {
             </div>
           )}
 
+          {/* Instructions */}
           <FieldGuidelines />
         </div>
       </MainLayout>
