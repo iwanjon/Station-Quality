@@ -7,6 +7,7 @@ from core.save_to_db import get_station_history, get_station_location
 from models.models import  Stasiun
 from databases.database import db_dependency
 import logging
+from pdb import set_trace as sstt
 
 from typing import List
 
@@ -182,6 +183,7 @@ async def update_status_acc(db: db_dependency,
             }
         
     for i in stasiun_data:
+        # sstt()
         if i[1].startswith("HN") and i[8]:
             stasiun.accelerometer = "installed"
             db.add(stasiun)

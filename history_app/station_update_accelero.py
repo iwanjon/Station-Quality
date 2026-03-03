@@ -77,7 +77,7 @@ def run_app():
         try:
             sta = i.get("kode_stasiun")
             net = i.get("net")
-            lokasi = i.get("lokasi")
+            lokasi = i.get("accelerometer")
             status = i.get("status")
             log.info("update accelero: number {} of {} , code {} , network {} , status {} , lokasi {}".format(str(no+1) , 
                                                                                                              str(number_of_station),  
