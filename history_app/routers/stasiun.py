@@ -3,10 +3,15 @@ from pydantic import BaseModel, Field
 # from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends, HTTPException, Path
 from starlette import status
-from core.save_to_db import get_station_location
+from core.save_to_db import get_station_history, get_station_location
 from models.models import  Stasiun
 from databases.database import db_dependency
 import logging
+
+from typing import List
+
+
+
 
 from schemas.schemas import StasiunBase
 log = logging.getLogger("station_history")
@@ -87,4 +92,113 @@ async def updatestationlocation( db: db_dependency,
 
 
 
+class SeismicStation(BaseModel):
+    ip_address: str
+    network: str
+    station_code: str
+    location_code: str
+    channel_group: str
+    channel_type: str
+    latitude: float
+    longitude: float
+    stage: str
+    datalogger: str
+    sensor_bb: str
+    sensor_acc: str
 
+# Simulated DB update function
+def update_station_in_db(db: db_dependency, station: SeismicStation):
+    stasiun:Stasiun|None = db.query(Stasiun).filter(Stasiun.kode_stasiun == station.station_code).first()
+    if stasiun:
+        stasiun.digitizer_komunikasi = station.datalogger
+        db.add(stasiun)
+        # db.flush()
+        # db.commit()
+    # In a real app, you would use SQLAlchemy or Motor here
+    # Example: db.stations.update_one({"station_code": station.station_code}, {"$set": station.dict()})
+    # print(f"DB Update: {station.station_code} ({station.datalogger}) saved.")
+        log.info("station {} with digitizer {} updated".format(station.station_code,station.datalogger ))
+        return True
+    
+    log.warning("not found station {} with digitizer {}".format(station.station_code,station.datalogger ))
+    return False
+
+@router.put("/stations/process")
+async def process_stations(db: db_dependency, stations: List[SeismicStation]):
+    success_stations = []
+    failed_stations = []
+
+    for station in stations:
+        try:
+            # Attempt to update the database
+            is_updated = update_station_in_db(db, station)
+            
+            if is_updated:
+                # Add to success list if successful
+                success_stations.append({
+                    "station_code": station.station_code,
+                    "ip_address": station.ip_address,
+                    "status": "updated"
+                })
+            else:
+                failed_stations.append({
+                    "station_code": station.station_code,
+                    "ip_address": station.ip_address,
+                    "status": "not found"
+                })
+                
+        except Exception as e:
+            # Track failures without stopping the whole process
+            failed_stations.append({
+                "station_code": station.station_code,
+                "error": str(e)
+            })
+    db.flush()
+    db.commit()
+    # Return the list of stations that were successfully processed
+    return {
+        "message": "Processing complete",
+        "processed_count": len(success_stations),
+        "successful_stations": success_stations,
+        "failed_count": len(failed_stations),
+        "failures": failed_stations
+    }
+    
+
+@router.put("/stations/status/accelero/{stasiun_code}")
+async def update_status_acc(db: db_dependency,
+                      stasiun_code: str):
+    success_stations = []
+    failed_stations = []
+    stasiun_data = get_station_history(stasiun_code,False)
+    
+    
+    stasiun:Stasiun|None = db.query(Stasiun).filter(Stasiun.kode_stasiun == stasiun_code).first()
+    if not stasiun:
+        return {
+            "message": "not found station",
+            "status": "not processed",
+            "stasiun": stasiun_code,
+            }
+        
+    for i in stasiun_data:
+        if "HN" in i[1] and i[8]:
+            stasiun.accelerometer = "installed"
+            db.add(stasiun)
+            db.commit()
+            return {
+                "message": "accelerometer status updated",
+                "status": "installed",
+                "stasiun": stasiun_code,
+            }
+    
+    stasiun.accelerometer = "not_installed"
+    db.add(stasiun)
+    db.commit()
+    return {
+            "message": "accelerometer status updated",
+            "status": "not installed",
+            "stasiun": stasiun_code,
+            }
+    
+            

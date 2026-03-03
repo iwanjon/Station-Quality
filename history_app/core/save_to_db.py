@@ -26,6 +26,7 @@ from obspy.core.util.obspy_types import (ComplexWithUncertainties,
                                          ObsPyException,
                                          ZeroSamplingRate)
 from matplotlib.figure import Figure
+from pdb import set_trace as sstt
 
 from static_variable import (
                         STATIC,
@@ -557,6 +558,7 @@ def replace_symbol(word:str):
 def instrument_meta(inv, sta, save_response=None):
     channel_full_data = []
     for i in inv.networks[0].stations[0].channels:
+        # sstt()
         # asd:Response = inv.networks[0].stations[0].channels[0].response 
         # asd:Response = i.response 
         # aaa = Custome_Response(asd)
@@ -574,6 +576,7 @@ def instrument_meta(inv, sta, save_response=None):
         # sensor_type = str(dict_sensor.get("model")) +"_"+ str(dict_sensor.get("type"))
         sensor_type = get_type_safe(dict_sensor,get_sensor_type )
         datalogger_type = get_type_safe(dict_data_logger,get_digitizer_type )
+        # sstt()
         # sensor_type = get_sensor_type(dict_sensor)
         # datalogger_type = get_digitizer_type(dict_data_logger)
         code =  i.code
