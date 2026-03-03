@@ -105,8 +105,7 @@ const StationMap = () => {
     upt: [],
     tahun_instalasi: [],
     prioritas: [],
-    status: [],
-    accelerometer: [] // <--- ADD THIS LINE
+    status: []
   });
 
   // Upgraded: Broader search term state instead of just 'searchKode'
@@ -126,7 +125,6 @@ const StationMap = () => {
     prioritas: true,
     digitizer_komunikasi: true,
     jaringan: true, // <--- ADD THIS LINE
-    accelerometer: true, // <--- ADD THIS LINE
   });
 
   // Selected station for card display
@@ -287,22 +285,19 @@ const StationMap = () => {
       (filters.provinsi.length === 0 || filters.provinsi.includes(station.provinsi)) &&
       (filters.upt.length === 0 || filters.upt.includes(station.upt_penanggung_jawab)) &&
       (filters.tahun_instalasi.length === 0 || filters.tahun_instalasi.includes(String(station.tahun_instalasi))) &&
-      (filters.status.length === 0 || filters.status.includes(station.status)) &&
-      (filters.accelerometer.length === 0 || filters.accelerometer.includes(station.accelerometer)) // <--- ADD THIS LINE
+      (filters.status.length === 0 || filters.status.includes(station.status))
     );
   }) : [];
 
   const allOptions = useMemo(() => {
-    // if (!data || !Array.isArray(data)) return { provinsi: [], upt: [], tahun: [], prioritas: [], status: [] };
-    if (!data || !Array.isArray(data)) return { provinsi: [], upt: [], tahun: [], prioritas: [], status: [], accelerometer: [] };
+    if (!data || !Array.isArray(data)) return { provinsi: [], upt: [], tahun: [], prioritas: [], status: [] };
 
     return {
       provinsi: Array.from(new Set(data.map(s => s.provinsi))).filter(v => v !== null && v !== undefined).sort(),
       upt: Array.from(new Set(data.map(s => s.upt_penanggung_jawab))).filter(v => v !== null && v !== undefined).sort(),
       tahun: Array.from(new Set(data.map(s => s.tahun_instalasi))).filter(v => v !== null && v !== undefined).sort(),
       prioritas: Array.from(new Set(data.map(s => s.prioritas))).filter(v => v !== null && v !== undefined).sort(),
-      status: Array.from(new Set(data.map(s => s.status))).filter(v => v !== null && v !== undefined).sort(),
-      accelerometer: ["installed", "not_installed"] // <--- ADD THIS LINE
+      status: Array.from(new Set(data.map(s => s.status))).filter(v => v !== null && v !== undefined).sort()
     };
   }, [data]);
 
@@ -311,8 +306,7 @@ const StationMap = () => {
     upt: { label: "UPT", type: "multi" as const, options: allOptions.upt },
     tahun_instalasi: { label: "Installation Year", type: "multi" as const, options: allOptions.tahun.map(String) },
     prioritas: { label: "Priority", type: "multi" as const, options: allOptions.prioritas },
-    status: { label: "Status", type: "multi" as const, options: allOptions.status },
-    accelerometer: { label: "Accelerometer", type: "multi" as const, options: allOptions.accelerometer } // <--- ADD THIS LINE
+    status: { label: "Status", type: "multi" as const, options: allOptions.status }
   }), [allOptions]);
 
   const center: [number, number] = [-2.5, 118];
@@ -335,13 +329,6 @@ const StationMap = () => {
     {
       header: "Station Code",
       accessorKey: "kode_stasiun",
-      enableSorting: true,
-      cell: (info) => info.getValue(),
-    },
-    // ---> ADD THE ACCELEROMETER COLUMN HERE <---
-    {
-      header: "Accelerometer",
-      accessorKey: "accelerometer",
       enableSorting: true,
       cell: (info) => info.getValue(),
     },
