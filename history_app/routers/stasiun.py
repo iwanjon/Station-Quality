@@ -182,7 +182,7 @@ async def update_status_acc(db: db_dependency,
             }
         
     for i in stasiun_data:
-        if "HN" in i[1] and i[8]:
+        if i[1].startswith("HN") and i[8]:
             stasiun.accelerometer = "installed"
             db.add(stasiun)
             db.commit()
