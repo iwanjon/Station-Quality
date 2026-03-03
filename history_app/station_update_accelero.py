@@ -87,7 +87,8 @@ def run_app():
                                                                                                              str(lokasi)
                                                                                                              ))
             HISTORY_APP_URL=UPDATE_ACCELERO_STATION_PATH.format(sta)
-            requests.put(HISTORY_APP_URL)
+            resp = requests.put(HISTORY_APP_URL)
+            print(resp.text)
         except Exception as e:
             log.error(e)
             log.error(traceback.print_exc())
