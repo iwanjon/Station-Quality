@@ -12,8 +12,8 @@ import stasiunRoutes from './routes/stasiun.routes.js';
 import stasiunHistoryRoutes from './routes/stasiunHistory.routes.js';
 import pool, { testConnection } from './config/database.js';
 import latencyHistoryRoutes from './routes/latencyHistory.routes.js'; 
-// import authRoutes from './routes/auth.routes.js'; 
-// import rabcRoutes from './routes/rabc.routes.js'; 
+import authRoutes from './routes/auth.routes.js'; 
+import rabcRoutes from './routes/rabc.routes.js'; 
 import logger from './utils/logger.js';
 import 'dotenv/config';
 
@@ -59,8 +59,8 @@ app.use('/api/availability', availabilityRoutes);
 app.use("/api/signal", signalRoutes);
 app.use('/api', latencyRoutes);
 app.use('/api/latency/history', latencyHistoryRoutes);
-// app.use('/api/user', authRoutes);
-// app.use('/api/rabc', rabcRoutes);
+app.use('/api/user', authRoutes);
+app.use('/api/rabc', rabcRoutes);
 
 // import prisma from './lib/prisma.js'; // Note the .js extension is required in ESM
 

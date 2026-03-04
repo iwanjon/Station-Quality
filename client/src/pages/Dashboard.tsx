@@ -135,7 +135,7 @@ const getTriangleColor = <T extends { latencyStrings: string[] }>(input: T): str
   // Aturan 6: Merah jika < 30 menit
   if (minLatencySec < 1800) return "#ef4444"; // Red
   
-  // Default: Hitam untuk >= 30 menit (menggabungkan <1d dan >=1d/NA)
+  // Default: Hitam untuk >= 30 menit (menggabungkan >30m dan >=1d/NA)
   return "#222222"; // Black
 };
 
@@ -149,7 +149,7 @@ const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummaryB
     "<1m": 0,     // Yellow
     "<3m": 0,     // Orange
     "<30m": 0,    // Red
-    "<1d": 0,     // Black
+    ">30m": 0,     // Black
   };
 
   // Logika penghitungan disesuaikan dengan aturan baru
@@ -162,7 +162,7 @@ const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummaryB
     const validLatencies = latenciesInSeconds.filter((sec): sec is number => sec !== null);
 
     if (s.latencyStrings[0]?.toUpperCase() === "NA" || validLatencies.length === 0) {
-      countByCategory["<1d"]++;
+      countByCategory[">30m"]++;
       return;
     }
 
@@ -177,7 +177,7 @@ const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummaryB
     } else if (minLatencySec < 1800) {
       countByCategory["<30m"]++;
     } else {
-      countByCategory["<1d"]++;
+      countByCategory[">30m"]++;
     }
   });
 
@@ -186,7 +186,7 @@ const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummaryB
     { label: "<1m", color: "bg-yellow-400", textColor: "text-yellow-500", count: countByCategory["<1m"] },
     { label: "<3m", color: "bg-orange-400", textColor: "text-orange-500", count: countByCategory["<3m"] },
     { label: "<30m", color: "bg-red-500", textColor: "text-red-600", count: countByCategory["<30m"] },
-    { label: "<1d", color: "bg-black", textColor: "text-black", count: countByCategory["<1d"] },
+    { label: ">30m", color: "bg-black", textColor: "text-black", count: countByCategory[">30m"] },
   ];
 
   const maxCount = Math.max(...summary.map((s) => s.count), 1);
