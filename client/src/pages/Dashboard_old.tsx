@@ -103,6 +103,43 @@ const parseLatencyToSeconds = (latencyString?: string | null): number | null => 
   return value; // Anggap sebagai detik jika tidak ada satuan
 };
 
+// // Fungsi ini menentukan warna segitiga di peta berdasarkan aturan baru.
+// const getTriangleColor = (station: QCSummary): string => {
+//   // Ambil dan parse latency 1, 2, dan 3
+//   const latenciesInSeconds = [
+//     parseLatencyToSeconds(station.latencyStrings[0]),
+//     parseLatencyToSeconds(station.latencyStrings[1]),
+//     parseLatencyToSeconds(station.latencyStrings[2]),
+//   ];
+
+//   // Saring untuk mendapatkan nilai latensi yang valid (bukan null)
+//   const validLatencies = latenciesInSeconds.filter(
+//     (sec): sec is number => sec !== null
+//   );
+
+//   // Aturan 1: Hitam jika latency1 adalah "NA"
+//   if (station.latencyStrings[0]?.toUpperCase() === "NA" || validLatencies.length === 0) {
+//     return "#222222"; // Black
+//   }
+
+//   // Cari nilai terkecil dari latensi yang valid
+//   const minLatencySec = Math.min(...validLatencies);
+
+//   // Aturan 2: Hitam jika latensi terkecil >= 1 hari
+//   if (minLatencySec >= 86400) return "#222222"; // Black
+//   // Aturan 3: Hijau jika < 10 detik
+//   if (minLatencySec < 10) return "#16a34a"; // Green
+//   // Aturan 4: Kuning jika < 1 menit
+//   if (minLatencySec < 60) return "#facc15"; // Yellow
+//   // Aturan 5: Oranye jika < 3 menit
+//   if (minLatencySec < 180) return "#fb923c"; // Orange
+//   // Aturan 6: Merah jika < 30 menit
+//   if (minLatencySec < 1800) return "#ef4444"; // Red
+  
+//   // Default: Abu-abu jika >= 30 menit dan < 1 hari
+//   return "#979797"; // Gray
+// };
+
 
 // Fungsi ini menentukan warna segitiga di peta berdasarkan aturan baru.
 const getTriangleColor = <T extends { latencyStrings: string[] }>(input: T): string => {
@@ -126,6 +163,8 @@ const getTriangleColor = <T extends { latencyStrings: string[] }>(input: T): str
   // Cari nilai terkecil dari latensi yang valid
   const minLatencySec = Math.min(...validLatencies);
 
+  // Aturan 2: Hitam jika latensi terkecil >= 1 hari
+  if (minLatencySec >= 86400) return "#222222"; // Black
   // Aturan 3: Hijau jika < 10 detik
   if (minLatencySec < 10) return "#16a34a"; // Green
   // Aturan 4: Kuning jika < 1 menit
@@ -135,8 +174,8 @@ const getTriangleColor = <T extends { latencyStrings: string[] }>(input: T): str
   // Aturan 6: Merah jika < 30 menit
   if (minLatencySec < 1800) return "#ef4444"; // Red
   
-  // Default: Hitam untuk >= 30 menit (menggabungkan <1d dan >=1d/NA)
-  return "#222222"; // Black
+  // Default: Abu-abu jika >= 30 menit dan < 1 hari
+  return "#979797"; // Gray
 };
 
 
@@ -149,7 +188,8 @@ const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummaryB
     "<1m": 0,     // Yellow
     "<3m": 0,     // Orange
     "<30m": 0,    // Red
-    "<1d": 0,     // Black
+    "<1d": 0,     // Gray
+    ">1d/NA": 0, // Black
   };
 
   // Logika penghitungan disesuaikan dengan aturan baru
@@ -162,13 +202,15 @@ const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummaryB
     const validLatencies = latenciesInSeconds.filter((sec): sec is number => sec !== null);
 
     if (s.latencyStrings[0]?.toUpperCase() === "NA" || validLatencies.length === 0) {
-      countByCategory["<1d"]++;
+      countByCategory[">1d/NA"]++;
       return;
     }
 
     const minLatencySec = Math.min(...validLatencies);
 
-    if (minLatencySec < 10) {
+    if (minLatencySec >= 86400) {
+      countByCategory[">1d/NA"]++;
+    } else if (minLatencySec < 10) {
       countByCategory["<10s"]++;
     } else if (minLatencySec < 60) {
       countByCategory["<1m"]++;
@@ -186,7 +228,8 @@ const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummaryB
     { label: "<1m", color: "bg-yellow-400", textColor: "text-yellow-500", count: countByCategory["<1m"] },
     { label: "<3m", color: "bg-orange-400", textColor: "text-orange-500", count: countByCategory["<3m"] },
     { label: "<30m", color: "bg-red-500", textColor: "text-red-600", count: countByCategory["<30m"] },
-    { label: "<1d", color: "bg-black", textColor: "text-black", count: countByCategory["<1d"] },
+    { label: "<1d", color: "bg-gray-400", textColor: "text-gray-500", count: countByCategory["<1d"] },
+    { label: "≥1d/NA", color: "bg-black", textColor: "text-black", count: countByCategory[">1d/NA"] },
   ];
 
   const maxCount = Math.max(...summary.map((s) => s.count), 1);
