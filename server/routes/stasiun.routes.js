@@ -11,6 +11,9 @@ import {
     deleteSitePhoto,
     getRecentUpdates  
 } from '../controllers/stasiun.controller.js';
+
+import {requireAuth, requirePermissions} from '../middlewares/auth.js';
+
 const router = Router();
 
 // Configure multer for CSV upload
@@ -45,6 +48,7 @@ const photoUpload = multer({
 
 // GET /api/stasiun - Get all stasiun
 router.get('/', getAllStasiun);
+// router.get('/', requireAuth, requirePermissions('read_station'), getAllStasiun);
 
 // GET /api/stasiun/codes - Get all stasiun codes only
 router.get('/codes', getAllStasiunCodes);

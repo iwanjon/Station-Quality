@@ -1,0 +1,5 @@
+ALTER TABLE `users` 
+ADD status  TINYINT(1) DEFAULT 1;
+
+ALTER TABLE `upt` 
+ADD status  TINYINT(1) DEFAULT 1;

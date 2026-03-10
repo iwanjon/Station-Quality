@@ -8,16 +8,14 @@ import debug from 'debug';
 
 const appDebug = debug('app:server');
 
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Get all stasiun data with JOIN
 export const getAllStasiun = async (req, res) => {
     try {
-        logger.info('-> [GET] /getAllStasiun: Initiated');
         logger.info('Fetching all stasiun data');
-        
-        appDebug('Executing query to fetch all stasiun with JOINs');
         const [rows] = await pool.query(`
             SELECT 
                 s.stasiun_id,
@@ -54,10 +52,8 @@ export const getAllStasiun = async (req, res) => {
             LEFT JOIN provinsi p ON s.provinsi_id = p.provinsi_id
         `);
         
-        logger.info(`<- [GET] /getAllStasiun: Success. Fetched ${rows.length} records.`);
         res.json(rows);
     } catch (error) {
-        logger.error('<- [GET] /getAllStasiun: DB Error occurred', { error: error.message, stack: error.stack });
         console.error("DB Error:", error);
         res.status(500).json({ 
             error: 'Gagal ambil data stasiun' 
@@ -68,10 +64,7 @@ export const getAllStasiun = async (req, res) => {
 // Get all stasiun codes only
 export const getAllStasiunCodes = async (req, res) => {
     try {
-        logger.info('-> [GET] /getAllStasiunCodes: Initiated');
         console.log('Fetching all stasiun codes');
-        
-        appDebug('Executing query to fetch only kode_stasiun');
         const [rows] = await pool.query(`
             SELECT 
                 kode_stasiun
@@ -79,14 +72,12 @@ export const getAllStasiunCodes = async (req, res) => {
             ORDER BY kode_stasiun
         `);
         
-        logger.info(`<- [GET] /getAllStasiunCodes: Success. Fetched ${rows.length} codes.`);
         res.json({
             success: true,
             data: rows,
             message: 'Data kode stasiun berhasil diambil'
         });
     } catch (error) {
-        logger.error('<- [GET] /getAllStasiunCodes: DB Error occurred', { error: error.message });
         console.error("DB Error:", error);
         res.status(500).json({ 
             success: false,
@@ -99,19 +90,17 @@ export const getAllStasiunCodes = async (req, res) => {
 // Get valid foreign key options for CSV template
 export const getForeignKeyOptions = async (req, res) => {
     try {
-        logger.info('-> [GET] /getForeignKeyOptions: Initiated');
         console.log('Fetching foreign key options for CSV template');
         
-        appDebug('Fetching provinces');
+        // Get all provinces
         const [provinces] = await pool.query('SELECT nama_provinsi FROM provinsi ORDER BY nama_provinsi');
         
-        appDebug('Fetching UPTs');
+        // Get all UPT names
         const [upts] = await pool.query('SELECT nama_upt FROM upt ORDER BY nama_upt');
         
-        appDebug('Fetching networks');
+        // Get all network names
         const [networks] = await pool.query('SELECT nama_jaringan FROM jaringan ORDER BY nama_jaringan');
         
-        logger.info(`<- [GET] /getForeignKeyOptions: Success. Fetched ${provinces.length} provinces, ${upts.length} UPTs, ${networks.length} networks.`);
         res.json({
             success: true,
             data: {
@@ -122,7 +111,6 @@ export const getForeignKeyOptions = async (req, res) => {
             message: 'Foreign key options fetched successfully'
         });
     } catch (error) {
-        logger.error('<- [GET] /getForeignKeyOptions: Error fetching options', { error: error.message });
         console.error("Error fetching foreign key options:", error);
         res.status(500).json({ 
             success: false,
@@ -135,10 +123,8 @@ export const getForeignKeyOptions = async (req, res) => {
 export const getStasiunByCode = async (req, res) => {
     try {
         const { code } = req.query;
-        logger.info(`-> [GET] /getStasiunByCode: Initiated for code: ${code}`);
         
         if (!code) {
-            logger.warn('<- [GET] /getStasiunByCode: Failed - Station code missing in query');
             return res.status(400).json({
                 success: false,
                 message: 'Station code is required'
@@ -146,7 +132,6 @@ export const getStasiunByCode = async (req, res) => {
         }
 
         console.log(`Fetching stasiun data for code: ${code}`);
-        appDebug(`Executing query to fetch stasiun details for code: ${code}`);
         
         const [rows] = await pool.query(`
             SELECT 
@@ -186,21 +171,18 @@ export const getStasiunByCode = async (req, res) => {
         `, [code]);
 
         if (rows.length === 0) {
-            logger.warn(`<- [GET] /getStasiunByCode: Not Found - No stasiun found with code: ${code}`);
             return res.status(404).json({
                 success: false,
                 message: 'Stasiun tidak ditemukan'
             });
         }
 
-        logger.info(`<- [GET] /getStasiunByCode: Success - Data retrieved for code: ${code}`);
         res.json({
             success: true,
             data: rows[0],
             message: 'Data stasiun berhasil diambil'
         });
     } catch (error) {
-        logger.error(`<- [GET] /getStasiunByCode: Error retrieving data for code: ${req.query.code}`, { error: error.message });
         console.error('Error:', error);
         res.status(500).json({
             success: false,
@@ -212,14 +194,12 @@ export const getStasiunByCode = async (req, res) => {
 
 // Update stasiun by code
 export const updateStasiunByCode = async (req, res) => {
+
     try {
         const { code } = req.params;
         const updateData = req.body;
 
-        logger.info(`-> [PUT/PATCH] /updateStasiunByCode: Initiated for code: ${code}`);
-
         if (!code) {
-            logger.warn('<- [PUT/PATCH] /updateStasiunByCode: Failed - Station code missing in params');
             return res.status(400).json({
                 success: false,
                 message: 'Station code is required'
@@ -232,7 +212,6 @@ export const updateStasiunByCode = async (req, res) => {
         console.log('🔍 Request body type:', typeof updateData);
         console.log('📊 Request body keys:', updateData ? Object.keys(updateData) : 'null/undefined');
 
-        appDebug('Raw Request Body Size: %d keys', Object.keys(updateData || {}).length);
         console.log(`Updating stasiun data for code: ${code}`);
         console.log('Update data:', updateData);
 
@@ -242,63 +221,50 @@ export const updateStasiunByCode = async (req, res) => {
 
         // Convert provinsi name to provinsi_id
         if (processedData.provinsi && typeof processedData.provinsi === 'string') {
-            appDebug(`Looking up provinsi_id for: ${processedData.provinsi}`);
             const [provinsiRows] = await pool.query('SELECT provinsi_id FROM provinsi WHERE nama_provinsi = ?', [processedData.provinsi]);
             if (provinsiRows.length > 0) {
                 processedData.provinsi_id = provinsiRows[0].provinsi_id;
                 delete processedData.provinsi;
-                logger.info(`Mapped provinsi string to ID: ${processedData.provinsi_id}`);
             } else {
                 // Create new provinsi if it doesn't exist
-                logger.info(`Creating new province: ${processedData.provinsi}`);
                 console.log(`Creating new province: ${processedData.provinsi}`);
                 const [insertResult] = await pool.query('INSERT INTO provinsi (nama_provinsi) VALUES (?)', [processedData.provinsi]);
                 processedData.provinsi_id = insertResult.insertId;
                 delete processedData.provinsi;
-                logger.info(`Created new province with ID: ${processedData.provinsi_id}`);
             }
         }
 
         // Convert jaringan name to jaringan_id
         if (processedData.jaringan && typeof processedData.jaringan === 'string') {
-            appDebug(`Looking up jaringan_id for: ${processedData.jaringan}`);
             const [jaringanRows] = await pool.query('SELECT jaringan_id FROM jaringan WHERE nama_jaringan = ?', [processedData.jaringan]);
             if (jaringanRows.length > 0) {
                 processedData.jaringan_id = jaringanRows[0].jaringan_id;
                 delete processedData.jaringan;
-                logger.info(`Mapped jaringan string to ID: ${processedData.jaringan_id}`);
             } else {
                 // Create new jaringan if it doesn't exist
-                logger.info(`Creating new jaringan: ${processedData.jaringan}`);
                 console.log(`Creating new jaringan: ${processedData.jaringan}`);
                 const [insertResult] = await pool.query('INSERT INTO jaringan (nama_jaringan) VALUES (?)', [processedData.jaringan]);
                 processedData.jaringan_id = insertResult.insertId;
                 delete processedData.jaringan;
-                logger.info(`Created new jaringan with ID: ${processedData.jaringan_id}`);
             }
         }
 
         // Convert upt_penanggung_jawab name to upt_id
         if (processedData.upt_penanggung_jawab && typeof processedData.upt_penanggung_jawab === 'string') {
-            appDebug(`Looking up upt_id for: ${processedData.upt_penanggung_jawab}`);
             const [uptRows] = await pool.query('SELECT upt_id FROM upt WHERE nama_upt = ?', [processedData.upt_penanggung_jawab]);
             if (uptRows.length > 0) {
                 processedData.upt_id = uptRows[0].upt_id;
                 delete processedData.upt_penanggung_jawab;
-                logger.info(`Mapped UPT string to ID: ${processedData.upt_id}`);
             } else {
                 // Create new upt if it doesn't exist
-                logger.info(`Creating new UPT: ${processedData.upt_penanggung_jawab}`);
                 console.log(`Creating new UPT: ${processedData.upt_penanggung_jawab}`);
                 const [insertResult] = await pool.query('INSERT INTO upt (nama_upt) VALUES (?)', [processedData.upt_penanggung_jawab]);
                 processedData.upt_id = insertResult.insertId;
                 delete processedData.upt_penanggung_jawab;
-                logger.info(`Created new UPT with ID: ${processedData.upt_id}`);
             }
         }
 
         console.log('🔄 Processed data (names converted to IDs):', JSON.stringify(processedData, null, 2));
-        appDebug('Processed Data Keys: %O', Object.keys(processedData));
 
         const forbiddenFields = ['stasiun_id', 'kode_stasiun', 'updated_at'];
         const filteredData = Object.keys(processedData).reduce((acc, key) => {
@@ -316,7 +282,6 @@ export const updateStasiunByCode = async (req, res) => {
         // debugger;
         // Check if there are any fields to update
         if (Object.keys(filteredData).length === 0) {
-            logger.warn(`<- [PUT/PATCH] /updateStasiunByCode: Failed - No valid fields to update for code: ${code}`);
             return res.status(400).json({
                 success: false,
                 message: 'No valid fields to update'
@@ -339,22 +304,17 @@ export const updateStasiunByCode = async (req, res) => {
 
         console.log('Update query:', updateQuery);
         console.log('Values:', values);
-        appDebug(`Executing Update Query with ${values.length} values`);
 
         const [result] = await pool.query(updateQuery, values);
 
         if (result.affectedRows === 0) {
-            logger.warn(`<- [PUT/PATCH] /updateStasiunByCode: Not Found - Station code ${code} does not exist`);
             return res.status(404).json({
                 success: false,
                 message: 'Stasiun tidak ditemukan'
             });
         }
 
-        logger.info(`Successfully updated database record for code: ${code}`);
-
         // Fetch updated data
-        appDebug(`Fetching updated data for code: ${code}`);
         const [updatedRows] = await pool.query(`
             SELECT
                 s.stasiun_id,
@@ -389,14 +349,12 @@ export const updateStasiunByCode = async (req, res) => {
             WHERE s.kode_stasiun = ?
         `, [code]);
 
-        logger.info(`<- [PUT/PATCH] /updateStasiunByCode: Success - Data updated for code: ${code}`);
         res.json({
             success: true,
             data: updatedRows[0],
             message: 'Data stasiun berhasil diperbarui'
         });
     } catch (error) {
-        logger.error(`<- [PUT/PATCH] /updateStasiunByCode: Error updating code ${req.params.code}`, { error: error.message, stack: error.stack });
         console.error('Error updating stasiun:', error);
         res.status(500).json({
             success: false,
@@ -409,23 +367,18 @@ export const updateStasiunByCode = async (req, res) => {
 // Import stations from CSV file
 export const importStationsFromCSV = async (req, res) => {
     try {
-        logger.info('-> [POST] /importStationsFromCSV: Initiated');
         console.log("enter this location")
-        
         if (!req.file) {
-            logger.warn('<- [POST] /importStationsFromCSV: Failed - No CSV file uploaded');
             return res.status(400).json({
                 success: false,
                 message: 'No CSV file uploaded'
             });
         }
 
-        logger.info(`CSV file received. Size: ${req.file.size} bytes`);
         const csvData = req.file.buffer.toString('utf-8');
         const lines = csvData.split('\n').filter(line => line.trim());
 
         if (lines.length < 2) {
-            logger.warn('<- [POST] /importStationsFromCSV: Failed - CSV missing data rows');
             return res.status(400).json({
                 success: false,
                 message: 'CSV file must contain at least header and one data row'
@@ -434,8 +387,6 @@ export const importStationsFromCSV = async (req, res) => {
 
         // Parse CSV headers
         const headers = lines[0].split(',').map(header => header.replace(/"/g, '').trim());
-        appDebug(`Parsed CSV Headers: ${headers.join(', ')}`);
-        
         const expectedHeaders = [
             'net', 'kode_stasiun', 'lintang', 'bujur', 'elevasi', 'lokasi', 'provinsi',
             'upt_penanggung_jawab', 'status', 'tahun_instalasi', 'jaringan', 'prioritas',
@@ -447,24 +398,20 @@ export const importStationsFromCSV = async (req, res) => {
         // Validate headers
         const missingHeaders = expectedHeaders.filter(header => !headers.includes(header));
         if (missingHeaders.length > 0) {
-            logger.warn(`<- [POST] /importStationsFromCSV: Failed - Missing headers: ${missingHeaders.join(', ')}`);
             return res.status(400).json({
                 success: false,
                 message: `Missing required headers: ${missingHeaders.join(', ')}`
             });
         }
-        
+
         const stations = [];
         const errors = [];
-        
-        logger.info(`Beginning to parse ${lines.length - 1} rows of data`);
+
         // Parse data rows
         for (let i = 1; i < lines.length; i++) {
             try {
                 const values = lines[i].split(',').map(value => value.replace(/"/g, '').trim());
-                logger.info(values);
-                logger.info(headers.length);
-                logger.info(values.length);
+
                 if (values.length !== headers.length) {
                     errors.push(`Row ${i + 1}: Invalid number of columns`);
                     continue;
@@ -474,7 +421,6 @@ export const importStationsFromCSV = async (req, res) => {
                 const isSampleIndex = headers.indexOf('is_sample');
                 if (isSampleIndex !== -1 && 
                     (values[isSampleIndex] === 'true' || values[isSampleIndex] === '1')) {
-                    appDebug(`Row ${i + 1}: Skipped (is_sample flag)`);
                     console.log(`Row ${i + 1}: Skipping sample data row`);
                     continue;
                 }
@@ -511,14 +457,11 @@ export const importStationsFromCSV = async (req, res) => {
 
                 stations.push(station);
             } catch (error) {
-                logger.error(`Error parsing Row ${i + 1}`, { error: error.message });
                 errors.push(`Row ${i + 1}: Error parsing data - ${error.message}`);
             }
         }
 
         if (errors.length > 0) {
-            logger.warn(`<- [POST] /importStationsFromCSV: Failed - Found ${errors.length} validation errors`);
-            logger.warn(errors);
             return res.status(400).json({
                 success: false,
                 message: 'Validation errors found',
@@ -527,14 +470,11 @@ export const importStationsFromCSV = async (req, res) => {
         }
 
         if (stations.length === 0) {
-            logger.warn('<- [POST] /importStationsFromCSV: Failed - No valid stations to import after parsing');
             return res.status(400).json({
                 success: false,
                 message: 'No valid stations to import'
             });
         }
-
-        logger.info(`Successfully parsed ${stations.length} valid station rows. Checking for DB duplicates.`);
 
         // Check for existing stations
         const existingCodes = [];
@@ -549,7 +489,6 @@ export const importStationsFromCSV = async (req, res) => {
         }
 
         if (existingCodes.length > 0) {
-            logger.warn(`<- [POST] /importStationsFromCSV: Failed - Stations already exist: ${existingCodes.join(', ')}`);
             return res.status(400).json({
                 success: false,
                 message: `Stations already exist: ${existingCodes.join(', ')}`
@@ -558,15 +497,12 @@ export const importStationsFromCSV = async (req, res) => {
 
         // Insert stations in batch
         let insertedCount = 0;
-        logger.info('Acquiring DB connection for CSV import transaction');
         const connection = await pool.getConnection();
 
         try {
             await connection.beginTransaction();
-            logger.info('Transaction started for CSV import');
 
             for (const station of stations) {
-                appDebug(`Processing relations for station: ${station.kode_stasiun}`);
                 // Get provinsi_id and upt_id from names with validation
                 let provinsiId = null;
                 let uptId = null;
@@ -595,7 +531,6 @@ export const importStationsFromCSV = async (req, res) => {
 
                             if (provinsiResult.length === 0) {
                                 // If no similar match found, create new provinsi
-                                logger.info(`Creating new province during import: ${station.provinsi}`);
                                 console.log(`Creating new province: ${station.provinsi}`);
                                 const [insertResult] = await connection.query(
                                     'INSERT INTO provinsi (nama_provinsi) VALUES (?)',
@@ -605,7 +540,6 @@ export const importStationsFromCSV = async (req, res) => {
                             } else {
                                 // Use the first partial match found
                                 provinsiId = provinsiResult[0].provinsi_id;
-                                logger.info(`Fuzzy match for province: "${station.provinsi}" -> "${provinsiResult[0].nama_provinsi}"`);
                                 console.log(`Using similar province match: "${provinsiResult[0].nama_provinsi}" for input "${station.provinsi}"`);
                             }
                         } else {
@@ -642,7 +576,6 @@ export const importStationsFromCSV = async (req, res) => {
 
                             if (uptResult.length === 0) {
                                 // If no similar match found, create new upt
-                                logger.info(`Creating new UPT during import: ${station.upt_penanggung_jawab}`);
                                 console.log(`Creating new UPT: ${station.upt_penanggung_jawab}`);
                                 const [insertResult] = await connection.query(
                                     'INSERT INTO upt (nama_upt) VALUES (?)',
@@ -652,7 +585,6 @@ export const importStationsFromCSV = async (req, res) => {
                             } else {
                                 // Use the first partial match found
                                 uptId = uptResult[0].upt_id;
-                                logger.info(`Fuzzy match for UPT: "${station.upt_penanggung_jawab}" -> "${uptResult[0].nama_upt}"`);
                                 console.log(`Using similar UPT match: "${uptResult[0].nama_upt}" for input "${station.upt_penanggung_jawab}"`);
                             }
                         } else {
@@ -689,7 +621,6 @@ export const importStationsFromCSV = async (req, res) => {
 
                             if (jaringanResult.length === 0) {
                                 // If no similar match found, create new jaringan
-                                logger.info(`Creating new Network during import: ${station.jaringan}`);
                                 console.log(`Creating new network: ${station.jaringan}`);
                                 const [insertResult] = await connection.query(
                                     'INSERT INTO jaringan (nama_jaringan) VALUES (?)',
@@ -699,7 +630,6 @@ export const importStationsFromCSV = async (req, res) => {
                             } else {
                                 // Use the first partial match found
                                 jaringanId = jaringanResult[0].jaringan_id;
-                                logger.info(`Fuzzy match for Network: "${station.jaringan}" -> "${jaringanResult[0].nama_jaringan}"`);
                                 console.log(`Using similar network match: "${jaringanResult[0].nama_jaringan}" for input "${station.jaringan}"`);
                             }
                         } else {
@@ -752,17 +682,14 @@ export const importStationsFromCSV = async (req, res) => {
             }
 
             await connection.commit();
-            logger.info('Transaction committed for CSV import');
 
         } catch (error) {
-            logger.error('Transaction rollback in CSV import due to error', { error: error.message, stack: error.stack });
             await connection.rollback();
             throw error;
         } finally {
             connection.release();
         }
 
-        logger.info(`<- [POST] /importStationsFromCSV: Success - Imported ${insertedCount} stations`);
         console.log(`✅ Successfully imported ${insertedCount} stations from CSV`);
 
         res.json({
@@ -772,7 +699,6 @@ export const importStationsFromCSV = async (req, res) => {
         });
 
     } catch (error) {
-        logger.error('<- [POST] /importStationsFromCSV: Error importing stations', { error: error.message, stack: error.stack });
         console.error('Error importing stations from CSV:', error);
         res.status(500).json({
             success: false,
@@ -786,10 +712,8 @@ export const importStationsFromCSV = async (req, res) => {
 export const uploadSitePhoto = async (req, res) => {
     try {
         const { code } = req.params;
-        logger.info(`-> [POST] /uploadSitePhoto: Initiated for code: ${code}`);
 
         if (!code) {
-            logger.warn('<- [POST] /uploadSitePhoto: Failed - Station code missing');
             return res.status(400).json({
                 success: false,
                 message: 'Station code is required'
@@ -797,7 +721,6 @@ export const uploadSitePhoto = async (req, res) => {
         }
 
         if (!req.file) {
-            logger.warn(`<- [POST] /uploadSitePhoto: Failed - No file provided for code: ${code}`);
             return res.status(400).json({
                 success: false,
                 message: 'No photo file provided'
@@ -805,10 +728,8 @@ export const uploadSitePhoto = async (req, res) => {
         }
 
         // Check if station exists
-        appDebug(`Checking if station exists: ${code}`);
         const [stationRows] = await pool.query('SELECT stasiun_id, photo_shelter FROM stasiun WHERE kode_stasiun = ?', [code]);
         if (stationRows.length === 0) {
-            logger.warn(`<- [POST] /uploadSitePhoto: Not Found - Station code ${code} does not exist`);
             return res.status(404).json({
                 success: false,
                 message: 'Station not found'
@@ -823,12 +744,10 @@ export const uploadSitePhoto = async (req, res) => {
         // Ensure uploads directory exists
         const uploadsDir = path.join(__dirname, '../public/uploads');
         if (!fs.existsSync(uploadsDir)) {
-            logger.info('Creating uploads directory since it does not exist');
             fs.mkdirSync(uploadsDir, { recursive: true });
         }
 
         // Save file to disk
-        appDebug(`Saving file to disk: ${uploadPath}`);
         fs.writeFileSync(uploadPath, req.file.buffer);
 
         // Update database with photo path (append to existing photos)
@@ -838,10 +757,8 @@ export const uploadSitePhoto = async (req, res) => {
         photoList.push(photoPath);
         const updatedPhotos = photoList.join(',');
 
-        appDebug(`Updating DB with new photo string for code ${code}: ${updatedPhotos}`);
         await pool.query('UPDATE stasiun SET photo_shelter = ? WHERE kode_stasiun = ?', [updatedPhotos, code]);
 
-        logger.info(`<- [POST] /uploadSitePhoto: Success - Photo saved as ${fileName}`);
         res.json({
             success: true,
             message: 'Site photo uploaded successfully',
@@ -852,7 +769,6 @@ export const uploadSitePhoto = async (req, res) => {
         });
 
     } catch (error) {
-        logger.error(`<- [POST] /uploadSitePhoto: Error for code ${req.params.code}`, { error: error.message });
         console.error('Error uploading site photo:', error);
         res.status(500).json({
             success: false,
@@ -860,18 +776,13 @@ export const uploadSitePhoto = async (req, res) => {
             error: error.message
         });
     }
-};
-
-// Delete site photo for a station
+};// Delete site photo for a station
 export const deleteSitePhoto = async (req, res) => {
     try {
         const { code } = req.params;
         const { photoPath } = req.body; // Photo path to delete
 
-        logger.info(`-> [DELETE] /deleteSitePhoto: Initiated for code: ${code}, path: ${photoPath}`);
-
         if (!code) {
-            logger.warn('<- [DELETE] /deleteSitePhoto: Failed - Station code missing');
             return res.status(400).json({
                 success: false,
                 message: 'Station code is required'
@@ -879,10 +790,8 @@ export const deleteSitePhoto = async (req, res) => {
         }
 
         // Check if station exists and has photo
-        appDebug(`Checking if station exists for deletion: ${code}`);
         const [stationRows] = await pool.query('SELECT photo_shelter FROM stasiun WHERE kode_stasiun = ?', [code]);
         if (stationRows.length === 0) {
-            logger.warn(`<- [DELETE] /deleteSitePhoto: Not Found - Station code ${code} does not exist`);
             return res.status(404).json({
                 success: false,
                 message: 'Station not found'
@@ -891,7 +800,6 @@ export const deleteSitePhoto = async (req, res) => {
 
         const existingPhotos = stationRows[0].photo_shelter;
         if (!existingPhotos) {
-            logger.warn(`<- [DELETE] /deleteSitePhoto: Failed - No photos to delete for code: ${code}`);
             return res.status(400).json({
                 success: false,
                 message: 'No photos to delete'
@@ -904,20 +812,14 @@ export const deleteSitePhoto = async (req, res) => {
 
         // Delete file from disk
         const filePath = path.join(__dirname, '../public', photoPath);
-        appDebug(`Attempting to delete file from disk: ${filePath}`);
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
-            logger.info(`File deleted from disk: ${filePath}`);
-        } else {
-            logger.warn(`File not found on disk: ${filePath}, updating DB anyway`);
         }
 
         // Update database with remaining photos
         const updatedPhotos = updatedPhotoList.length > 0 ? updatedPhotoList.join(',') : null;
-        appDebug(`Updating DB with remaining photos: ${updatedPhotos}`);
         await pool.query('UPDATE stasiun SET photo_shelter = ? WHERE kode_stasiun = ?', [updatedPhotos, code]);
 
-        logger.info(`<- [DELETE] /deleteSitePhoto: Success - Photo removed for code: ${code}`);
         res.json({
             success: true,
             message: 'Site photo deleted successfully',
@@ -927,7 +829,6 @@ export const deleteSitePhoto = async (req, res) => {
         });
 
     } catch (error) {
-        logger.error(`<- [DELETE] /deleteSitePhoto: Error for code ${req.params.code}`, { error: error.message });
         console.error('Error deleting site photo:', error);
         res.status(500).json({
             success: false,
@@ -940,15 +841,12 @@ export const deleteSitePhoto = async (req, res) => {
 // Get recent station updates for Dashboard
 export const getRecentUpdates = async (req, res) => {
     try {
-        logger.info('-> [GET] /getRecentUpdates: Initiated');
         console.log('Fetching recent station updates for dashboard');
 
-        appDebug('Querying latest 5 updated stations');
         const [rows] = await pool.query(
             'SELECT kode_stasiun FROM stasiun ORDER BY updated_at DESC LIMIT 5'
         );
 
-        logger.info(`<- [GET] /getRecentUpdates: Success - Fetched ${rows.length} records`);
         res.json({
             success: true,
             data: rows,
@@ -956,7 +854,6 @@ export const getRecentUpdates = async (req, res) => {
         });
 
     } catch (error) {
-        logger.error('<- [GET] /getRecentUpdates: DB Error occurred', { error: error.message });
         console.error("DB Error fetching recent updates:", error);
         res.status(500).json({ 
             success: false,

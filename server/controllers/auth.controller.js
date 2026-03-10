@@ -18,7 +18,7 @@ export const register = async (req, res) => {
             return res.status(400).json({ success: false, message: 'invalid email format' });
         }
         
-        if(!isValidPassword){
+        if(!isValidPassword(password)){
             return res.status(400).json({ success: false, message: 'password minimum 4 chars' });
         }
 
@@ -54,10 +54,14 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { identifier, password } = req.body;
 
-        // 1. Find the user by email
-        const [users] = await pool.query('SELECT * FROM users WHERE email = ? AND is_active = 1', [email]);
+        if (!identifier || !password) {
+            return res.status(400).json({ success: false, message: 'username/email and password are required' });
+        }
+
+        // 1. Find the user by email or username
+        const [users] = await pool.query('SELECT * FROM users WHERE (email = ? OR username = ?) AND is_active = 1', [identifier, identifier]);
         const user = users[0];
 
         if (!user) {

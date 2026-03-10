@@ -16,6 +16,7 @@ import authRoutes from './routes/auth.routes.js';
 import rabcRoutes from './routes/rabc.routes.js'; 
 import logger from './utils/logger.js';
 import 'dotenv/config';
+import { requireAuth } from './middlewares/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -49,6 +50,8 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+// app.use(requireAuth);
 
 app.use('/api/dashboard', dashboardRoutes); 
 app.use('/api/qc', qcRoutes);

@@ -92,6 +92,10 @@ export const getAllStationAvailability = async (req, res) => {
       timeout: 90000
     });
 
+    console.log(start_date)
+    console.log(end_date)
+    console.log("end_date")
+
     const apiResponse = response.data;
     const availabilityData = apiResponse.data;
     const apiMeta = apiResponse.meta;
