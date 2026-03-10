@@ -572,7 +572,7 @@ const Dashboard = () => {
         {/* BAGIAN KANAN: STATUS & STACKED BAR */}
         <div className="lg:w-1/4 w-full flex flex-col gap-2">
           {/* Status Cards */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* <div className="grid grid-cols-2 gap-2">
             <div className="bg-white rounded p-2 text-center border border-gray-300 shadow">
               <p className="text-xs font-semibold text-gray-600">REGISTERED</p>
               <p className="text-2xl font-bold">{isLoading ? "..." : registeredCount}</p>
@@ -581,12 +581,14 @@ const Dashboard = () => {
               <p className="text-xs font-semibold text-gray-600">INACTIVE</p>
               <p className="text-2xl font-bold">{isLoading ? "..." : inactiveCount}</p>
             </div>
-          </div>
+          </div> */}
 
           <div className="bg-white rounded p-2 text-center border border-gray-300 shadow">
-            <p className="text-xs font-semibold">OPERATIONAL</p>
+            {/* <p className="text-xs font-semibold">OPERATIONAL</p> */}
+            <p className="text-xs font-semibold">REGISTERED</p>
             {/* <p className="text-3xl font-bold mb-1">{isLoading ? "..." : combinedData.length}</p> */}
-            <p className="text-3xl font-bold mb-1">{isLoading ? "..." : totalStationCount+inactiveCount}</p>
+            <p className="text-3xl font-bold mb-1">{isLoading ? "..." : registeredCount+inactiveCount}</p>
+            {/* <p className="text-3xl font-bold mb-1">{isLoading ? "..." : totalStationCount}</p> */}
             <div className="grid grid-cols-2 gap-1">
               <div className="bg-green-600 text-white rounded p-1">
                 <p className="text-[10px] font-bold">ON</p>
