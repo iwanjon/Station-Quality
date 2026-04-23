@@ -43,6 +43,11 @@ DEBUG = DEBUG
 # ALLOWED_HOSTS = []
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
 
+# Tell Django it is mounted under a specific path by Apache
+FORCE_SCRIPT_NAME = '/private/admin'
+
+# Also ensure it knows to look for the original host header
+USE_X_FORWARDED_HOST = True
 
 # Application definition
 
