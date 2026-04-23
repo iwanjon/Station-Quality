@@ -11,19 +11,34 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# 2. Initialize environ
+env = environ.Env(
+    # set casting and default values
+    DEBUG=(bool, False)
+)
+
+# This looks for .env in the folder WITH manage.py
+env_file = BASE_DIR / ".env"
+environ.Env.read_env(env_file)
+
+# 4. Use the variables
+SECRET_KEY = env('SECRET_KEY')
+DEBUG = env('DEBUG')
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-@5w^z1-c!i5gi*1v49-k70f2d375pz-8+kk6pb5k4%x1n-1w3='
+SECRET_KEY = SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = DEBUG
 
 ALLOWED_HOSTS = []
 
@@ -80,15 +95,18 @@ WSGI_APPLICATION = 'adminpanel.wsgi.application'
 #     }
 # }
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'a',
+#         'USER': 'root',
+#         'PASSWORD': 'admin',
+#         'HOST': 'localhost',
+#         'PORT': '3306',
+#     }
+# }
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'a',
-        'USER': 'root',
-        'PASSWORD': 'admin',
-        'HOST': 'localhost',
-        'PORT': '3306',
-    }
+    'default': env.db()
 }
 
 # Password validation

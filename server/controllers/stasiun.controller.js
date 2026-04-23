@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import logger from '../utils/logger.js'; // Import the logger (using the correct .js extension)
+import { checkAuthorizationByStaCode, checkAuthorizationByStaId } from '../utils/customFunction.js';
 
 import debug from 'debug';
 
@@ -16,7 +17,11 @@ export const getAllStasiun = async (req, res) => {
     try {
         logger.info('-> [GET] /getAllStasiun: Initiated');
         logger.info('Fetching all stasiun data');
-        
+        // Add authorization filter use where s.stasiun_id in (1,2,3,4) or s.kode_stasiun in ('AAI','AAFM')
+
+        // console.log(req.user.stasiun_id);
+        // const originalList = req.user.stasiun_id; 
+
         appDebug('Executing query to fetch all stasiun with JOINs');
         const [rows] = await pool.query(`
             SELECT 
@@ -38,7 +43,7 @@ export const getAllStasiun = async (req, res) => {
                 s.prioritas,
                 s.keterangan,
                 s.accelerometer,
-                s.digitizer_komunikasi,
+                s.digitizer_komunikasi, 
                 s.tipe_shelter,
                 s.lokasi_shelter,
                 s.penjaga_shelter,
@@ -71,6 +76,13 @@ export const getAllStasiunCodes = async (req, res) => {
         logger.info('-> [GET] /getAllStasiunCodes: Initiated');
         console.log('Fetching all stasiun codes');
         
+        // Add authorization filter use where stasiun.stasiun_id in (1,2,3,4) or s.kode_stasiun in ('AAI','AAFM')
+        
+
+        // console.log(req.user.stasiun_id);
+        // const originalList = req.user.stasiun_id; 
+
+
         appDebug('Executing query to fetch only kode_stasiun');
         const [rows] = await pool.query(`
             SELECT 
@@ -148,6 +160,15 @@ export const getStasiunByCode = async (req, res) => {
         console.log(`Fetching stasiun data for code: ${code}`);
         appDebug(`Executing query to fetch stasiun details for code: ${code}`);
         
+
+        // add authorization
+        // const originalList = ['AAFM', 'AAI', 'AAII', 'ABJI', 'ABSM', 'ACBM', 'ACJM', 'ALKI', 'ALTI', 'AMPM']; 
+
+        // console.log(req.user.kode_stasiun);
+        // const originalList = req.user.kode_stasiun; 
+        
+        // checkAuthorizationByStaCode(originalList, code);
+
         const [rows] = await pool.query(`
             SELECT 
                 s.stasiun_id,

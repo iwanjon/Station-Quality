@@ -4,6 +4,9 @@ import { ensureTrailingSlash } from '../utils/pathHelper.js';
 
 import { ensureCleanStartingSlash } from '../utils/pathHelper.js';
 import logger from '../utils/logger.js';
+
+import { checkAuthorizationByStaCode, checkAuthorizationByStaId } from '../utils/customFunction.js';
+
 // Get station history by station code
 export const getStationHistoryByCode = async (req, res) => {
     try {
@@ -17,6 +20,13 @@ export const getStationHistoryByCode = async (req, res) => {
         }
 
         console.log(`Fetching station history data for code: ${code}`);
+        // add authorization
+        // const originalList = ['AAFM', 'AAI', 'AAII', 'ABJI', 'ABSM', 'ACBM', 'ACJM', 'ALKI', 'ALTI', 'AMPM']; 
+        
+        // console.log(req.user.kode_stasiun);
+        // const originalList = req.user.kode_stasiun; 
+
+        // checkAuthorizationByStaCode(originalList, code);
 
         const [rows] = await pool.query(`
             SELECT
@@ -227,6 +237,14 @@ export const getResponseImageHistoryById = async (req, res) => {
 
         console.log(`get response link for history ID: ${id}`);
 
+
+        // add authorization
+        // const originalList = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; 
+        // console.log(req.user.stasiun_id);
+        // const originalList = req.user.stasiun_id; 
+
+        // checkAuthorizationByStaId(originalList, id);
+        
         const [rows] = await pool.query(`
             SELECT
                 h.history_id,

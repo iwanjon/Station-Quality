@@ -148,53 +148,115 @@ export const fetchLatencyDetail = async (sta_code, channel) => {
 };
 
 
-export async function fetchQCSummary(date) {
+// export async function fetchQCSummary(date) {
+//   const cacheKey = `qc:summary:${date}`;
+//   const redisClient = getRedisClient();
+
+//   if (redisClient) {
+//     try {
+//       const cachedData = await redisClient.get(cacheKey);
+//       if (cachedData) {
+//         console.log(`📦 QC Summary dari cache untuk: ${date}`);
+//         return JSON.parse(cachedData);
+//       }
+//     } catch (err) {
+//       console.warn(`⚠️ Gagal mengambil dari cache Redis (QCSummary): ${err.message}`);
+//     }
+//   }
+
+//   try {
+//     const url = `${API_BASE_URL}/qc/data/summary/${date}`;
+//     console.log("🔎 Fetching QC Summary from:", url);
+//     const response = await axios.get(url, {
+//       headers: {
+//         Authorization: `Bearer ${API_KEY}`,
+//         Accept: "application/json",
+//       },
+//     });
+    
+//     // response.data = dummy_qc_summary
+
+//     if (redisClient) {
+//       try {
+//         await redisClient.setEx(cacheKey, DEFAULT_CACHE_TTL, JSON.stringify(response.data));
+//       } catch (err) {
+//         console.warn(`⚠️ Gagal menyimpan ke cache Redis (QCSummary): ${err.message}`);
+//       }
+//     }
+//     return response.data;
+//   } catch (err) {
+//     if (err.response) {
+//       console.error("❌ API Error:", err.response.status, err.response.data);
+//     } else if (err.request) {
+//       console.error("❌ No response from API:", err.request);
+//     } else {
+//       console.error("❌ Request setup error:", err.message);
+//     }
+//     throw err;
+//   }
+// }
+
+export async function fetchQCSummary(date, customTtl) {
   const cacheKey = `qc:summary:${date}`;
   const redisClient = getRedisClient();
 
   if (redisClient) {
     try {
       const cachedData = await redisClient.get(cacheKey);
+      
       if (cachedData) {
-        console.log(`📦 QC Summary dari cache untuk: ${date}`);
-        return JSON.parse(cachedData);
+        // SCENARIO 1: No custom TTL requested in the route.
+        // Just use the cache like normal!
+        if (!customTtl) {
+          console.log(`📦 Menggunakan cache yang ada untuk: ${date}`);
+          return JSON.parse(cachedData);
+        }
+
+        // SCENARIO 2: A custom TTL WAS requested. Let's evaluate it.
+        const remainingTtl = await redisClient.ttl(cacheKey);
+
+        if (remainingTtl > customTtl) {
+          console.log(`📦 Cache masih cukup lama (${remainingTtl}s > ${customTtl}s). Menggunakan cache.`);
+          return JSON.parse(cachedData);
+        } else {
+          console.log(`♻️ TTL sisa ${remainingTtl}s (<= ${customTtl}s). Refreshing data...`);
+          // It drops out of this 'if' block to fetch fresh data below
+        }
       }
     } catch (err) {
-      console.warn(`⚠️ Gagal mengambil dari cache Redis (QCSummary): ${err.message}`);
+      console.warn(`⚠️ Redis error: ${err.message}`);
     }
   }
 
+  // 3. Fetch fresh data from API
   try {
     const url = `${API_BASE_URL}/qc/data/summary/${date}`;
     console.log("🔎 Fetching QC Summary from:", url);
-    const response = await axios.get(url, {
-      headers: {
-        Authorization: `Bearer ${API_KEY}`,
-        Accept: "application/json",
-      },
-    });
     
-    // response.data = dummy_qc_summary
+    const response = await axios.get(url, {
+      headers: { Authorization: `Bearer ${API_KEY}`, Accept: "application/json" }
+    });
+
+    // 4. Determine what TTL to save the new data with
+    const ttlToSet = customTtl ? parseInt(customTtl) : DEFAULT_CACHE_TTL;
 
     if (redisClient) {
-      try {
-        await redisClient.setEx(cacheKey, DEFAULT_CACHE_TTL, JSON.stringify(response.data));
-      } catch (err) {
-        console.warn(`⚠️ Gagal menyimpan ke cache Redis (QCSummary): ${err.message}`);
-      }
+      await redisClient.setEx(cacheKey, ttlToSet, JSON.stringify(response.data));
+      console.log(`✅ Data disimpan dengan TTL: ${ttlToSet}s`);
     }
+
     return response.data;
   } catch (err) {
     if (err.response) {
       console.error("❌ API Error:", err.response.status, err.response.data);
-    } else if (err.request) {
-      console.error("❌ No response from API:", err.request);
     } else {
-      console.error("❌ Request setup error:", err.message);
+      console.error("❌ Request error:", err.message);
     }
     throw err;
   }
 }
+
+
 
 
 export async function fetchSLMONLastStatus() {

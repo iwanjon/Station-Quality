@@ -9,6 +9,7 @@ const API_KEY = process.env.API_KEY;
 export const getAllStationAvailability = async (req, res) => {
   try {
     console.log('🚀 Starting station availability integration...');
+    console.log(req.user)
 
     // Get date parameters dari request query atau set default 7 hari terakhir
     let start_date, end_date;
@@ -103,8 +104,25 @@ export const getAllStationAvailability = async (req, res) => {
     const apiStationCodes = Object.keys(availabilityData);
     console.log(`✅ API returned ${apiStationCodes.length} stations`);
 
-    // 2. Fetch kode stasiun dari database MySQL (hanya yang aktif dan nonaktif)
-    const [stationRows] = await pool.query('SELECT DISTINCT kode_stasiun FROM stasiun WHERE status != "dismantled"');
+    // add authorization by sta code using it to filter db query:
+    // 1. Define your dynamic list of station codes
+    // const stationCodesList = ['AAFM', 'AAI', 'AAII', 'ABJI', 'ABSM', 'ACBM', 'ACJM', 'ALKI', 'ALTI', 'AMPM']; 
+    // console.log(req.user.kode_stasiun);
+    // const stationCodesList = req.user.kode_stasiun; 
+
+    // 2. Add an early check (Optional but recommended)
+    // SQL will throw an error if you pass an empty array to an IN clause: "IN ()"
+    // if (stationCodesList.length === 0) {
+    //   return []; // Or handle the empty state however your app requires
+    // }
+
+    // 3. Execute the updated query
+    const [stationRows] = await pool.query(
+      'SELECT DISTINCT kode_stasiun FROM stasiun WHERE status != "dismantled"'
+    );
+
+    // // 2. Fetch kode stasiun dari database MySQL (hanya yang aktif dan nonaktif)
+    // const [stationRows] = await pool.query('SELECT DISTINCT kode_stasiun FROM stasiun WHERE status != "dismantled"');
     
     if (stationRows.length === 0) {
       return res.status(404).json({
@@ -259,6 +277,8 @@ export const getAllStationAvailability = async (req, res) => {
 export const getStationAvailabilityByCode = async (req, res) => {
   try {
     console.log('🚀 Starting single station availability integration...');
+
+    console.log(req.user)
 
     // Get station code dari URL parameter
     const { stationCode } = req.params;

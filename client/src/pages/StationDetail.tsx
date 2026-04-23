@@ -55,7 +55,7 @@ const CHANNELS = ["E", "N", "Z"];
 const formatDateTick = (tickItem: string) => dayjs(tickItem).format("DD-MMM");
 
 const StationDetail = () => {
-  const { stationCode } = useParams<{ stationCode: string }>();
+  let { stationCode } = useParams<{ stationCode: string }>();
   const navigate = useNavigate();
 
   // Tambahan: state untuk mengontrol select agar menampilkan nama stasiun pertama
@@ -69,6 +69,26 @@ const StationDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stationList, setStationList] = useState<string[]>([]);
+
+
+  // // add authorizationn 
+  
+  // const originalList = ['AAFM', 'AAI', 'AAII', 'ABJI', 'ABSM', 'ACBM', 'ACJM', 'ALKI', 'ALTI', 'AMPM']; 
+  // // Normalize the list to a Set of lowercase strings for efficient lookup
+  // const lowercaseSet = new Set(originalList.map(item => item.toLowerCase()));
+
+  
+  // const lowercaseWord = (stationCode || "").toLowerCase();
+
+  // // Check if the lowercase word is NOT in the set
+  // if (!lowercaseSet.has(lowercaseWord)) {
+  //   console.log(`"${stationCode}" is not in the list.`);
+  //   stationCode = ""
+  // } else {
+  //   console.log(`"${stationCode}" is in the list.`);
+  
+  // }
+
 
   // ambil daftar stasiun dan jika URL belum berisi stationCode, langsung set default ke stasiun pertama
   useEffect(() => {
@@ -425,7 +445,7 @@ const StationDetail = () => {
           ))}
         </ChartGridSection>
 
-        <LazyLatencyChart stationCode={stationCode} />
+        {stationCode && <LazyLatencyChart stationCode={stationCode} />}
 
         <ChartGridSection title="% Below NLNM & % Above NHNM">
           {CHANNELS.map((ch) => (

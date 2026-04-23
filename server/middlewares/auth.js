@@ -3,25 +3,83 @@ import pool from '../config/database.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_fallback_key';
 
-// Middleware 1: Check if the user is logged in at all
-export const requireAuth = (req, res, next) => {
-    const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+// Middleware 1: Check if the user is logged in at all
+export const requireAuth = async (req, res, next) => {
+    // --- UPDATED: Read token from cookies instead of headers ---
+    const token = req.cookies?.token; 
+
+    if (!token) {
         return res.status(401).json({ success: false, message: 'No token provided' });
     }
 
-    const token = authHeader.split(' ')[1];
-
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = decoded; // Attach the { userId, roleId } to the request
-        console.log(req.user)
-        next(); // Move to the next function
+        req.user = decoded; 
+        
+        next(); 
     } catch (error) {
+        // If token expires, it will fail verification here
         return res.status(401).json({ success: false, message: 'Invalid or expired token' });
     }
 };
+
+
+// // Middleware 1: Check if the user is logged in at all
+// export const requireAuth = async (req, res, next) => {
+//     const authHeader = req.headers.authorization;
+
+//     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+//         return res.status(401).json({ success: false, message: 'No token provided' });
+//     }
+
+//     const token = authHeader.split(' ')[1];
+//     let result;
+
+//     try {
+//         const decoded = jwt.verify(token, JWT_SECRET);
+//         req.user = decoded; // Attach the { userId, roleId } to the request
+//         // console.log(req.user)
+
+//         // if (req.user.roleId !== 1) {
+//         // [result] = await pool.query(`
+//         //         SELECT 
+//         //             s.stasiun_id, 
+//         //             s.kode_stasiun
+//         //         FROM 
+//         //             users u
+//         //         JOIN 
+//         //             stasiun s ON u.upt_id = s.upt_id
+//         //         WHERE 
+//         //             u.user_id = ?;
+//         //     `, [req.user.userId]);
+//         // } else {
+//         //     [result] = await pool.query(`
+//         //         SELECT 
+//         //             s.stasiun_id, 
+//         //             s.kode_stasiun
+//         //         FROM 
+//         //             stasiun s
+//         //         `);
+//         // }
+
+
+        
+
+//             // req.user.stasiun_id = sta_id;
+//             // req.user.kode_stasiun = sta_code;
+
+
+//             // req.user.stasiun_id = result.map(item => item.stasiun_id);
+//             // req.user.kode_stasiun = result.map(item => item.kode_stasiun);
+
+//             // console.log(req.user)
+        
+//         next(); // Move to the next function
+//     } catch (error) {
+//         return res.status(401).json({ success: false, message: 'Invalid or expired token' });
+//     }
+// };
 
 // // Middleware 2: Check if the user has a specific permission
 // export const requirePermission = (requiredPermission) => {
@@ -135,6 +193,7 @@ export const requirePermissions = (requiredPermissions, requireAll = true) => {
             // If the user is an admin, instantly grant access and skip the DB query!
             // (You can also check `if (roleId === 1)` if Admin is always ID 1 in your DB)
 
+
             const [roles] = await pool.query(`
                 SELECT 
                     u.role_id, 
@@ -146,7 +205,7 @@ export const requirePermissions = (requiredPermissions, requireAll = true) => {
 
             const role = roles[0];
             console.log(role);
-            if (role.role_name === 'admin' || role.role_name === 'superadmin') {
+            if (role.role_name === 'admin' || role.role_name === 'superadmin' || role.role_name === 'administrator') {
                 return next();
             }
 
@@ -176,6 +235,7 @@ export const requirePermissions = (requiredPermissions, requireAll = true) => {
                 // AND LOGIC: User must have every single permission requested
                 const hasAll = permsArray.every(perm => foundPermissions.includes(perm));
                 if (!hasAll) {
+                    console.error('Permission Check Error:', "all permissions required");
                     return res.status(403).json({ 
                         success: false, 
                         message: 'Forbidden: You are missing required permissions.' 
@@ -184,6 +244,7 @@ export const requirePermissions = (requiredPermissions, requireAll = true) => {
             } else {
                 // OR LOGIC: User only needs at least one of the requested permissions
                 if (foundPermissions.length === 0) {
+                    console.error('Permission Check Error:', "no permission found");
                     return res.status(403).json({ 
                         success: false, 
                         message: 'Forbidden: You do not have any of the required permissions.' 

@@ -60,7 +60,7 @@ router.get('/foreign-key-options', getForeignKeyOptions);
 router.get('/bycode', getStasiunByCode);
 
 // PUT /api/stasiun/:code - Update stasiun by code
-router.put('/:code', updateStasiunByCode);
+router.put('/:code', requirePermissions('station:update'), updateStasiunByCode);
 
 // POST /api/stasiun/import-csv - Import stations from CSV
 router.post('/import-csv', upload.single('csvFile'), importStationsFromCSV);

@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { cached } from '../utils/cacheHelper.js'; 
 import { fetchQCDetail, fetchQCSummary, fetchQCSiteDetail } from '../services/externalApi.js'; 
 import dayjs from "dayjs";
+import { checkAuthorizationByStaCode, checkAuthorizationByStaId } from '../utils/customFunction.js';
 
 const router = Router();
 
@@ -12,6 +13,19 @@ router.get("/site/detail/:code", async (req, res) => {
   const cacheKey = `qc-sitedetail:${code}`;
 
   try {
+
+    // add authorization
+    // const originalList = ['AAFM', 'AAI', 'AAII', 'ABJI', 'ABSM', 'ACBM', 'ACJM', 'ALKI', 'ALTI', 'AMPM']; 
+
+    // console.log(req.user.kode_stasiun);
+    // const originalList = req.user.kode_stasiun; 
+    
+    // checkAuthorizationByStaCode(originalList, code);
+    // if (!isAuthorized) {
+    //   console.log(`"${code}" is not in the list.`);
+    //   throw new Error(`"${code}" is not in the list.`);
+    // }
+
     const data = await cached(cacheKey, 86400, () => // Cache untuk 1 hari
       fetchQCSiteDetail(code)
     );
@@ -34,6 +48,18 @@ router.get("/summary/7days/:stationCode", async (req, res) => {
   const cacheKey = `qc-summary-7days:${stationCode}`;
 
   try {
+    // add authorization
+    // const originalList = ['AAFM', 'AAI', 'AAII', 'ABJI', 'ABSM', 'ACBM', 'ACJM', 'ALKI', 'ALTI', 'AMPM']; 
+    
+    // console.log(req.user.kode_stasiun);
+    // const originalList = req.user.kode_stasiun; 
+
+  //  checkAuthorizationByStaCode(originalList, stationCode);
+    // if (!isAuthorized) {
+    //   console.log(`"${stationCode}" is not in the list.`);
+    //   throw new Error(`"${stationCode}" is not in the list.`);
+    // }
+
     const finalResults = await cached(cacheKey, 60 * 60, async () => {
       const today = dayjs();
       const promises = [];
@@ -97,6 +123,17 @@ router.get("/data/detail/7days/:stationId", async (req, res) => {
   const results = [];
 
   try {
+
+
+    // add authorization
+    // const originalList = ['AAFM', 'AAI', 'AAII', 'ABJI', 'ABSM', 'ACBM', 'ACJM', 'ALKI', 'ALTI', 'AMPM']; 
+    
+    // console.log(req.user.kode_stasiun);
+    // const originalList = req.user.kode_stasiun; 
+
+  //  checkAuthorizationByStaCode(originalList, stationId);
+
+
     for (let i = 1; i <= 7; i++) {
       const date = today.subtract(i, "day").format("YYYY-MM-DD");
       const cacheKey = `qc:${stationId}:${date}`;
@@ -135,6 +172,34 @@ router.get("/data/detail/:stationId/:date", async (req, res) => {
   const cacheKey = `qc:${stationId}:${date}`;
 
   try {
+
+
+    // add authorization
+    // const originalList = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; 
+
+    // 1. Make sure it's not an empty string
+    // 2. Check if the string version of the array items matches your stationId
+    // const isAuthorized = stationId.trim() !== "" && originalList.some(id => String(id) === String(stationId.trim()));
+
+    // // Check if the lowercase word is NOT in the set
+    // if (!isAuthorized) {
+    //   console.log(`"${stationId}" is not in the list.`);
+    //   throw new Error(`"${stationId}" is not in the list.`);
+    // } else {
+    //   console.log(`"${stationId}" is in the list.`);
+    // }
+
+    // console.log(req.user.stasiun_id);
+    // const originalList = req.user.stasiun_id; 
+
+    // checkAuthorizationByStaId(originalList, stationId);
+    // if (!isAuthorized) {
+    //   console.log(`"${stationId}" is not in the list.`);
+    //   throw new Error(`"${stationId}" is not in the list.`);
+    // } else {
+    //   console.log(`"${stationId}" is in the list.`);
+    // }
+
     const data = await cached(cacheKey, 60 * 60, () =>
       fetchQCDetail(stationId, date)
     );
@@ -145,12 +210,59 @@ router.get("/data/detail/:stationId/:date", async (req, res) => {
   }
 });
 
+// router.get("/summary/:date", async (req, res) => {
+//   const { date } = req.params;
+//   const cacheKey = `qc-summary:${date}`;
+//   // console.log(cacheKey)
+
+//   try {
+//     const data = await cached(cacheKey, 60 * 60, () =>
+//       fetchQCSummary(date)
+//     );
+//     res.json(data);
+//   } catch (err) {
+//     console.error("Error in /summary:", err);
+//     res.status(500).json({ error: "Failed to fetch QC summary" });
+//   }
+// });
+
 router.get("/summary/:date", async (req, res) => {
   const { date } = req.params;
+  // Get TTL from query (e.g., /summary/2023-10-01?ttl=7200)
+  const requestedTtl = req.query.ttl ? parseInt(req.query.ttl) : null;
+
+  try {
+    // We pass the requestedTtl directly to your fetch function
+    const data = await fetchQCSummary(date, requestedTtl);
+    res.json(data);
+  } catch (err) {
+    console.error("Error in /summary:", err);
+    res.status(500).json({ error: "Failed to fetch QC summary" });
+  }
+});
+
+
+
+router.get("/summary/:date/:code", async (req, res) => {
+  const { date, code } = req.params;
   const cacheKey = `qc-summary:${date}`;
   // console.log(cacheKey)
 
   try {
+
+
+    // add authorization
+    // const originalList = ['AAFM', 'AAI', 'AAII', 'ABJI', 'ABSM', 'ACBM', 'ACJM', 'ALKI', 'ALTI', 'AMPM']; 
+
+    // const originalList  = req.user.kode_stasiun;    
+    
+    // checkAuthorizationByStaCode(originalList, code);
+    // if (!isAuthorized) {
+    //   console.log(`"${code}" is not in the list.`);
+    //   throw new Error(`"${code}" is not in the list.`);
+    // }
+
+
     const data = await cached(cacheKey, 60 * 60, () =>
       fetchQCSummary(date)
     );

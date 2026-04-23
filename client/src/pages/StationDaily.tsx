@@ -120,7 +120,7 @@ const CHANNEL_PRIORITIES = [
 const CHANNELS_API = ["E", "N", "Z"];
 
 const StationDaily = () => {
-  const { stationCode } = useParams<{ stationCode: string }>();
+  let { stationCode } = useParams<{ stationCode: string }>();
   const navigate = useNavigate();
   const [stationList, setStationList] = useState<string[]>([]);
   const [selectedStation, setSelectedStation] = useState(stationCode || '');
@@ -132,9 +132,25 @@ const StationDaily = () => {
   const [siteQualityData, setSiteQualityData] = useState<SiteQualityData | null>(null);
   const [loadingSiteQuality, setLoadingSiteQuality] = useState(true);
 
+  // // add authorization
+  // const originalList = ['AAFM', 'AAI', 'AAII', 'ABJI', 'ABSM', 'ACBM', 'ACJM', 'ALKI', 'ALTI', 'AMPM']; 
+  // // Normalize the list to a Set of lowercase strings for efficient lookup
+  // const lowercaseSet = new Set(originalList.map(item => item.toLowerCase()));
+
+  // // const wordToCheck = 'Grape';
+  // const lowercaseWord = (stationCode || "").toLowerCase();
+
+  // // Check if the lowercase word is NOT in the set
+  // if (!lowercaseSet.has(lowercaseWord)) {
+  //   console.log(`"${stationCode}" is not in the list.`);
+  //   stationCode = ""
+  // } else {
+  //   console.log(`"${stationCode}" is in the list.`);
+  // }
+
   // State baru untuk Station Status table
 
-// State baru untuk Station Status table
+  // State baru untuk Station Status table
   const [allStationsStatus, setAllStationsStatus] = useState<StationStatusData[]>([]); // <-- TAMBAHKAN INI
   const [stationStatusData, setStationStatusData] = useState<StationStatusData | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(false);
@@ -270,7 +286,8 @@ useEffect(() => {
     setLoadingStatus(true);
     
     // Pastikan endpoint ini sesuai dengan API kamu yang menerima parameter tanggal
-    axiosServer.get(`/api/qc/summary/${selectedDate}`) 
+    // console.log(`/api/qc/summary/${selectedDate}/${selectedStation}`);
+    axiosServer.get(`/api/qc/summary/${selectedDate}/${selectedStation}`) 
       .then((res) => {
         const dataArray: StationStatusData[] = res.data || [];
         setAllStationsStatus(dataArray); // Simpan semua data stasiun untuk tanggal ini
@@ -282,7 +299,7 @@ useEffect(() => {
       .finally(() => {
         setLoadingStatus(false);
       });
-  }, [selectedDate]); // <-- Hanya fetch ulang jika selectedDate berubah
+  }, [selectedDate, selectedStation]); // <-- Hanya fetch ulang jika selectedDate berubah
   
   // 2. Update tabel HANYA dengan memfilter data lokal ketika stasiun berubah
   useEffect(() => {

@@ -14,9 +14,12 @@ import pool, { testConnection } from './config/database.js';
 import latencyHistoryRoutes from './routes/latencyHistory.routes.js'; 
 import authRoutes from './routes/auth.routes.js'; 
 import rabcRoutes from './routes/rabc.routes.js'; 
+import publicStasiunRoutes from './routes/public.stasiun.routes.js';
+import publicRegister from './routes/public.auth.routes.js'
 import logger from './utils/logger.js';
+import cookieParser from 'cookie-parser';
 import 'dotenv/config';
-import { requireAuth } from './middlewares/auth.js';
+import { requireAuth, requirePermissions } from './middlewares/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,38 +34,42 @@ const app = express();
 app.use(json());
 
 
-
 // ------------------------
 // Middleware to log every incoming request
 // app.use((req, res, next) => {
-//   logger.info(`Incoming request: ${req.method} ${req.url}`);
-//   next();
-// });
-// -------------------------------
+  //   logger.info(`Incoming request: ${req.method} ${req.url}`);
+  //   next();
+  // });
+  // -------------------------------
+  
+  // Serve static files from public/uploads directory
+  app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+  
+  app.use(
+    cors({
+      origin: "http://localhost:5173", 
+      methods: ["GET", "POST", "PUT", "DELETE"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+      credentials: true, // CRITICAL: Add this line to allow cookies to pass through
+    })
+  );
+  
+app.use(cookieParser()); // Add this before your routes!
+app.use('/api/user', authRoutes);
+app.use('/api/stasiun/public', publicStasiunRoutes);
+app.use('/api/register/public', publicRegister);
+app.use(requireAuth);
+// app.use(requirePermissions);
 
-// Serve static files from public/uploads directory
-app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
-
-app.use(
-  cors({
-    origin: "http://localhost:5173", 
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
-
-// app.use(requireAuth);
-
-app.use('/api/dashboard', dashboardRoutes); 
+app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/qc', qcRoutes);
-app.use('/api/qc', qcImageRoutes); 
+app.use('/api/qc', qcImageRoutes);
 app.use('/api/stasiun', stasiunRoutes);
 app.use('/api/station-history', stasiunHistoryRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use("/api/signal", signalRoutes);
 app.use('/api', latencyRoutes);
 app.use('/api/latency/history', latencyHistoryRoutes);
-app.use('/api/user', authRoutes);
 app.use('/api/rabc', rabcRoutes);
 
 // import prisma from './lib/prisma.js'; // Note the .js extension is required in ESM
