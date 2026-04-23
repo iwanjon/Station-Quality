@@ -1,3 +1,4 @@
 DEBUG=True
 SECRET_KEY=django-insecure
 DATABASE_URL=mysql://root:admin@localhost:3306/a
+ALLOWED_HOSTS=localhost,127.0.0.1,vm1-dok,your-domain.com
