@@ -31,6 +31,9 @@ const __dirname = path.dirname(__filename);
 // -------------------------
 
 const app = express();
+// --- ADD THIS LINE ---
+app.set('trust proxy', 1);
+
 app.use(json());
 
 
@@ -47,7 +50,11 @@ app.use(json());
   
   app.use(
     cors({
-      origin: "http://localhost:5173", 
+      origin: [
+      "http://localhost:5173",          // For your local testing
+      "http://202.90.198.104:9090",     // YOUR SERVER IP + PORT
+      "http://202.90.198.104"           // Just the IP (fallback)
+    ],
       methods: ["GET", "POST", "PUT", "DELETE"],
       allowedHeaders: ["Content-Type", "Authorization"],
       credentials: true, // CRITICAL: Add this line to allow cookies to pass through

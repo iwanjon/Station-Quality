@@ -146,8 +146,10 @@ export const login = async (req, res) => {
         // --- NEW: Set the HTTP-Only Cookie ---
         res.cookie('token', token, {
             httpOnly: true, // Prevents JavaScript from reading the cookie (XSS protection)
-            secure: process.env.NODE_ENV === 'production', // true if using HTTPS in production
-            sameSite: 'strict', // CSRF protection
+            secure: false, // true if using HTTPS in production
+            // secure: process.env.NODE_ENV === 'production', // true if using HTTPS in production
+            // sameSite: 'strict', // CSRF protection
+            sameSite: 'lax', // CSRF protection
             maxAge: 8 * 60 * 60 * 1000 // 8 hours in milliseconds (matches JWT expiration)
         });
 
@@ -173,8 +175,10 @@ export const logout = async (req, res) => {
         // --- NEW: Clear the cookie on the server ---
         res.clearCookie('token', {
             httpOnly: true,
-            sameSite: 'strict',
-            secure: process.env.NODE_ENV === 'production'
+            sameSite: 'lax',
+            secure: false,
+            // sameSite: 'strict',
+            // secure: process.env.NODE_ENV === 'production'
         });
         
         res.status(200).json({ 
