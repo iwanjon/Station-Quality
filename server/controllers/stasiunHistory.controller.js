@@ -77,28 +77,50 @@ export const getAllStationHistory = async (req, res) => {
 
 
     try {
+        // const [rows] = await pool.query(`
+        //     SELECT
+        //         h.history_id,
+        //         h.stasiun_id,
+        //         s.kode_stasiun,
+        //         s.net,
+        //         h.SHE,
+        //         h.SHN,
+        //         h.SHZ,
+        //         h.data_logger,
+        //         h.total_gain,
+        //         h.input_unit,
+        //         h.sampling_rate,
+        //         h.sensor_type,
+        //         h.start_date,
+        //         h.end_date,
+        //         h.PAZ,
+        //         h.status,
+        //         h.created_at
+        //     FROM stasiun_history h
+        //     INNER JOIN stasiun s ON h.stasiun_id = s.stasiun_id
+        //     ORDER BY h.created_at DESC
+        // `);
         const [rows] = await pool.query(`
             SELECT
                 h.history_id,
                 h.stasiun_id,
                 s.kode_stasiun,
                 s.net,
-                h.SHE,
-                h.SHN,
-                h.SHZ,
-                h.data_logger,
+                h.channel,
+                h.sensor_name,
+                h.digitizer_name,
                 h.total_gain,
                 h.input_unit,
                 h.sampling_rate,
-                h.sensor_type,
                 h.start_date,
                 h.end_date,
-                h.PAZ,
+                h.paz,
                 h.status,
-                h.created_at
+                h.created_at,
+                h.response_path
             FROM stasiun_history h
             INNER JOIN stasiun s ON h.stasiun_id = s.stasiun_id
-            ORDER BY h.created_at DESC
+            ORDER BY h.status DESC, TRIM(h.input_unit) ASC , h.channel ASC
         `);
 
         res.json({
