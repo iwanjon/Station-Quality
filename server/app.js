@@ -17,6 +17,7 @@ import rabcRoutes from './routes/rabc.routes.js';
 import publicStasiunRoutes from './routes/public.stasiun.routes.js';
 import publicRegister from './routes/public.auth.routes.js'
 import publicStaHistories from './routes/public.stasiunHistory.routes.js'
+import publicQcImageRoutes from './routes/public.qcImage.routes.js'
 import logger from './utils/logger.js';
 import cookieParser from 'cookie-parser';
 import 'dotenv/config';
@@ -67,6 +68,7 @@ app.use('/api/user', authRoutes);
 app.use('/api/stasiun/public', publicStasiunRoutes);
 app.use('/api/register/public', publicRegister);
 app.use('/api/history/public', publicStaHistories);
+app.use('/api/image/public', publicQcImageRoutes);
 app.use(requireAuth);
 // app.use(requirePermissions);
 

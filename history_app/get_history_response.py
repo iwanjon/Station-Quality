@@ -2,7 +2,8 @@ import requests
 import pandas as pd
 
 # 1. Fetch the data from your API
-url = "http://localhost:5000/api/history/public"
+url = "http://202.90.198.104:9090/api/quality/api/history/public"
+# url = "http://localhost:5000/api/history/public"
 response = requests.get(url)
 api_response = response.json()
 
