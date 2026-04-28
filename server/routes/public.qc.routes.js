@@ -22,13 +22,14 @@ const router = Router();
 //   }
 // });
 
+
 router.get("/summary/:date", async (req, res) => {
   let { date } = req.params;
   const requestedTtl = req.query.ttl ? parseInt(req.query.ttl) : null;
 
-  // If TTL exists, force the date to be today (now)
+  // If TTL exists, force the date to be yesterday
   if (requestedTtl !== null) {
-    date = dayjs().format('YYYY-MM-DD');
+    date = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
   } else if (!date) {
     // If no TTL is provided and no date is in the URL, return an error
     return res.status(400).json({ error: "Date parameter is required when no TTL is provided" });
