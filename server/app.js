@@ -19,6 +19,8 @@ import publicRegister from './routes/public.auth.routes.js'
 import publicStaHistories from './routes/public.stasiunHistory.routes.js'
 import publicQcImageRoutes from './routes/public.qcImage.routes.js'
 import publicQcRoutes from './routes/public.qc.routes.js'
+
+import publicAvailabilityRoutes from './routes/public.availability.routes.js'
 import logger from './utils/logger.js';
 import cookieParser from 'cookie-parser';
 import 'dotenv/config';
@@ -71,11 +73,14 @@ app.use('/api/register/public', publicRegister);
 app.use('/api/history/public', publicStaHistories);
 app.use('/api/image/public', publicQcImageRoutes);
 app.use('/api/qc/public', publicQcRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/latency/history', latencyHistoryRoutes);
+app.use('/api/availability/public', publicAvailabilityRoutes);
+
 
 app.use(requireAuth);
 // app.use(requirePermissions);
 
-app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/qc', qcRoutes);
 app.use('/api/qc', qcImageRoutes);
 app.use('/api/stasiun', stasiunRoutes);
@@ -83,7 +88,6 @@ app.use('/api/station-history', stasiunHistoryRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use("/api/signal", signalRoutes);
 app.use('/api', latencyRoutes);
-app.use('/api/latency/history', latencyHistoryRoutes);
 app.use('/api/rabc', rabcRoutes);
 
 // import prisma from './lib/prisma.js'; // Note the .js extension is required in ESM

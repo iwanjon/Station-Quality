@@ -239,7 +239,7 @@ const MetadataCard = () => {
     const fetchRecentUpdates = async () => {
       try {
         setIsLoading(true);
-        const response = await axiosServer.get('/api/stasiun/recent-updates');
+        const response = await axiosServer.get('/api/stasiun/public/recent-updates');
         
         if (response.data.success && Array.isArray(response.data.data)) {
           setRecentUpdates(response.data.data);
@@ -318,9 +318,9 @@ const Dashboard = () => {
     try {
       const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
       const [qcResponse, slmonResponse, stasiunResponse] = await Promise.all([
-        axiosServer.get<Omit<QCSummary, "latencyStrings" | "primaryLatency" | "primaryColor">[]>(`/api/qc/summary/${yesterday}`),
+        axiosServer.get<Omit<QCSummary, "latencyStrings" | "primaryLatency" | "primaryColor">[]>(`/api/qc/public/summary/${yesterday}`),
         axiosServer.get<SlmonFeatureCollection>("/api/dashboard/slmon/laststatus"),
-        axiosServer.get<any[]>("/api/stasiun"),
+        axiosServer.get<any[]>("/api/stasiun/public"),
       ]);
 
       setTotalStationCount(slmonResponse.data.features.length);
@@ -465,7 +465,7 @@ const Dashboard = () => {
     const fetchAvailability = async () => {
       try {
         const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
-        const res = await axiosServer.get(`/api/availability`, {
+        const res = await axiosServer.get(`/api/availability/public`, {
           params: { start_date: yesterday, end_date: yesterday },
         });
         const apiData = res.data?.data || {};
@@ -502,7 +502,7 @@ const Dashboard = () => {
     const fetchQuality = async () => {
       try {
         const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
-        const res = await axiosServer.get(`/api/qc/summary/${yesterday}`);
+        const res = await axiosServer.get(`/api/qc/public/summary/${yesterday}`);
         let good = 0, fair = 0, poor = 0, nodata = 0;
         (res.data || []).forEach((item: any) => {
           if (item.result === "Baik") good++;
