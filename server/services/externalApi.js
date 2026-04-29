@@ -196,8 +196,73 @@ export const fetchLatencyDetail = async (sta_code, channel) => {
 //   }
 // }
 
+// export async function fetchQCSummary(date, customTtl) {
+//   const cacheKey = `qc:summary:${date}`;
+//   const redisClient = getRedisClient();
+
+//   if (redisClient) {
+//     try {
+//       const cachedData = await redisClient.get(cacheKey);
+      
+//       if (cachedData) {
+//         // SCENARIO 1: No custom TTL requested in the route.
+//         // Just use the cache like normal!
+//         if (!customTtl) {
+//           console.log(`📦 Menggunakan cache yang ada untuk: ${date}`);
+//           return JSON.parse(cachedData);
+//         }
+
+//         // SCENARIO 2: A custom TTL WAS requested. Let's evaluate it.
+//         const remainingTtl = await redisClient.ttl(cacheKey);
+
+//         if (remainingTtl > customTtl) {
+//           console.log(`📦 Cache masih cukup lama (${remainingTtl}s > ${customTtl}s). Menggunakan cache.`);
+//           return JSON.parse(cachedData);
+//         } else {
+//           console.log(`♻️ TTL sisa ${remainingTtl}s (<= ${customTtl}s). Refreshing data...`);
+//           // It drops out of this 'if' block to fetch fresh data below
+//         }
+//       }
+//     } catch (err) {
+//       console.warn(`⚠️ Redis error: ${err.message}`);
+//     }
+//   }
+
+//   // 3. Fetch fresh data from API
+//   try {
+//     const url = `${API_BASE_URL}/qc/data/summary/${date}`;
+//     console.log("🔎 Fetching QC Summary from:", url);
+    
+//     const response = await axios.get(url, {
+//       headers: { Authorization: `Bearer ${API_KEY}`, Accept: "application/json" }
+//     });
+
+//     // 4. Determine what TTL to save the new data with
+//     const ttlToSet = customTtl ? parseInt(customTtl) : DEFAULT_CACHE_TTL;
+
+//     if (redisClient) {
+//       await redisClient.setEx(cacheKey, ttlToSet, JSON.stringify(response.data));
+//       console.log(`✅ Data disimpan dengan TTL: ${ttlToSet}s`);
+//     }
+
+//     return response.data;
+//   } catch (err) {
+//     if (err.response) {
+//       console.error("❌ API Error:", err.response.status, err.response.data);
+//     } else {
+//       console.error("❌ Request error:", err.message);
+//     }
+//     throw err;
+//   }
+// }
+
+
 export async function fetchQCSummary(date, customTtl) {
-  const cacheKey = `qc:summary:${date}`;
+  // ✅ MODIFIED: Use today's date for the cache key if customTtl exists.
+  // (Make sure to import dayjs at the top of this file if you haven't already)
+  const cacheDate = customTtl ? dayjs().format('YYYY-MM-DD') : date;
+  const cacheKey = `qc:summary:${cacheDate}`;
+  
   const redisClient = getRedisClient();
 
   if (redisClient) {
@@ -208,7 +273,7 @@ export async function fetchQCSummary(date, customTtl) {
         // SCENARIO 1: No custom TTL requested in the route.
         // Just use the cache like normal!
         if (!customTtl) {
-          console.log(`📦 Menggunakan cache yang ada untuk: ${date}`);
+          console.log(`📦 Menggunakan cache yang ada untuk: ${cacheDate}`);
           return JSON.parse(cachedData);
         }
 
@@ -230,6 +295,7 @@ export async function fetchQCSummary(date, customTtl) {
 
   // 3. Fetch fresh data from API
   try {
+    // Notice that this STILL uses the original 'date' variable (yesterday) for the API fetch
     const url = `${API_BASE_URL}/qc/data/summary/${date}`;
     console.log("🔎 Fetching QC Summary from:", url);
     
@@ -241,6 +307,7 @@ export async function fetchQCSummary(date, customTtl) {
     const ttlToSet = customTtl ? parseInt(customTtl) : DEFAULT_CACHE_TTL;
 
     if (redisClient) {
+      // Saves using the new cacheKey
       await redisClient.setEx(cacheKey, ttlToSet, JSON.stringify(response.data));
       console.log(`✅ Data disimpan dengan TTL: ${ttlToSet}s`);
     }
@@ -255,7 +322,6 @@ export async function fetchQCSummary(date, customTtl) {
     throw err;
   }
 }
-
 
 
 
