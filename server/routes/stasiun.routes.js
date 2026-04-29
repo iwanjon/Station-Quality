@@ -75,7 +75,7 @@ router.delete('/:code/photo', deleteSitePhoto);
 router.get('/foreign-key-options', getForeignKeyOptions);
 
 // GET /api/stasiun/recent-updates - Get 5 most recently updated stations
-// router.get('/recent-updates', getRecentUpdates);
+router.get('/recent-updates', getRecentUpdates);
 
 // GET /api/stasiunbycode?code=XXX - Get stasiun by code
 router.get('/bycode', getStasiunByCode);

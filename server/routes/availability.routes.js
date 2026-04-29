@@ -4,7 +4,7 @@ import { getAllStationAvailability, getStationAvailabilityByCode } from '../cont
 const router = Router();
 
 // GET /api/availability - Get availability data for all stations from database
-// router.get('/', getAllStationAvailability);
+router.get('/', getAllStationAvailability);
 
 // GET /api/availability/:stationCode - Get availability data for specific station
 router.get('/:stationCode', getStationAvailabilityByCode);
