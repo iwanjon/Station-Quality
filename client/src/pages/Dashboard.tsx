@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, memo } from "react";
 import MainLayout from "../layouts/MainLayout";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -8,12 +8,48 @@ import dayjs from "dayjs";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { Link } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, ResponsiveContainer as RechartsResponsiveContainer } from "recharts";
+import DataTable from "../components/DataTable";
+import type { ColumnDef } from "@tanstack/react-table";
+import { Download } from "lucide-react";
 
 // --- INTERFACES ---
 
+interface Stasiun {
+  stasiun_id: number;
+  net: string;
+  kode_stasiun: string;
+  lintang: number;
+  bujur: number;
+  elevasi: number;
+  lokasi: string;
+  provinsi: string;
+  upt_penanggung_jawab: string;
+  status: string;
+  tahun_instalasi: number;
+  jaringan: string;
+  prioritas: string;
+  keterangan: string | null;
+  accelerometer: string;
+  digitizer_komunikasi: string;
+  tipe_shelter: string | null;
+  lokasi_shelter: string;
+  penjaga_shelter: string;
+  kondisi_shelter: string;
+  assets_shelter: string;
+  access_shelter: string;
+  photo_shelter: string;
+  penggantian_terakhir_alat: string | null;
+  updated_at: string;
+}
+
+// Extended interface specifically for rendering the merged Table
+interface TableStasiun extends Stasiun {
+  qc_result?: string | null;
+  quality_percentage?: number | null;
+}
+
 interface SlmonMap extends SlmonStatus, QCSummaryBase {
   type: "Feature";
-
 }
 
 interface SlmonStatus {
@@ -82,7 +118,7 @@ const getStatusTextEn = (result: string|null): string => {
   switch (result) {
     case "Baik": return "Good";
     case "Cukup Baik": return "Fair";
-    case "Buruk": return "Bad";
+    case "Buruk": return "Poor"; 
     case "No Data": return "No Data";
     case "Mati": return "Mati";
     case null : return "Mati";
@@ -96,54 +132,38 @@ const parseLatencyToSeconds = (latencyString?: string | null): number | null => 
   if (isNaN(value)) return null;
 
   if (latencyString.endsWith("h")) return value * 3600; 
-
   if (latencyString.endsWith("d")) return value * 86400;
   if (latencyString.endsWith("m")) return value * 60;
   
-  return value; // Anggap sebagai detik jika tidak ada satuan
+  return value; 
 };
 
-
-// Fungsi ini menentukan warna segitiga di peta berdasarkan aturan baru.
 const getTriangleColor = <T extends { latencyStrings: string[] }>(input: T): string => {
-  // Ambil dan parse latency 1, 2, dan 3
   const latenciesInSeconds = [
     parseLatencyToSeconds(input.latencyStrings[0]),
     parseLatencyToSeconds(input.latencyStrings[1]),
     parseLatencyToSeconds(input.latencyStrings[2]),
   ];
 
-  // Saring untuk mendapatkan nilai latensi yang valid (bukan null)
   const validLatencies = latenciesInSeconds.filter(
     (sec): sec is number => sec !== null
   );
 
-  // Aturan 1: Hitam jika latency1 adalah "NA"
   if (input.latencyStrings[0]?.toUpperCase() === "NA" || validLatencies.length === 0) {
     return "#222222"; // Black
   }
 
-  // Cari nilai terkecil dari latensi yang valid
   const minLatencySec = Math.min(...validLatencies);
 
-  // Aturan 3: Hijau jika < 10 detik
   if (minLatencySec < 10) return "#16a34a"; // Green
-  // Aturan 4: Kuning jika < 1 menit
   if (minLatencySec < 60) return "#facc15"; // Yellow
-  // Aturan 5: Oranye jika < 3 menit
   if (minLatencySec < 180) return "#fb923c"; // Orange
-  // Aturan 6: Merah jika < 30 menit
   if (minLatencySec < 1800) return "#ef4444"; // Red
   
-  // Default: Hitam untuk >= 30 menit (menggabungkan >30m dan >=1d/NA)
   return "#222222"; // Black
 };
 
-
-
-// Komponen legend yang telah disinkronkan dengan logika warna baru.
 const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummaryBase[]; totalStationCount: number }) => {
-// const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummary[]; totalStationCount: number }) => {
   const countByCategory = {
     "<10s": 0,    // Green
     "<1m": 0,     // Yellow
@@ -152,7 +172,6 @@ const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummaryB
     ">30m": 0,     // Black
   };
 
-  // Logika penghitungan disesuaikan dengan aturan baru
   stationData.forEach((s) => {
     const latenciesInSeconds = [
       parseLatencyToSeconds(s.latencyStrings[0]),
@@ -192,7 +211,7 @@ const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummaryB
   const maxCount = Math.max(...summary.map((s) => s.count), 1);
 
   return (
-    <div className="absolute bottom-3 left-3 bg-white/70 p-2 rounded-lg shadow w-44" style={{ fontSize: "11px" }}>
+    <div className="absolute bottom-3 left-3 bg-white/70 p-2 rounded-lg shadow w-44 z-[400]" style={{ fontSize: "11px" }}>
       <div className="font-semibold text-gray-800 mb-0.5" style={{ fontSize: "12px" }}>Latency Summary</div>
       <div className="mb-1 text-[10px]">
         <span className="font-bold">Total:</span> {totalStationCount}
@@ -217,10 +236,8 @@ const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummaryB
   );
 };
 
-
 const InfoCard = ({ title, children }: { title: string; children?: React.ReactNode }) => (
   <div className="bg-white rounded-xl shadow p-3 min-h-[240px] flex flex-col border border-transparent">
-    {/* Judul diperkecil padding & jarak agar rapi seperti kartu OPERATIONAL */}
     <h2 className="text-sm font-semibold text-gray-800 border-b border-gray-200 pb-0 mb-2">
       {title}
     </h2>
@@ -230,8 +247,9 @@ const InfoCard = ({ title, children }: { title: string; children?: React.ReactNo
   </div>
 );
 
-const MetadataCard = () => {
-  // Tipe data sekarang adalah array of objects
+// --- MEMOIZED CARDS ---
+
+const MetadataCard = memo(() => {
   const [recentUpdates, setRecentUpdates] = useState<{ kode_stasiun: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -244,11 +262,9 @@ const MetadataCard = () => {
         if (response.data.success && Array.isArray(response.data.data)) {
           setRecentUpdates(response.data.data);
         } else {
-          console.error("Failed to fetch recent updates");
           setRecentUpdates([]);
         }
       } catch (error) {
-        console.error("Error fetching recent updates:", error);
         setRecentUpdates([]);
       } finally {
         setIsLoading(false);
@@ -258,7 +274,6 @@ const MetadataCard = () => {
     fetchRecentUpdates();
   }, []);
 
-  // <<< PINDAHKAN LOGIKA RENDER KE DALAM SINI >>>
   return (
     <InfoCard title="Metadata">
       <div className="text-left text-gray-800 w-full text-xs">
@@ -266,7 +281,6 @@ const MetadataCard = () => {
         
         {isLoading ? (
           <div className="flex items-center justify-center h-16">
-            {/* Kita akan tambahkan Loader2 di Langkah 3 */}
             <p>Loading...</p> 
           </div>
         ) : (
@@ -283,7 +297,7 @@ const MetadataCard = () => {
       </div>
     </InfoCard>
   );
-};
+});
 
 const AVAILABILITY_COLORS = ["#16a34a", "#facc15", "#fb923c", "#ef4444", "#a3a3a3"];
 
@@ -296,6 +310,43 @@ const getAvailabilityCategory = (value: number | null) => {
   return "No Data";
 };
 
+const AvailabilityCard = memo(({ availabilityPieData }: { availabilityPieData: { name: string; value: number }[] }) => {
+  return (
+    <InfoCard title="Availability">
+      <div className="w-full flex flex-col items-center justify-center">
+        <div className="w-full h-32 flex items-center justify-center">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={availabilityPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={40} label isAnimationActive={false}>
+                {availabilityPieData.map((_, idx) => (
+                  <Cell key={`cell-${idx}`} fill={AVAILABILITY_COLORS[idx % AVAILABILITY_COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1">
+          {[ 
+            { label: ">97%", color: "#16a34a" }, { label: "90-97%", color: "#facc15" },
+            { label: "1-89%", color: "#fb923c" }, { label: "0%", color: "#ef4444" },
+            { label: "No Data", color: "#a3a3a3" },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center space-x-1 text-[11px]">
+              <span className="inline-block rounded-full" style={{ width: "0.45em", height: "0.45em", backgroundColor: item.color, marginRight: "0.2em" }} />
+              <span className="font-medium">{item.label}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-2 flex items-center justify-center gap-2">
+          <span className="text-[10px] text-gray-500">Data for yesterday's availability</span>
+          <Link to="/station-availability" className="text-[10px] text-blue-600 hover:underline">Details...</Link>
+        </div>
+      </div>
+    </InfoCard>
+  );
+});
+
 const QUALITY_COLORS = ["#16a34a", "#fb923c", "#ef4444", "#a3a3a3"];
 const QUALITY_LABELS = [
   { label: "GOOD", color: "#16a34a" },
@@ -304,28 +355,133 @@ const QUALITY_LABELS = [
   { label: "NO DATA", color: "#a3a3a3" },
 ];
 
+const QualityCard = memo(({ qualityPieData }: { qualityPieData: { name: string; value: number }[] }) => {
+  return (
+    <InfoCard title="Quality">
+      <div className="w-full flex flex-col items-center justify-center">
+        <div className="w-full h-35 flex items-center justify-center">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={qualityPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={40} label isAnimationActive={false}>
+                {qualityPieData.map((_, idx) => (
+                  <Cell key={`cell-q-${idx}`} fill={QUALITY_COLORS[idx % QUALITY_COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1">
+          {QUALITY_LABELS.map((item) => (
+            <div key={item.label} className="flex items-center space-x-1 text-[11px]">
+              <span className="inline-block rounded-full" style={{ width: "0.45em", height: "0.45em", backgroundColor: item.color, marginRight: "0.2em" }} />
+              <span className="font-medium">{item.label}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-2 flex items-center justify-center gap-2">
+          <span className="text-[10px] text-gray-500">Data for yesterday's quality</span>
+          <Link to="/station-quality" className="text-[10px] text-blue-600 hover:underline">Details...</Link>
+        </div>
+      </div>
+    </InfoCard>
+  );
+});
+
+// --- DASHBOARD ---
+
 const Dashboard = () => {
   const [slmondatamap, setslmondatamap] = useState<SlmonMap[]>([]);
   const [combinedData, setCombinedData] = useState<QCSummary[]>([]);
+  const [stationTableData, setStationTableData] = useState<Stasiun[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [totalStationCount, setTotalStationCount] = useState<number>(0);
   const [registeredCount, setRegisteredCount] = useState<number>(0);
   const [inactiveCount, setInactiveCount] = useState<number>(0);
   const [stackedBarData, setStackedBarData] = useState<StackedBarData[]>([]);
 
-  // 1. Logika fetch data utama dibungkus dalam satu fungsi
+  // Extracted back to Parent to fetch alongside main data
+  const [availabilityPieData, setAvailabilityPieData] = useState<{ name: string; value: number }[]>([]);
+  const [qualityPieData, setQualityPieData] = useState<{ name: string; value: number }[]>([]);
+
+  // Shared Search State
+  const [searchTerm, setSearchTerm] = useState<string>("");
+
+  // Columns Visibility State
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
+    jaringan: true,             
+    kode_stasiun: true,
+    qc_result: true,            
+    quality_percentage: true,   
+    lokasi: true,
+    provinsi: true,
+    upt_penanggung_jawab: true,
+    status: false,              
+    tahun_instalasi: true,
+    lintang: false,
+    bujur: false,
+    prioritas: false,
+    digitizer_komunikasi: false,
+    accelerometer: false,
+  });
+
+  const toggleColumnVisibility = (columnKey: string) => {
+    setVisibleColumns(prev => ({
+      ...prev,
+      [columnKey]: !prev[columnKey]
+    }));
+  };
+
+  const columns: ColumnDef<TableStasiun>[] = [
+    { header: "Network", accessorKey: "jaringan", enableSorting: true, cell: (info) => info.getValue() },
+    { header: "Station Code", accessorKey: "kode_stasiun", enableSorting: true, cell: (info) => info.getValue() },
+    { 
+      header: "Summary Quality", 
+      accessorKey: "qc_result", 
+      enableSorting: true, 
+      cell: (info) => {
+        const val = info.getValue() as string | null;
+        return getStatusTextEn(val);
+      }
+    },
+    { 
+      header: "Quality", 
+      accessorKey: "quality_percentage", 
+      enableSorting: true, 
+      cell: (info) => {
+        const val = info.getValue() as number | null;
+        return val !== null && val !== undefined ? `${val.toFixed(1)}%` : "N/A";
+      }
+    },
+    { header: "Accelerometer", accessorKey: "accelerometer", enableSorting: true, cell: (info) => info.getValue() },
+    { header: "Location", accessorKey: "lokasi", enableSorting: true, cell: (info) => info.getValue() },
+    { header: "Province", accessorKey: "provinsi", enableSorting: true, cell: (info) => info.getValue() },
+    { header: "UPT", accessorKey: "upt_penanggung_jawab", enableSorting: true, cell: (info) => info.getValue() },
+    { header: "Install Status", accessorKey: "status", enableSorting: true, cell: (info) => info.getValue() },
+    { header: "Priority", accessorKey: "prioritas", enableSorting: true, cell: (info) => info.getValue() },
+    { header: "Digi/Comm", accessorKey: "digitizer_komunikasi", enableSorting: true, cell: (info) => info.getValue() },
+    { header: "Installation Year", accessorKey: "tahun_instalasi", enableSorting: true, cell: (info) => info.getValue() },
+    { header: "Latitude", accessorKey: "lintang", enableSorting: true, cell: (info) => info.getValue() },
+    { header: "Longitude", accessorKey: "bujur", enableSorting: true, cell: (info) => info.getValue() },
+  ];
+
+  const visibleColumnsArray = columns.filter(column => {
+    const key = (column as any).accessorKey;
+    return key ? visibleColumns[key] : true;
+  });
+
   const fetchData = async () => {
     try {
       const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
-      const [qcResponse, slmonResponse, stasiunResponse] = await Promise.all([
+      const [qcResponse, slmonResponse, stasiunResponse, availabilityResponse] = await Promise.all([
         axiosServer.get<Omit<QCSummary, "latencyStrings" | "primaryLatency" | "primaryColor">[]>(`/api/qc/public/summary/${yesterday}`),
         axiosServer.get<SlmonFeatureCollection>("/api/dashboard/slmon/laststatus"),
         axiosServer.get<any[]>("/api/stasiun/public"),
+        axiosServer.get(`/api/availability/public`, { params: { start_date: yesterday, end_date: yesterday } })
       ]);
 
       setTotalStationCount(slmonResponse.data.features.length);
       const stasiunData = stasiunResponse.data || [];
-      // Registered dihitung berdasarkan status "aktif"
       setRegisteredCount(stasiunData.filter((s) => s.status === "aktif").length);
       setInactiveCount(stasiunData.filter((s) => s.status === "nonaktif").length);
 
@@ -337,11 +493,6 @@ const Dashboard = () => {
         const slmonStation = slmonMap.get(station.code);
         const allLatencyStrings: string[] = [];
         
-        // console.log("smon")
-        // console.log(slmonStation);
-        // console.log("station")
-        // console.log(station);
-
         if (slmonStation) {
           for (let i = 1; i <= 6; i++) {
             const latencyKey = `latency${i}` as keyof typeof slmonStation.properties;
@@ -359,15 +510,14 @@ const Dashboard = () => {
       });
 
       const slmonDataMap = slmonData.map((station) => {
-        // let slmonmap:SlmonMap;
-
-        const abc = [station.properties.latency1 || "N/A",
+        const abc = [
+          station.properties.latency1 || "N/A",
           station.properties.latency2  || "N/A",
           station.properties.latency3  || "N/A",
           station.properties.latency4  || "N/A",
           station.properties.latency5  || "N/A",
           station.properties.latency6  || "N/A"
-        ]
+        ];
         
         const slmonmap:SlmonMap ={
           ...station,
@@ -379,55 +529,79 @@ const Dashboard = () => {
         }
         const qcsummary = qcData.find((sta) => sta.code === slmonmap.code) || null;
 
+        slmonmap.quality_percentage = qcsummary ? qcsummary.quality_percentage:null;
+        slmonmap.result = qcsummary ? qcsummary.result : null;
+        slmonmap.site_quality = qcsummary ? qcsummary.site_quality : null;
 
-        slmonmap.quality_percentage = qcsummary ? qcsummary.quality_percentage:null
-        slmonmap.result = qcsummary ? qcsummary.result : null
-        slmonmap.site_quality = qcsummary ? qcsummary.site_quality : null
-
-        // const slmonStation = slmonMap.get(station.code);
-        // const allLatencyStrings: string[] = [];
-        
-
-        // if (slmonStation) {
-        //   for (let i = 1; i <= 6; i++) {
-        //     const latencyKey = `latency${i}` as keyof typeof slmonStation.properties;
-        //     const latencyValue = slmonStation.properties[latencyKey] || "N/A";
-        //     allLatencyStrings.push(latencyValue);
-        //   }
-        // }
-
-        // return {
-        //   ...station,
-        //   latencyStrings: allLatencyStrings,
-        //   primaryLatency: null,
-        //   primaryColor: '',
-        // };
-        return slmonmap
+        return slmonmap;
       });
 
-      // console.log(slmonDataMap[0])
-      setslmondatamap(slmonDataMap)
+      setslmondatamap(slmonDataMap);
       setCombinedData(finalData);
+
+      // --- Setting Quality Pie Data directly from QC API response ---
+      let good = 0, fair = 0, poor = 0, nodata = 0;
+      qcData.forEach((item: any) => {
+        if (item.result === "Baik") good++;
+        else if (item.result === "Cukup Baik") fair++;
+        else if (item.result === "Buruk") poor++;
+        else nodata++;
+      });
+      setQualityPieData([
+        { name: "GOOD", value: good },
+        { name: "FAIR", value: fair },
+        { name: "POOR", value: poor },
+        { name: "NO DATA", value: nodata },
+      ]);
+
+      // --- Setting Availability Pie Data directly from Availability API response ---
+      const apiData = availabilityResponse.data?.data || {};
+      const allAvail: number[] = [];
+      Object.values(apiData).forEach((arr: any) => {
+        if (Array.isArray(arr) && arr.length > 0) {
+          const avail = arr[0]?.availability;
+          if (typeof avail === "number") allAvail.push(avail);
+        }
+      });
+      const categories = { ">97%": 0, "90-97%": 0, "1-89%": 0, "0%": 0, "No Data": 0 };
+      allAvail.forEach((val) => {
+        const cat = getAvailabilityCategory(val);
+        categories[cat] = (categories[cat] || 0) + 1;
+      });
+      const totalAvailStations = Object.keys(apiData).length;
+      const counted = categories[">97%"] + categories["90-97%"] + categories["1-89%"] + categories["0%"];
+      categories["No Data"] = totalAvailStations - counted;
+      setAvailabilityPieData(
+        Object.entries(categories)
+          .filter(([_, v]) => v > 0)
+          .map(([name, value]) => ({ name, value }))
+      );
+
     } catch (err) {
       console.error("Gagal memuat atau menggabungkan data:", err);
     } finally {
-      // Hanya set isLoading ke false pada pemanggilan pertama kali
       if (isLoading) {
         setIsLoading(false);
       }
     }
   };
 
-  //useEffect untuk polling data utama
   useEffect(() => {
-    fetchData(); // Panggil data saat komponen pertama kali dimuat
+    axiosServer
+      .get("/api/stasiun/public")
+      .then((res) => {
+        setStationTableData(res.data);
+      })
+      .catch((err) => {
+        console.error("Error fetching station data for table:", err);
+      });
+  }, []);
 
-    // Set interval untuk memanggil ulang fetchData setiap 10 detik
+  useEffect(() => {
+    fetchData(); 
     const intervalId = setInterval(fetchData, 30000);
-
-    // Membersihkan interval saat komponen di-unmount
     return () => clearInterval(intervalId);
-  }, []); // Dependensi kosong agar hanya berjalan sekali saat mount
+  }, []);
 
   useEffect(() => {
     const fetchStackedBarData = async () => {
@@ -446,11 +620,105 @@ const Dashboard = () => {
     fetchStackedBarData();
   }, []);
 
-  // --- PERBAIKAN LOGIKA ON/OFF ---
-  const totalOff = combinedData.filter(s => getTriangleColor(s) === "#222222").length;
-  const totalOn = combinedData.length - totalOff;
+  // --- RESTRUCTURED HIGH-PERFORMANCE FILTERING LOGIC ---
+  
+  // 1. Create a fast Dictionary/Hash Map for map data
+  const slmonDict = useMemo(() => {
+    const map = new Map<string, SlmonMap>();
+    slmondatamap.forEach(s => map.set(s.code, s));
+    return map;
+  }, [slmondatamap]);
 
-  // --- PERBAIKAN LOGIKA ON/OFF ---
+  // 2. Map table data and use the high-speed Dictionary to merge QC data instantly
+  const augmentedTableData = useMemo<TableStasiun[]>(() => {
+    return stationTableData.map(stasiun => {
+      const qcDataMatch = slmonDict.get(stasiun.kode_stasiun);
+      return {
+        ...stasiun,
+        qc_result: qcDataMatch ? qcDataMatch.result : null,
+        quality_percentage: qcDataMatch ? qcDataMatch.quality_percentage : null,
+      };
+    });
+  }, [stationTableData, slmonDict]);
+
+  // 3. Filter using the instant merged data
+  const filteredTableData = useMemo(() => {
+    if (!searchTerm) return augmentedTableData;
+    const searchLower = searchTerm.toLowerCase();
+    
+    return augmentedTableData.filter((station) => {
+      const qcStatusText = getStatusTextEn(station.qc_result || null).toLowerCase();
+
+      return (
+        station.kode_stasiun?.toLowerCase().includes(searchLower) ||
+        station.lokasi?.toLowerCase().includes(searchLower) ||
+        station.provinsi?.toLowerCase().includes(searchLower) ||
+        station.upt_penanggung_jawab?.toLowerCase().includes(searchLower) ||
+        station.jaringan?.toLowerCase().includes(searchLower) ||
+        station.prioritas?.toLowerCase().includes(searchLower) ||
+        qcStatusText.includes(searchLower)
+      );
+    });
+  }, [augmentedTableData, searchTerm]);
+
+  // 4. Create a fast Set of filtered Table codes
+  const filteredMapData = useMemo(() => {
+    if (!searchTerm) return slmondatamap;
+    
+    const validCodesSet = new Set(filteredTableData.map(t => t.kode_stasiun));
+    const searchLower = searchTerm.toLowerCase();
+
+    return slmondatamap.filter((s) => {
+      return validCodesSet.has(s.code) || s.code.toLowerCase().includes(searchLower);
+    });
+  }, [slmondatamap, filteredTableData, searchTerm]);
+
+  // --- EXPORT CSV LOGIC ---
+  const handleExportCSV = () => {
+    if (filteredTableData.length === 0) {
+      alert("Tidak ada data untuk diekspor");
+      return;
+    }
+
+    const headers = [
+      "Network", "Station Code", "Summary Quality", "Quality", "Accelerometer",
+      "Location", "Province", "UPT", "Install Status", "Priority",
+      "Digi/Comm", "Installation Year", "Latitude", "Longitude"
+    ];
+
+    const csvRows = filteredTableData.map(station => [
+      station.jaringan || "",
+      station.kode_stasiun || "",
+      getStatusTextEn(station.qc_result || null),
+      station.quality_percentage !== null && station.quality_percentage !== undefined ? `${station.quality_percentage.toFixed(1)}%` : "N/A",
+      station.accelerometer || "",
+      station.lokasi || "",
+      station.provinsi || "",
+      station.upt_penanggung_jawab || "",
+      station.status || "",
+      station.prioritas || "",
+      station.digitizer_komunikasi || "",
+      station.tahun_instalasi || "",
+      station.lintang || "",
+      station.bujur || ""
+    ]);
+
+    const csvContent = [headers, ...csvRows]
+      .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `dashboard_stasiun_data_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+  // -------------------------
+
   const totalOffSlmon = slmondatamap.filter(s => getTriangleColor(s) === "#222222").length;
   const totalOnSlmon = slmondatamap.length - totalOffSlmon;
 
@@ -459,148 +727,59 @@ const Dashboard = () => {
   const poorCount = combinedData.filter((s) => s.result === "Buruk").length;
   const noDataCount = combinedData.filter((s) => s.result === "No Data" || s.result === "Mati").length;
 
-  const [availabilityPieData, setAvailabilityPieData] = useState<{ name: string; value: number }[]>([]);
-  // useEffect untuk data Availability
-  useEffect(() => {
-    const fetchAvailability = async () => {
-      try {
-        const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
-        const res = await axiosServer.get(`/api/availability/public`, {
-          params: { start_date: yesterday, end_date: yesterday },
-        });
-        const apiData = res.data?.data || {};
-        const allAvail: number[] = [];
-        Object.values(apiData).forEach((arr: any) => {
-          if (Array.isArray(arr) && arr.length > 0) {
-            const avail = arr[0]?.availability;
-            if (typeof avail === "number") allAvail.push(avail);
-          }
-        });
-        const categories = { ">97%": 0, "90-97%": 0, "1-89%": 0, "0%": 0, "No Data": 0 };
-        allAvail.forEach((val) => {
-          const cat = getAvailabilityCategory(val);
-          categories[cat] = (categories[cat] || 0) + 1;
-        });
-        const totalStations = Object.keys(apiData).length;
-        const counted = categories[">97%"] + categories["90-97%"] + categories["1-89%"] + categories["0%"];
-        categories["No Data"] = totalStations - counted;
-        setAvailabilityPieData(
-          Object.entries(categories)
-            .filter(([_, v]) => v > 0)
-            .map(([name, value]) => ({ name, value }))
-        );
-      } catch (err) {
-        setAvailabilityPieData([]);
-      }
-    };
-    fetchAvailability();
-  }, []);
-
-  const [qualityPieData, setQualityPieData] = useState<{ name: string; value: number }[]>([]);
-  // useEffect untuk data Quality 
-  useEffect(() => {
-    const fetchQuality = async () => {
-      try {
-        const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
-        const res = await axiosServer.get(`/api/qc/public/summary/${yesterday}`);
-        let good = 0, fair = 0, poor = 0, nodata = 0;
-        (res.data || []).forEach((item: any) => {
-          if (item.result === "Baik") good++;
-          else if (item.result === "Cukup Baik") fair++;
-          else if (item.result === "Buruk") poor++;
-          else nodata++;
-        });
-        setQualityPieData([
-          { name: "GOOD", value: good },
-          { name: "FAIR", value: fair },
-          { name: "POOR", value: poor },
-          { name: "NO DATA", value: nodata },
-        ]);
-      } catch {
-        setQualityPieData([]);
-      }
-    };
-    fetchQuality();
-  }, []);
-// console.log(slmondatamap)
-  // console.log(combinedData)
   return (
     <MainLayout>
       <h1 className="text-left text-2xl font-bold mt-0 mb-2 ml-1">Dashboard</h1>
       <div className="flex flex-col lg:flex-row gap-3">
         {/* BAGIAN KIRI: PETA */}
         <div className="lg:w-3/4 w-full">
-          <div className="bg-white rounded-lg shadow p-1 h-[450px] ">
-            <div className="relative w-full h-full px-2 pb-2 pt-1">
-              <MapContainer
-                center={[-2.5, 117]}
-                zoom={5}
-                className="w-full h-full rounded-md"
-                style={{ minHeight: 400, maxHeight: 440, margin: "0.06rem" }}
-              >
-                <TileLayer attribution='&copy; <a href="https://osm.org/copyright">OSM</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                {slmondatamap.map((s, idx) => (
-                
-                //  {combinedData.map((s, idx) => (
-                  <Marker
-                    key={idx}
-                    position={[Number(s.geometry.coordinates[1]), Number(s.geometry.coordinates[0])]}
-                    icon={triangleIcon(getTriangleColor(s))}
-                  >
-                    <Popup>
-                      <b>Stasiun: {s.code}</b>
-                      <br />
-                      Status: {getStatusTextEn(s.result)}
-                      <br />
-                      {s.quality_percentage !== null && `Kualitas: ${s.quality_percentage.toFixed(1)}%`}
-                      <br />
-                      {s.latencyStrings && s.latencyStrings.length > 0 ? (
-                        <span>Latencies: {s.latencyStrings.join(", ")}</span>
-                      ) : (
-                        <span>Latency: No data</span>
-                      )}
-                    </Popup>
-                  </Marker>
-                ))}
-              </MapContainer>
-              <MapLegend stationData={slmondatamap} totalStationCount={totalStationCount} />
-              {/* <MapLegend stationData={combinedData} totalStationCount={totalStationCount} /> */}
-            </div>
+          <div className="bg-white rounded-lg shadow p-2 h-[50vh] min-h-[400px] lg:h-[450px] relative">
+            <MapContainer
+              center={[-2.5, 117]}
+              zoom={5}
+              className="w-full h-full rounded-md z-0"
+              style={{ height: "100%", width: "100%" }}
+            >
+              <TileLayer attribution='&copy; <a href="https://osm.org/copyright">OSM</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              {filteredMapData.map((s, idx) => (
+                <Marker
+                  key={idx}
+                  position={[Number(s.geometry.coordinates[1]), Number(s.geometry.coordinates[0])]}
+                  icon={triangleIcon(getTriangleColor(s))}
+                >
+                  <Popup>
+                    <b>Stasiun: {s.code}</b>
+                    <br />
+                    Status: {getStatusTextEn(s.result)}
+                    <br />
+                    {s.quality_percentage !== null && `Kualitas: ${s.quality_percentage.toFixed(1)}%`}
+                    <br />
+                    {s.latencyStrings && s.latencyStrings.length > 0 ? (
+                      <span>Latencies: {s.latencyStrings.join(", ")}</span>
+                    ) : (
+                      <span>Latency: No data</span>
+                    )}
+                  </Popup>
+                </Marker>
+              ))}
+            </MapContainer>
+            <MapLegend stationData={filteredMapData} totalStationCount={filteredMapData.length} />
           </div>
         </div>
 
         {/* BAGIAN KANAN: STATUS & STACKED BAR */}
         <div className="lg:w-1/4 w-full flex flex-col gap-2">
-          {/* Status Cards */}
-          {/* <div className="grid grid-cols-2 gap-2">
-            <div className="bg-white rounded p-2 text-center border border-gray-300 shadow">
-              <p className="text-xs font-semibold text-gray-600">REGISTERED</p>
-              <p className="text-2xl font-bold">{isLoading ? "..." : registeredCount}</p>
-            </div>
-            <div className="bg-white rounded p-2 text-center border border-gray-300 shadow">
-              <p className="text-xs font-semibold text-gray-600">INACTIVE</p>
-              <p className="text-2xl font-bold">{isLoading ? "..." : inactiveCount}</p>
-            </div>
-          </div> */}
-
           <div className="bg-white rounded p-2 text-center border border-gray-300 shadow">
             <p className="text-xs font-semibold">OPERATIONAL</p>
-            {/* <p className="text-xs font-semibold">REGISTERED</p> */}
-            {/* <p className="text-3xl font-bold mb-1">{isLoading ? "..." : combinedData.length}</p> */}
             <p className="text-3xl font-bold mb-1">{isLoading ? "..." : registeredCount}</p>
-            {/* <p className="text-3xl font-bold mb-1">{isLoading ? "..." : totalStationCount}</p> */}
             <div className="grid grid-cols-2 gap-1">
               <div className="bg-green-600 text-white rounded p-1">
                 <p className="text-[10px] font-bold">ON</p>
-                {/* <p className="text-lg font-bold">{isLoading ? "..." : totalOn}</p> */}
                 <p className="text-lg font-bold">{isLoading ? "..." : totalOnSlmon}</p>
-                {/* <p className="text-lg font-bold">{isLoading ? "..." : registeredCount}</p> */}
               </div>
               <div className="bg-black text-white rounded p-1">
                 <p className="text-[10px] font-bold">OFF</p>
-                {/* <p className="text-lg font-bold">{isLoading ? "..." : totalOff}</p> */}
                 <p className="text-lg font-bold">{isLoading ? "..." : totalOffSlmon}</p>
-                {/* <p className="text-lg font-bold">{isLoading ? "..." : inactiveCount}</p> */}
               </div>
             </div>
           </div>
@@ -631,8 +810,8 @@ const Dashboard = () => {
                 <YAxis tick={{ fontSize: 9 }} />
                 <RechartsTooltip />
                 <Legend verticalAlign="top" height={20} />
-                <Bar dataKey="ON" stackId="a" fill="#16a34a" name="ON" />
-                <Bar dataKey="OFF" stackId="a" fill="#ef4444" name="OFF" />
+                <Bar dataKey="ON" stackId="a" fill="#16a34a" name="ON" isAnimationActive={false} />
+                <Bar dataKey="OFF" stackId="a" fill="#ef4444" name="OFF" isAnimationActive={false} />
               </BarChart>
             </RechartsResponsiveContainer>
           </div>
@@ -641,107 +820,77 @@ const Dashboard = () => {
 
       {/* --- AVAILABILITY & QUALITY CARD & PIECHART --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
-        {/* Availability Card */}
-        <InfoCard title="Availability">
-          <div className="w-full flex flex-col items-center justify-center">
-            <div className="w-full h-32 flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={availabilityPieData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={40}
-                    label
-                  >
-                    {availabilityPieData.map((_, idx) => (
-                      <Cell key={`cell-${idx}`} fill={AVAILABILITY_COLORS[idx % AVAILABILITY_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1">
-              {[ 
-                { label: ">97%", color: "#16a34a" }, { label: "90-97%", color: "#facc15" },
-                { label: "1-89%", color: "#fb923c" }, { label: "0%", color: "#ef4444" },
-                { label: "No Data", color: "#a3a3a3" },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center space-x-1 text-[11px]">
-                  <span
-                    className="inline-block rounded-full"
-                    style={{
-                      width: "0.45em",   
-                      height: "0.45em",  
-                      backgroundColor: item.color,
-                      marginRight: "0.2em", 
-                    }}
-                  />
-                  <span className="font-medium">{item.label}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-2 flex items-center justify-center gap-2">
-              <span className="text-[10px] text-gray-500">Data for yesterday's availability</span>
-              <Link to="/station-availability" className="text-[10px] text-blue-600 hover:underline">
-                Details...
-              </Link>
-            </div>
-          </div>
-        </InfoCard>
-
-        {/* Quality Card */}
-        <InfoCard title="Quality">
-          <div className="w-full flex flex-col items-center justify-center">
-            <div className="w-full h-35 flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={qualityPieData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={40}
-                    label
-                  >
-                    {qualityPieData.map((_, idx) => (
-                      <Cell key={`cell-q-${idx}`} fill={QUALITY_COLORS[idx % QUALITY_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1">
-              {QUALITY_LABELS.map((item) => (
-                <div key={item.label} className="flex items-center space-x-1 text-[11px]">
-                  <span
-                    className="inline-block rounded-full"
-                    style={{
-                      width: "0.45em",   
-                      height: "0.45em",  
-                      backgroundColor: item.color,
-                      marginRight: "0.2em", 
-                    }}
-                  />
-                  <span className="font-medium">{item.label}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-2 flex items-center justify-center gap-2">
-              <span className="text-[10px] text-gray-500">Data for yesterday's quality</span>
-              <Link to="/station-quality" className="text-[10px] text-blue-600 hover:underline">
-                Details...
-              </Link>
-            </div>
-          </div>
-        </InfoCard>
+        {/* Fast Loading but doesn't re-render on typing! */}
+        <AvailabilityCard availabilityPieData={availabilityPieData} />
+        <QualityCard qualityPieData={qualityPieData} />
         <MetadataCard />
       </div>
+
+      {/* --- DASHBOARD DATA TABLE SECTION --- */}
+      <div className="bg-white p-4 rounded-xl shadow mt-6 mb-4">
+        
+        {/* CSS Block to cleanly hide the internal DataTable search box to avoid duplication */}
+        <style>{`
+          .datatable-wrapper input[placeholder="Search..."] {
+            display: none !important;
+          }
+        `}</style>
+
+        {/* HEADER: Search Bar, Export Button & Column Visibility Toggles */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">            
+          
+          {/* Input Group: Search + Export Button */}
+          <div className="flex gap-2 w-full md:w-auto">
+            <div className="w-full md:w-64">
+              <input
+                type="text"
+                className="border border-gray-300 rounded px-3 py-1.5 text-sm w-full focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors shadow-sm"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            
+            <button
+              onClick={handleExportCSV}
+              className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm font-semibold rounded hover:bg-green-700 transition-colors shadow-sm whitespace-nowrap"
+              title="Export current filtered data to CSV"
+            >
+              <Download size={14} />
+              Export
+            </button>
+          </div>
+
+          {/* Column Visibility Controls */}
+          <div className="flex flex-wrap gap-2 text-sm md:justify-end flex-1">
+            <span className="font-medium text-gray-700 flex items-center mr-2 w-full md:w-auto">Show/Hide Column(s):</span>
+            {columns.map((column: any) => {
+              const colKey = column.accessorKey;
+              return (
+                <button
+                  key={colKey}
+                  onClick={() => toggleColumnVisibility(colKey)}
+                  className={`px-2 py-1 rounded border text-xs transition-colors ${
+                    visibleColumns[colKey]
+                      ? 'bg-blue-100 border-blue-300 text-blue-700 hover:bg-blue-200'
+                      : 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200'
+                  }`}
+                  title={`${visibleColumns[colKey] ? 'Hide' : 'Show'} ${column.header}`}
+                >
+                  {column.header as React.ReactNode}
+                </button>
+              );
+            })}
+          </div>
+
+        </div>
+        
+        {/* Table wrapper ensuring horizontal scroll on mobile sizes without collapsing layout */}
+        <div className="overflow-x-auto w-full pb-2 datatable-wrapper">
+          <DataTable columns={visibleColumnsArray} data={filteredTableData} />
+        </div>
+      </div>
+
     </MainLayout>
   );
 };

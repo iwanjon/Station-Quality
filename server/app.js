@@ -58,7 +58,8 @@ app.use(json());
       origin: [
       "http://localhost:5173",          // For your local testing
       "http://202.90.198.104:9090",     // YOUR SERVER IP + PORT
-      "http://202.90.198.104"           // Just the IP (fallback)
+      "http://202.90.198.104",           // Just the IP (fallback)
+      "http://localhost:4173"
     ],
       methods: ["GET", "POST", "PUT", "DELETE"],
       allowedHeaders: ["Content-Type", "Authorization"],
