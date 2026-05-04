@@ -3,7 +3,15 @@ import re
 import os
 import requests
 from dotenv import load_dotenv  # New import
+import __main__
+from external_logger import register_global_exception_handler, setup_logger
+import logging
+import traceback
 
+
+setup_logger(name="auto_update_history",log_file="cron_auto_update_history.log")
+
+log = logging.getLogger("auto_update_history")
 # Load variables from .env
 load_dotenv(".env_update_slmon")
 
@@ -45,6 +53,7 @@ def parse_slmon_file(file_path):
 FILE_PATH = os.getenv('FILE_PATH')
 API_URL = os.getenv('API_URL')
 
+log.info(__main__.__file__)
 # 2. Execution
 if not FILE_PATH or not API_URL:
     print("Error: FILE_PATH or API_URL missing from .env file.")
@@ -67,3 +76,6 @@ else:
                 
         except requests.exceptions.ConnectionError:
             print(f"Error: Could not connect to the API at {API_URL}. Is it running?")
+
+log.info("finish runing this script")
+log.info(__main__.__file__)

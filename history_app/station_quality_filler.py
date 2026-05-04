@@ -5,6 +5,7 @@ import os
 from external_logger import register_global_exception_handler, setup_logger
 import logging
 import traceback
+import __main__
 
 setup_logger(name="auto_update_history", log_file="cron_auto_update_history.log")
 
@@ -14,6 +15,7 @@ log = logging.getLogger("auto_update_history")
 register_global_exception_handler(log)
 
 def run_app():
+    log.info(__main__.__file__)
     # Create an ArgumentParser object
     parser = argparse.ArgumentParser(description="Trigger request to station quality filler.")
     
@@ -51,3 +53,5 @@ def run_app():
 
 if __name__ == "__main__":
     run_app()
+    log.info("finish runing this script")
+    log.info(__main__.__file__)
