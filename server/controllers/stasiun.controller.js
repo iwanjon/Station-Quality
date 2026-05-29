@@ -986,3 +986,92 @@ export const getRecentUpdates = async (req, res) => {
         });
     }
 };
+
+
+
+
+export const getAllStasiunWithSensor = async (req, res) => {
+    try {
+        logger.info('-> [GET] /getAllStasiunWithSensor: Initiated');
+        logger.info('Fetching all stasiun data with latest sensors');
+
+        // Optional: Implementation placeholder if you decide to activate authorization filters later
+        // const allowedStationIds = req.user?.stasiun_id; // e.g., [1, 2, 3, 4]
+        // const allowedStationCodes = req.user?.kode_stasiun; // e.g., ['AAI', 'AAFM']
+
+        appDebug('Executing optimized query to fetch stasiun with instrument history JOINs');
+        
+        const [rows] = await pool.query(`
+            WITH acc_latest AS (
+                SELECT 
+                    stasiun_id, 
+                    sensor_name,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY stasiun_id 
+                        ORDER BY start_date DESC, history_id DESC
+                    ) as rn
+                FROM stasiun_history
+                WHERE channel = 'hnz' 
+                  AND end_date IS NULL
+            ),
+            seis_latest AS (
+                SELECT 
+                    stasiun_id, 
+                    sensor_name,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY stasiun_id 
+                        ORDER BY start_date DESC, history_id DESC
+                    ) as rn
+                FROM stasiun_history
+                WHERE channel IN ('shz', 'bhz') 
+                  AND end_date IS NULL
+            )
+            SELECT 
+                s.stasiun_id,
+                s.net,
+                s.kode_stasiun,
+                s.lintang,
+                s.bujur,
+                s.elevasi,
+                s.lokasi,
+                p.nama_provinsi AS provinsi,
+                s.provinsi_id,
+                u.nama_upt AS upt_penanggung_jawab,
+                s.upt_id,
+                s.status,
+                s.tahun_instalasi,
+                j.nama_jaringan AS jaringan,
+                s.jaringan_id,
+                s.prioritas,
+                s.keterangan,
+                s.accelerometer AS status_accelerometer, -- Renamed to avoid conflict
+                s.digitizer_komunikasi, 
+                s.tipe_shelter,
+                s.lokasi_shelter,
+                s.penjaga_shelter,
+                s.kondisi_shelter,
+                s.assets_shelter,
+                s.access_shelter,
+                s.photo_shelter,
+                s.penggantian_terakhir_alat,
+                s.updated_at,
+                a.sensor_name AS accelerometer,         -- New Column 1: History Sensor Name
+                se.sensor_name AS seismometer          -- New Column 2: History Sensor Name
+            FROM stasiun s
+            LEFT JOIN jaringan j ON s.jaringan_id = j.jaringan_id
+            LEFT JOIN upt u ON s.upt_id = u.upt_id        
+            LEFT JOIN provinsi p ON s.provinsi_id = p.provinsi_id
+            LEFT JOIN acc_latest a ON s.stasiun_id = a.stasiun_id AND a.rn = 1
+            LEFT JOIN seis_latest se ON s.stasiun_id = se.stasiun_id AND se.rn = 1
+        `);
+        
+        logger.info(`<- [GET] /getAllStasiun: Success. Fetched ${rows.length} records.`);
+        res.json(rows);
+    } catch (error) {
+        logger.error('<- [GET] /getAllStasiun: DB Error occurred', { error: error.message, stack: error.stack });
+        console.error("DB Error:", error);
+        res.status(500).json({ 
+            error: 'Gagal ambil data stasiun' 
+        });
+    }
+};
