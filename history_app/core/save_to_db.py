@@ -26,7 +26,7 @@ from obspy.core.util.obspy_types import (ComplexWithUncertainties,
                                          ObsPyException,
                                          ZeroSamplingRate)
 from matplotlib.figure import Figure
-from pdb import set_trace as sstt
+
 
 from static_variable import (
                         STATIC,
@@ -392,6 +392,7 @@ def get_station_history(
     if inv is None:
         raise HTTPException(status_code=400, detail='stasiun inventory not found.')
 
+
     station_list = instrument_meta(inv, station_code, save_response=save_response)
 
     # print(station_list)
@@ -406,8 +407,6 @@ def get_station_location(
     if inv is None:
         raise HTTPException(status_code=400, detail='stasiun inventory not found.')
 
-    # from pdb import set_trace as sstt
-    # sstt()
     
     station_location = []
     station_latitude = inv[0][0].latitude or 0
@@ -553,80 +552,158 @@ def replace_symbol(word:str):
     for i in list_of_symbol:
         word = word.replace(i, "")
     return word    
-    
-    
-def instrument_meta(inv, sta, save_response=None):
-    channel_full_data = []
-    for i in inv.networks[0].stations[0].channels:
-        # sstt()
-        # asd:Response = inv.networks[0].stations[0].channels[0].response 
-        # asd:Response = i.response 
-        # aaa = Custome_Response(asd)
    
-        # try:
-        # paz_det =   vars(i.response.get_paz())  
-        # dict_data_logger = vars(i.data_logger)
-        # dict_sensor = vars(i.sensor)
-        sampling_rate =   i.sample_rate or 0
-        paz_det =   get_vars_safe(i, "response.get_paz")
-        dict_data_logger = get_vars_safe(i, "data_logger")
-        dict_sensor = get_vars_safe(i, "sensor")
+   
+def instrument_meta(inv,sta, save_response=None):
+    channel_full_data = []
     
-        # datalogger_type = str(dict_data_logger.get("manufacturer")) +"_"+ str(dict_data_logger.get("type"))
-        # sensor_type = str(dict_sensor.get("model")) +"_"+ str(dict_sensor.get("type"))
-        sensor_type = get_type_safe(dict_sensor,get_sensor_type )
-        datalogger_type = get_type_safe(dict_data_logger,get_digitizer_type )
-        # sstt()
-        # sensor_type = get_sensor_type(dict_sensor)
-        # datalogger_type = get_digitizer_type(dict_data_logger)
-        code =  i.code
-        final_constant = get_stage_gain(i)
-        latitude = i._latitude
-        longitude = i._longitude
-        elevation = i._elevation
-        file_name = sta+"_"+code+"_"+replace_symbol(str(sensor_type))+"_"+replace_symbol(str(datalogger_type))+"_"+str(int(final_constant))
-        print(file_name)
-        if save_response:
-            file_path = os.path.join(STATIC_FOLDER, file_name+".jpg")
-            print(file_path, STATIC_FOLDER)
-            try:
-                plt.close("all")
-                respo:Response = i.response
-                figur:Figure|any = respo.plot(0.001, outfile=file_path)
-                figur.clear()
-                del figur
-                plt.close()
-                plt.close("all")
-            except Exception as e:
-                log.error(e)
-                file_name=None
-        # aaa.plot(0.01, outfile=file_name+".jpg")
+    
+    # 1. Loop through all networks
+    for net_idx, network in enumerate(inv.networks):
+        
+        log.info(" ======== network index =========  : {} ".format(net_idx))
+        
+        # 2. Loop through all stations in the network
+        for sta_idx, station in enumerate(network.stations):
+            # sta = station.code  # Dynamically get the station code
+            log.info(" ======== station index =========  : {} ".format(sta_idx))
+            
+            # 3. Loop through all channels in the station
+            for chan_idx, i in enumerate(station.channels):
+                
+                sampling_rate = i.sample_rate or 0
+                paz_det = get_vars_safe(i, "response.get_paz")
+                dict_data_logger = get_vars_safe(i, "data_logger")
+                dict_sensor = get_vars_safe(i, "sensor")
+            
+                sensor_type = get_type_safe(dict_sensor, get_sensor_type)
+                datalogger_type = get_type_safe(dict_data_logger, get_digitizer_type)
+                
+                code = i.code
+                final_constant = get_stage_gain(i)
+                latitude = i._latitude
+                longitude = i._longitude
+                elevation = i._elevation
+                
+                # Added network, station, and channel indices to make the file name strictly unique
+                file_name = f"{sta}_{code}_{replace_symbol(str(sensor_type))}_{replace_symbol(str(datalogger_type))}_{int(final_constant)}_{net_idx}_{sta_idx}_{chan_idx}"
+                print(file_name)
+                
+                if save_response:
+                    file_path = os.path.join(STATIC_FOLDER, file_name + ".jpg")
+                    print(file_path, STATIC_FOLDER)
+                    try:
+                        plt.close("all")
+                        respo = i.response
+                        figur = respo.plot(0.001, outfile=file_path)
+                        figur.clear()
+                        del figur
+                        plt.close()
+                        plt.close("all")
+                    except Exception as e:
+                        log.error(e)
+                        file_name = None
 
-        try:
-            channel_data =  [
-                    sta,
-                    code, 
-                    sensor_type, 
-                    datalogger_type,
-                    final_constant,
-                    i.response.instrument_sensitivity.input_units,
-                    i.start_date,
-                    i.end_date,
-                    0 if i.end_date else 1, 
-                    latitude,
-                    longitude,
-                    elevation,
-                    sampling_rate,
-                    paz_det,
-                    STATIC+"/"+RESPONSE_PATH_URL+file_name+".jpg" if file_name else None
+                try:
+                    channel_data = [
+                        sta,
+                        code, 
+                        sensor_type, 
+                        datalogger_type,
+                        final_constant,
+                        i.response.instrument_sensitivity.input_units if i.response and i.response.instrument_sensitivity else None,
+                        i.start_date,
+                        i.end_date,
+                        0 if i.end_date else 1, 
+                        latitude,
+                        longitude,
+                        elevation,
+                        sampling_rate,
+                        paz_det,
+                        f"{STATIC}/{RESPONSE_PATH_URL}{file_name}.jpg" if file_name else None
                     ]
-            channel_full_data.append(channel_data)
-        except Exception as e:
-            log.info(" ======== error in ========= error : {} , channel : {} , response :{}".format(e, vars(i), vars(i.response)))
+                    channel_full_data.append(channel_data)
+                except Exception as e:
+                    log.info(" ======== error in ========= error : {} , channel : {} , response :{}".format(e, vars(i), vars(i.response) if i.response else None))
+
+    plt.close("all")
+    return channel_full_data 
+    
+# def instrument_meta(inv, sta, save_response=None):
+#     channel_full_data = []
 
     
-    plt.close("all")
-    return channel_full_data
+
+#     for i in inv.networks[0].stations[0].channels:
+#
+#         # asd:Response = inv.networks[0].stations[0].channels[0].response 
+#         # asd:Response = i.response 
+#         # aaa = Custome_Response(asd)
+   
+#         # try:
+#         # paz_det =   vars(i.response.get_paz())  
+#         # dict_data_logger = vars(i.data_logger)
+#         # dict_sensor = vars(i.sensor)
+#         sampling_rate =   i.sample_rate or 0
+#         paz_det =   get_vars_safe(i, "response.get_paz")
+#         dict_data_logger = get_vars_safe(i, "data_logger")
+#         dict_sensor = get_vars_safe(i, "sensor")
+    
+#         # datalogger_type = str(dict_data_logger.get("manufacturer")) +"_"+ str(dict_data_logger.get("type"))
+#         # sensor_type = str(dict_sensor.get("model")) +"_"+ str(dict_sensor.get("type"))
+#         sensor_type = get_type_safe(dict_sensor,get_sensor_type )
+#         datalogger_type = get_type_safe(dict_data_logger,get_digitizer_type )
+#      
+#         # sensor_type = get_sensor_type(dict_sensor)
+#         # datalogger_type = get_digitizer_type(dict_data_logger)
+#         code =  i.code
+#         final_constant = get_stage_gain(i)
+#         latitude = i._latitude
+#         longitude = i._longitude
+#         elevation = i._elevation
+#         file_name = sta+"_"+code+"_"+replace_symbol(str(sensor_type))+"_"+replace_symbol(str(datalogger_type))+"_"+str(int(final_constant))
+#         print(file_name)
+#         if save_response:
+#             file_path = os.path.join(STATIC_FOLDER, file_name+".jpg")
+#             print(file_path, STATIC_FOLDER)
+#             try:
+#                 plt.close("all")
+#                 respo:Response = i.response
+#                 figur:Figure|any = respo.plot(0.001, outfile=file_path)
+#                 figur.clear()
+#                 del figur
+#                 plt.close()
+#                 plt.close("all")
+#             except Exception as e:
+#                 log.error(e)
+#                 file_name=None
+#         # aaa.plot(0.01, outfile=file_name+".jpg")
+
+#         try:
+#             channel_data =  [
+#                     sta,
+#                     code, 
+#                     sensor_type, 
+#                     datalogger_type,
+#                     final_constant,
+#                     i.response.instrument_sensitivity.input_units,
+#                     i.start_date,
+#                     i.end_date,
+#                     0 if i.end_date else 1, 
+#                     latitude,
+#                     longitude,
+#                     elevation,
+#                     sampling_rate,
+#                     paz_det,
+#                     STATIC+"/"+RESPONSE_PATH_URL+file_name+".jpg" if file_name else None
+#                     ]
+#             channel_full_data.append(channel_data)
+#         except Exception as e:
+#             log.info(" ======== error in ========= error : {} , channel : {} , response :{}".format(e, vars(i), vars(i.response)))
+
+    
+#     plt.close("all")
+#     return channel_full_data
     # return channel_data
 
 
@@ -670,8 +747,7 @@ def get_digitizer_type(dict_data_logger):
     
 
     datalogger_type = get_priority_value(dict_data_logger, priority_keys)
-    # from pdb import set_trace as sstt
-    # sstt()
+
     return datalogger_type
 
 def get_sensor_type(dict_sensor):
@@ -686,8 +762,7 @@ def get_sensor_type(dict_sensor):
         #     sensor_type = str(dict_sensor.get("model")) +"_"+ str(dict_sensor.get("type"))
 
         sensor_type = get_priority_value(dict_sensor, priority_keys)
-        # from pdb import set_trace as sstt
-        # sstt()
+
         return sensor_type
 
 priority_keys = ["manufacturer", "vendor", "type", "resource_id"]

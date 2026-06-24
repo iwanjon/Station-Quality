@@ -144,8 +144,7 @@ async def updatestationhistory( db: db_dependency,
     history_data = get_station_history(stasiun_code,True)
 
     log.info("history_data: {}".format(history_data))
-    
-    
+
     for ind, i in enumerate(history_data):
         date_formated = round_datetime(i[6])
         # str_date_formated =  date_formated.strftime("%Y-%m-%dT%H:%M:%S") + "Z"
