@@ -540,6 +540,10 @@ useEffect(() => {
 
         <ChartGridSection title="PSD Images">
           {psdCharts.map((chart) => {
+            console.log(selectedDate)
+            console.log(selectedStation)
+            console.log(chart.channel)
+
             const imageUrlPath = `/api/qc/data/psd/${selectedDate}/${selectedStation}/${chart.channel}`;
             return (
               <ImagePanel key={`${chart.type}-${chart.channel}`}>
