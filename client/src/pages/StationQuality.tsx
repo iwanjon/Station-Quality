@@ -194,7 +194,7 @@ const StationQuality = () => {
   const fetchStationMetadata = async () => {
     try {
       setLoading(true);
-      const response = await axiosServer.get("/api/stasiun");
+      const response = await axiosServer.get("/api/stasiun/public/active");
       setStationData(response.data);
     } catch (error) {
       console.error("Error fetching station data:", error);
