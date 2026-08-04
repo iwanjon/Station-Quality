@@ -2,7 +2,8 @@ import { Router } from "express";
 import { 
     getAllStasiun,
     getRecentUpdates,
-    getAllStasiunWithSensor
+    getAllStasiunWithSensor,
+    getAllActiveStasiun
 } from '../controllers/stasiun.controller.js';
 
 const router = Router();
@@ -11,5 +12,6 @@ const router = Router();
 router.get('/', getAllStasiun);
 router.get('/sensor', getAllStasiunWithSensor);
 router.get('/recent-updates', getRecentUpdates);
+router.get('/active', getAllActiveStasiun);
 
 export default router;

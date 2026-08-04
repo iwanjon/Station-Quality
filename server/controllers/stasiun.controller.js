@@ -1075,3 +1075,63 @@ export const getAllStasiunWithSensor = async (req, res) => {
         });
     }
 };
+
+
+// Get all stasiun data with JOIN
+export const getAllActiveStasiun = async (req, res) => {
+    try {
+        logger.info('-> [GET] /getAllStasiun: Initiated');
+        logger.info('Fetching all stasiun data');
+        // Add authorization filter use where s.stasiun_id in (1,2,3,4) or s.kode_stasiun in ('AAI','AAFM')
+
+        // console.log(req.user.stasiun_id);
+        // const originalList = req.user.stasiun_id;
+
+        appDebug('Executing query to fetch all stasiun with JOINs');
+        const [rows] = await pool.query(`
+            SELECT 
+                s.stasiun_id,
+                s.net,
+                s.kode_stasiun,
+                s.lintang,
+                s.bujur,
+                s.elevasi,
+                s.lokasi,
+                p.nama_provinsi AS provinsi,
+                s.provinsi_id,
+                u.nama_upt AS upt_penanggung_jawab,
+                s.upt_id,
+                s.status,
+                s.tahun_instalasi,
+                j.nama_jaringan AS jaringan,
+                s.jaringan_id,
+                s.prioritas,
+                s.keterangan,
+                s.accelerometer,
+                s.digitizer_komunikasi, 
+                s.tipe_shelter,
+                s.lokasi_shelter,
+                s.penjaga_shelter,
+                s.kondisi_shelter,
+                s.assets_shelter,
+                s.access_shelter,
+                s.photo_shelter,
+                s.penggantian_terakhir_alat,
+                s.updated_at
+            FROM stasiun s
+            LEFT JOIN jaringan j ON s.jaringan_id = j.jaringan_id
+            LEFT JOIN upt u ON s.upt_id = u.upt_id        
+            LEFT JOIN provinsi p ON s.provinsi_id = p.provinsi_id
+            WHERE s.status='aktif'
+        `);
+
+        logger.info(`<- [GET] /getAllStasiun: Success. Fetched ${rows.length} records.`);
+        res.json(rows);
+    } catch (error) {
+        logger.error('<- [GET] /getAllStasiun: DB Error occurred', { error: error.message, stack: error.stack });
+        console.error("DB Error:", error);
+        res.status(500).json({
+            error: 'Gagal ambil data stasiun'
+        });
+    }
+};
