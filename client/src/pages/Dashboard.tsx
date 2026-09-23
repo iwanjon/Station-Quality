@@ -925,6 +925,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, Respon
 import DataTable from "../components/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Download } from "lucide-react";
+import ColumnVisibilityDropdown from "../components/shared/ColumnVisibilityDropdown";
 
 // --- INTERFACES ---
 
@@ -1126,7 +1127,7 @@ const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummaryB
   const maxCount = Math.max(...summary.map((s) => s.count), 1);
 
   return (
-    <div className="absolute bottom-3 left-3 bg-white/70 p-2 rounded-lg shadow w-44 z-[400]" style={{ fontSize: "11px" }}>
+    <div className="absolute bottom-3 left-3 bg-white/70 p-2 rounded-lg shadow w-44 z-[10]" style={{ fontSize: "11px" }}>
       <div className="font-semibold text-gray-800 mb-0.5" style={{ fontSize: "12px" }}>Latency Summary</div>
       <div className="mb-1 text-[10px]">
         <span className="font-bold">Total:</span> {totalStationCount}
@@ -1302,6 +1303,26 @@ const QualityCard = memo(({ qualityPieData }: { qualityPieData: { name: string; 
     </InfoCard>
   );
 });
+
+const hasAccessorKey = (
+  column: ColumnDef<TableStasiun>
+): column is ColumnDef<TableStasiun> & { accessorKey: string } => {
+  return "accessorKey" in column && typeof column.accessorKey === "string";
+};
+
+const getColumnVisibilityOptions = (
+  columns: ColumnDef<TableStasiun>[]
+) => {
+  return columns
+    .filter(hasAccessorKey)
+    .map((column) => ({
+      key: column.accessorKey,
+      label:
+        typeof column.header === "string"
+          ? column.header
+          : column.accessorKey,
+    }));
+};
 
 // --- DASHBOARD ---
 
@@ -1773,23 +1794,11 @@ const Dashboard = () => {
           {/* Column Visibility Controls */}
           <div className="flex flex-wrap gap-2 text-sm md:justify-end flex-1">
             <span className="font-medium text-gray-700 flex items-center mr-2 w-full md:w-auto">Show/Hide Column(s):</span>
-            {columns.map((column: any) => {
-              const colKey = column.accessorKey;
-              return (
-                <button
-                  key={colKey}
-                  onClick={() => toggleColumnVisibility(colKey)}
-                  className={`px-2 py-1 rounded border text-xs transition-colors ${
-                    visibleColumns[colKey]
-                      ? 'bg-blue-100 border-blue-300 text-blue-700 hover:bg-blue-200'
-                      : 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200'
-                  }`}
-                  title={`${visibleColumns[colKey] ? 'Hide' : 'Show'} ${column.header}`}
-                >
-                  {column.header as React.ReactNode}
-                </button>
-              );
-            })}
+            <ColumnVisibilityDropdown
+              columns={getColumnVisibilityOptions(columns)}
+              visibleColumns={visibleColumns}
+              onToggleColumn={toggleColumnVisibility}
+            />
           </div>
 
         </div>

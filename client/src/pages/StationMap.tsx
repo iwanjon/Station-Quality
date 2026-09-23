@@ -697,6 +697,7 @@ import FieldGuidelines from "../components/FieldGuidelines";
 import { Link } from "react-router-dom";
 import { Download, Upload, FileText } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
+import ColumnVisibilityDropdown from "../components/shared/ColumnVisibilityDropdown";
 
 // Tipe data station - Aligned with the new backend footprint
 interface Stasiun {
@@ -770,6 +771,26 @@ const triangleIcon = (color: string) =>
 // Function to get color based on station status
 const getColorByStatus = (): string => {
   return '#6b7280'; // gray for all stations
+};
+
+const hasAccessorKey = (
+  column: ColumnDef<Stasiun>
+): column is ColumnDef<Stasiun> & { accessorKey: string } => {
+  return "accessorKey" in column && typeof column.accessorKey === "string";
+};
+
+const getColumnVisibilityOptions = (
+  columns: ColumnDef<Stasiun>[]
+) => {
+  return columns
+    .filter(hasAccessorKey)
+    .map((column) => ({
+      key: column.accessorKey,
+      label:
+        typeof column.header === "string"
+          ? column.header
+          : column.accessorKey,
+    }));
 };
 
 const StationMap = () => {
@@ -1289,20 +1310,11 @@ const StationMap = () => {
             {/* Column Visibility Controls */}
             <div className="flex flex-wrap gap-2 text-sm">
               <span className="font-medium text-gray-700 flex items-center">Show/Hide Column(s):</span>
-              {columns.map((column: any) => (
-                <button
-                  key={column.accessorKey}
-                  onClick={() => toggleColumnVisibility(column.accessorKey)}
-                  className={`px-2 py-1 rounded border text-xs transition-colors ${
-                    visibleColumns[column.accessorKey]
-                      ? 'bg-blue-100 border-blue-300 text-blue-700 hover:bg-blue-200'
-                      : 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200'
-                  }`}
-                  title={`${visibleColumns[column.accessorKey] ? 'Hide' : 'Show'} ${column.header as string}`}
-                >
-                  {column.header as React.ReactNode}
-                </button>
-              ))}
+              <ColumnVisibilityDropdown
+                columns={getColumnVisibilityOptions(columns)}
+                visibleColumns={visibleColumns}
+                onToggleColumn={toggleColumnVisibility}
+              />
             </div>
           </div>
           <div className="overflow-x-auto w-full pb-2">
