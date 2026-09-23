@@ -1131,7 +1131,7 @@ const MapLegend = ({ stationData, totalStationCount }: { stationData: QCSummaryB
       <div className="font-semibold text-gray-800 mb-0.5" style={{ fontSize: "12px" }}>Latency Summary</div>
       <div className="mb-1 text-[10px]">
         <span className="font-bold">Total:</span> {totalStationCount}
-      </div>
+      </div>git
       <div className="flex flex-col gap-1">
         {summary.map((item) => (
           <div key={item.label} className="grid grid-cols-[2.5rem_1fr_1.5rem] items-center gap-x-1">
