@@ -34,6 +34,7 @@ const SortIcon = ({
       </svg>
     );
   }
+
   if (direction === "desc") {
     return (
       <svg
@@ -45,7 +46,7 @@ const SortIcon = ({
       </svg>
     );
   }
-  
+
   return (
     <svg
       className="inline-block w-6 h-6 ml-1 text-gray-400"
@@ -69,17 +70,28 @@ function DataTable<TData extends object>({
   setGlobalFilter: setGlobalFilterProp,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
+
   // Gunakan state internal hanya jika prop tidak diberikan
-  const [internalGlobalFilter, setInternalGlobalFilter] = React.useState<string>("");
+  const [internalGlobalFilter, setInternalGlobalFilter] =
+    React.useState<string>("");
 
   // Gunakan globalFilter dari prop jika ada, jika tidak gunakan state internal
-  const globalFilterValue = globalFilterProp !== undefined ? globalFilterProp : internalGlobalFilter;
-  const setGlobalFilterValue = setGlobalFilterProp !== undefined ? setGlobalFilterProp : setInternalGlobalFilter;
+  const globalFilterValue =
+    globalFilterProp !== undefined
+      ? globalFilterProp
+      : internalGlobalFilter;
+
+  const setGlobalFilterValue =
+    setGlobalFilterProp !== undefined
+      ? setGlobalFilterProp
+      : setInternalGlobalFilter;
 
   const [pagination, setPagination] = React.useState({
     pageIndex: 0,
     pageSize: 10,
   });
+
+  const [pageInput, setPageInput] = React.useState("");
 
   const table = useReactTable({
     data,
@@ -98,20 +110,35 @@ function DataTable<TData extends object>({
     getPaginationRowModel: getPaginationRowModel(),
   });
 
+  const handlePageInput = (value: string) => {
+    setPageInput(value);
+
+    const page = Number(value);
+    const pageCount = table.getPageCount();
+
+    if (
+      Number.isInteger(page) &&
+      page >= 1 &&
+      page <= pageCount
+    ) {
+      table.setPageIndex(page - 1);
+    }
+  };
+
   return (
-    <div>
+    <div className="w-full min-w-0">
       {/* Global Search Input */}
-      <div className="mb-2">
+      <div className="mb-4 w-full">
         <input
           type="text"
           placeholder="Search..."
           value={globalFilterValue ?? ""}
           onChange={(e) => setGlobalFilterValue(e.target.value)}
-          className="border border-gray-300 p-1 rounded"
+          className="w-full max-w-xl border border-gray-300 px-3 py-2 rounded text-sm"
         />
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="w-full min-w-0 overflow-x-auto">
         <table className="min-w-full border border-gray-300 text-center table-fixed">
           <thead className="bg-gray-50">
             {table.getHeaderGroups().map((headerGroup) => (
@@ -120,12 +147,23 @@ function DataTable<TData extends object>({
                   <th
                     key={header.id}
                     colSpan={header.colSpan}
-                    // pastikan border warna sama (border-gray-300)
                     className={`border border-gray-300 p-2 text-sm font-semibold select-none ${
                       header.column.getCanSort() ? "cursor-pointer" : ""
                     }`}
                     style={{
-                      width: (header.column.columnDef as ColumnDef<TData> & { size?: number }).size ? `${(header.column.columnDef as ColumnDef<TData> & { size?: number }).size}px` : 'auto'
+                      width: (
+                        header.column.columnDef as ColumnDef<TData> & {
+                          size?: number;
+                        }
+                      ).size
+                        ? `${
+                            (
+                              header.column.columnDef as ColumnDef<TData> & {
+                                size?: number;
+                              }
+                            ).size
+                          }px`
+                        : "auto",
                     }}
                     onClick={
                       header.column.getCanSort()
@@ -139,6 +177,7 @@ function DataTable<TData extends object>({
                           header.column.columnDef.header,
                           header.getContext()
                         )}
+
                     {header.column.getCanSort() && (
                       <SortIcon
                         direction={
@@ -160,9 +199,14 @@ function DataTable<TData extends object>({
               table.getRowModel().rows.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50">
                   {row.getVisibleCells().map((cell) => (
-                    // pastikan cell border warna sama dengan tabel detail
-                    <td key={cell.id} className="border border-gray-300 p-2 text-sm">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    <td
+                      key={cell.id}
+                      className="border border-gray-300 p-2 text-sm"
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
                     </td>
                   ))}
                 </tr>
@@ -182,15 +226,15 @@ function DataTable<TData extends object>({
       </div>
 
       {/* Pagination Controls */}
-      <div className="flex items-center justify-center gap-2 py-8">
+      <div className="flex flex-wrap items-center justify-center gap-2 py-8">
         <button
-          // tombol pagination border disamakan juga
           className="border border-gray-300 px-2 py-1 rounded disabled:opacity-50"
           onClick={() => table.previousPage()}
           disabled={!table.getCanPreviousPage()}
         >
           Prev
         </button>
+
         <span>
           Page{" "}
           <strong>
@@ -198,6 +242,7 @@ function DataTable<TData extends object>({
             {table.getPageCount()}
           </strong>
         </span>
+
         <button
           className="border border-gray-300 px-2 py-1 rounded disabled:opacity-50"
           onClick={() => table.nextPage()}
@@ -206,12 +251,31 @@ function DataTable<TData extends object>({
           Next
         </button>
 
+        <div className="flex items-center gap-2 ml-2">
+          <label htmlFor="page-input" className="text-sm">
+            Go to
+          </label>
+
+          <input
+            id="page-input"
+            type="number"
+            min={1}
+            max={Math.max(table.getPageCount(), 1)}
+            value={pageInput}
+            onChange={(e) => handlePageInput(e.target.value)}
+            placeholder={String(
+              table.getState().pagination.pageIndex + 1
+            )}
+            className="w-20 border border-gray-300 px-2 py-1 rounded"
+          />
+        </div>
+
         <select
           value={table.getState().pagination.pageSize}
           onChange={(e) => {
             table.setPageSize(Number(e.target.value));
           }}
-          className="border border-gray-300 p-1 rounded ml-4"
+          className="border border-gray-300 p-1 rounded ml-2"
         >
           {[5, 10, 20, 50].map((size) => (
             <option key={size} value={size}>
