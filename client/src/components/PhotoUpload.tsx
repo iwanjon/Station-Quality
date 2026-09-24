@@ -159,7 +159,7 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
                   <img
                     src={getPhotoUrl(photoPath)}
                     alt={`Site photo ${index + 1}`}
-                    className="w-full h-32 object-cover rounded-lg border border-gray-300"
+                    className="w-full h-32 object-contain rounded-lg border border-gray-300 bg-gray-100"
                     onError={(e) => {
                       console.error('Failed to load image:', photoPath);
                       e.currentTarget.src = '/placeholder-image.png'; // Fallback image

@@ -133,6 +133,8 @@ const StationMapDetail = () => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingSection, setEditingSection] = useState<string>('');
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [stationSearch, setStationSearch] = useState("");
 
   const fetchStationDetail = useCallback(async () => {
     if (!stationCode) return;
@@ -174,6 +176,7 @@ const StationMapDetail = () => {
 
   const handleStationSelect = (selectedStationCode: string) => {
     setDropdownOpen(false);
+    setStationSearch("");
     navigate(`/station-map/${selectedStationCode}`);
   };
 
@@ -181,6 +184,12 @@ const StationMapDetail = () => {
     const currentStation = stations.find(station => station.kode_stasiun === stationCode);
     return currentStation ? currentStation.kode_stasiun : stationCode;
   };
+
+  const filteredStations = stations.filter((station) =>
+    station.kode_stasiun
+      .toLowerCase()
+      .includes(stationSearch.trim().toLowerCase())
+  );
 
   const fetchStationHistory = useCallback(async () => {
     if (!stationCode) return;
@@ -364,16 +373,37 @@ const StationMapDetail = () => {
                   </button>
                   
                   {dropdownOpen && (
-                    <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-10 min-w-[180px] max-h-48 overflow-y-auto">
-                      {stations.map((station) => (
-                        <button
-                          key={station.kode_stasiun}
-                          onClick={() => handleStationSelect(station.kode_stasiun)}
-                          className="w-full text-left px-3 py-2 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 text-sm"
-                        >
-                          <div className="font-medium text-gray-900">{station.kode_stasiun}</div>
-                        </button>
-                      ))}
+                    <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-10 min-w-[220px]">
+                      <div className="p-2 border-b border-gray-200">
+                        <input
+                          type="text"
+                          value={stationSearch}
+                          onChange={(e) => setStationSearch(e.target.value)}
+                          placeholder="Search station code..."
+                          className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          autoFocus
+                        />
+                      </div>
+
+                      <div className="max-h-48 overflow-y-auto">
+                        {filteredStations.length > 0 ? (
+                          filteredStations.map((station) => (
+                            <button
+                              key={station.kode_stasiun}
+                              onClick={() => handleStationSelect(station.kode_stasiun)}
+                              className="w-full text-left px-3 py-2 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 text-sm"
+                            >
+                              <div className="font-medium text-gray-900">
+                                {station.kode_stasiun}
+                              </div>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-3 py-3 text-sm text-gray-500">
+                            No stations found
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -598,6 +628,7 @@ const StationMapDetail = () => {
           <div className="bg-white p-6 rounded-2xl shadow-md mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-800">Site Photo</h2>
+
               <button
                 onClick={() => setPhotoModalOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
@@ -606,31 +637,53 @@ const StationMapDetail = () => {
                 Manage Photos
               </button>
             </div>
+
             {station.photo_shelter && getPhotoArray(station.photo_shelter).length > 0 ? (
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-sm text-gray-600 mb-3">
-                  {getPhotoArray(station.photo_shelter).length} photo{getPhotoArray(station.photo_shelter).length > 1 ? 's' : ''} uploaded
+                  {getPhotoArray(station.photo_shelter).length} photo
+                  {getPhotoArray(station.photo_shelter).length > 1 ? "s" : ""} uploaded
                 </p>
+
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {getPhotoArray(station.photo_shelter).slice(0, 4).map((photoPath, index) => (
-                    <div key={index} className="relative">
-                      <img
-                        src={getPhotoUrl(photoPath)}
-                        alt={`Site photo ${index + 1}`}
-                        className="w-full h-20 object-cover rounded-lg border border-gray-300"
-                        onError={(e) => {
-                          console.error('Failed to load image:', photoPath);
-                          e.currentTarget.src = '/placeholder-image.png';
-                        }}
-                      />
-                    </div>
-                  ))}
+                  {getPhotoArray(station.photo_shelter)
+                    .slice(0, 4)
+                    .map((photoPath, index) => (
+                      <button
+                        key={photoPath}
+                        type="button"
+                        onClick={() => setSelectedPhoto(photoPath)}
+                        className="relative h-32 rounded-lg border border-gray-300 bg-gray-100 overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all"
+                      >
+                        <img
+                          src={getPhotoUrl(photoPath)}
+                          alt={`Site photo ${index + 1}`}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            console.error("Failed to load image:", photoPath);
+                            e.currentTarget.src = "/placeholder-image.png";
+                          }}
+                        />
+                      </button>
+                    ))}
+
                   {getPhotoArray(station.photo_shelter).length > 4 && (
-                    <div className="flex items-center justify-center w-full h-20 bg-gray-200 rounded-lg border border-gray-300">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const photos = getPhotoArray(station.photo_shelter);
+                        const fifthPhoto = photos[4];
+
+                        if (fifthPhoto) {
+                          setSelectedPhoto(fifthPhoto);
+                        }
+                      }}
+                      className="flex items-center justify-center w-full h-32 bg-gray-200 rounded-lg border border-gray-300 hover:bg-gray-300 transition-colors"
+                    >
                       <span className="text-sm text-gray-600 font-medium">
                         +{getPhotoArray(station.photo_shelter).length - 4} more
                       </span>
-                    </div>
+                    </button>
                   )}
                 </div>
               </div>
@@ -638,10 +691,40 @@ const StationMapDetail = () => {
               <div className="text-center py-8 text-gray-500">
                 <Camera size={48} className="mx-auto mb-3 text-gray-300" />
                 <p className="text-sm">No photos uploaded yet</p>
-                <p className="text-xs text-gray-400 mt-1">Click "Manage Photos" to add photos</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Click "Manage Photos" to add photos
+                </p>
               </div>
             )}
           </div>
+
+          {/* Photo Lightbox */}
+          {selectedPhoto && (
+            <div
+              className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-4"
+              onClick={() => setSelectedPhoto(null)}
+            >
+              <button
+                type="button"
+                onClick={() => setSelectedPhoto(null)}
+                className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/90 text-gray-800 hover:bg-white text-2xl leading-none shadow-lg"
+                aria-label="Close photo viewer"
+              >
+                ×
+              </button>
+
+              <img
+                src={getPhotoUrl(selectedPhoto)}
+                alt="Full-size site photo"
+                className="max-w-full max-h-full object-contain"
+                onClick={(event) => event.stopPropagation()}
+                onError={(e) => {
+                  console.error("Failed to load image:", selectedPhoto);
+                  e.currentTarget.src = "/placeholder-image.png";
+                }}
+              />
+            </div>
+          )}
 
           {/* Bagian 3: Equipment Details dengan Station History per Channel */}
           <div className="bg-white p-6 rounded-2xl shadow-md mb-6">

@@ -685,7 +685,7 @@
 import { useState, useEffect, useMemo } from "react";
 import MainLayout from "../layouts/MainLayout";
 import axiosServer from "../utilities/AxiosServer";
-import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import marker2x from "leaflet/dist/images/marker-icon-2x.png";
@@ -793,6 +793,20 @@ const getColumnVisibilityOptions = (
     }));
 };
 
+const MapClickHandler = ({
+  onMapClick,
+}: {
+  onMapClick: () => void;
+}) => {
+  useMapEvents({
+    click: () => {
+      onMapClick();
+    },
+  });
+
+  return null;
+};
+
 const StationMap = () => {
   const [data, setData] = useState<Stasiun[]>([]);
   const [loading, setLoading] = useState(true);
@@ -840,7 +854,7 @@ const StationMap = () => {
 
   // Selected station for card display
   const [selectedStation, setSelectedStation] = useState<Stasiun | null>(null);
-
+  const [filterOpen, setFilterOpen] = useState(true);
   // Column visibility toggle handler
   const toggleColumnVisibility = (columnKey: string) => {
     setVisibleColumns(prev => ({
@@ -1209,62 +1223,85 @@ const StationMap = () => {
           </div>
         )}
 
+        {/* Filter Toggle */}
+        <div className="mb-3 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setFilterOpen((prev) => !prev)}
+            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
+          >
+            {filterOpen ? "Hide Filters" : "Show Filters"}
+          </button>
+        </div>
+
         {/* Combined Filter and Map Container */}
         <div className="flex bg-white p-2 rounded-xl shadow">
-          <div className="w-80 p-4 flex-shrink-0 border-r border-gray-200">
-            <h3 className="text-lg font-bold mb-4">Advanced Filter</h3>
+          {filterOpen && (
+            <div className="w-80 p-4 flex-shrink-0 border-r border-gray-200">
+              <h3 className="text-lg font-bold mb-4">Advanced Filter</h3>
 
-            {/* Global Search Input */}
-            <div className="mb-4">
-              <label htmlFor="search-kode" className="font-semibold text-sm mb-1 block">
-                Search Data:
-              </label>
-              <input
-                id="search-kode"
-                type="text"
-                className="border rounded px-2 py-1 text-sm w-full"
-                placeholder="Search by code, sensor, location..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+              {/* Global Search Input */}
+              <div className="mb-4">
+                <label
+                  htmlFor="search-kode"
+                  className="font-semibold text-sm mb-1 block"
+                >
+                  Search Data:
+                </label>
+                <input
+                  id="search-kode"
+                  type="text"
+                  className="border rounded px-2 py-1 text-sm w-full"
+                  placeholder="Search by code, sensor, location..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+
+              {/* TableFilters Component */}
+              <TableFilters
+                filters={filters}
+                setFilters={setFilters}
+                filterConfig={filterConfig}
               />
-            </div>
 
-            {/* TableFilters Component */}
-            <TableFilters
-              filters={filters}
-              setFilters={setFilters}
-              filterConfig={filterConfig}
-            />
+              {/* Action Buttons */}
+              <div className="flex gap-2 mt-4">
+                <button
+                  type="button"
+                  className="flex-1 px-3 py-2 rounded bg-green-600 hover:bg-green-700 text-white text-sm font-semibold"
+                  onClick={handleExportCSV}
+                >
+                  Export CSV
+                </button>
+              </div>
 
-            {/* Action Buttons */}
-            <div className="flex gap-2 mt-4">
-              <button
-                type="button"
-                className="flex-1 px-3 py-2 rounded bg-green-600 hover:bg-green-700 text-white text-sm font-semibold"
-                onClick={handleExportCSV}
-              >
-                Export CSV
-              </button>
+              {/* Station Count Display */}
+              <div className="mt-3 text-center">
+                <p className="text-sm text-gray-600">
+                  {filteredData.length === 0
+                    ? "No stations found"
+                    : `Now showing ${filteredData.length} station${filteredData.length === 1 ? "" : "s"}`
+                  }
+                </p>
+              </div>
             </div>
-
-            {/* Station Count Display */}
-            <div className="mt-3 text-center">
-              <p className="text-sm text-gray-600">
-                {filteredData.length === 0
-                  ? "No stations found"
-                  : `Now showing ${filteredData.length} station${filteredData.length === 1 ? '' : 's'}`
-                }
-              </p>
-            </div>
-          </div>
+          )}
 
           {/* Map Container - Right Side */}
           <div className="flex-1 overflow-hidden shadow relative">
-            <MapContainer center={center} zoom={5} style={{ height: "80vh", width: "100%" }}>
+            <MapContainer
+              center={center}
+              zoom={5}
+              style={{ height: "80vh", width: "100%" }}
+            >
+              <MapClickHandler onMapClick={() => setSelectedStation(null)} />
+
               <TileLayer
                 attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
+
               {!loading &&
                 filteredData.map((station) =>
                   station.lintang && station.bujur ? (
@@ -1272,8 +1309,9 @@ const StationMap = () => {
                       key={station.stasiun_id}
                       position={[station.lintang, station.bujur]}
                       icon={triangleIcon(getColorByStatus())}
+                      bubblingMouseEvents={false}
                       eventHandlers={{
-                        click: () => setSelectedStation(station)
+                        click: () => setSelectedStation(station),
                       }}
                     />
                   ) : null
@@ -1284,14 +1322,40 @@ const StationMap = () => {
             {selectedStation && (
               <div className="absolute top-4 right-4 bg-white rounded-lg shadow-lg border border-gray-200 p-4 w-64 z-[1000]">
                 <div className="space-y-2">
-                  <div className="font-bold text-lg text-blue-600">{selectedStation.kode_stasiun}</div>
-                  <div className="text-sm text-gray-600">{selectedStation.lokasi}, {selectedStation.provinsi}</div>
-                  <div className="text-sm"><span className="font-medium">Network:</span> {selectedStation.jaringan}</div>
-                  <div className="text-sm"><span className="font-medium">UPT:</span> {selectedStation.upt_penanggung_jawab}</div>
-                  <div className="text-sm"><span className="font-medium">Accel (S):</span> {selectedStation.accelerometer || "-"}</div>
-                  <div className="text-sm"><span className="font-medium">Seis (S):</span> {selectedStation.seismometer || "-"}</div>
-                  <div className="text-sm"><span className="font-medium">Status:</span> {selectedStation.status}</div>
-                  <Link 
+                  <div className="font-bold text-lg text-blue-600">
+                    {selectedStation.kode_stasiun}
+                  </div>
+
+                  <div className="text-sm text-gray-600">
+                    {selectedStation.lokasi}, {selectedStation.provinsi}
+                  </div>
+
+                  <div className="text-sm">
+                    <span className="font-medium">Network:</span>{" "}
+                    {selectedStation.jaringan}
+                  </div>
+
+                  <div className="text-sm">
+                    <span className="font-medium">UPT:</span>{" "}
+                    {selectedStation.upt_penanggung_jawab}
+                  </div>
+
+                  <div className="text-sm">
+                    <span className="font-medium">Accel (S):</span>{" "}
+                    {selectedStation.accelerometer || "-"}
+                  </div>
+
+                  <div className="text-sm">
+                    <span className="font-medium">Seis (S):</span>{" "}
+                    {selectedStation.seismometer || "-"}
+                  </div>
+
+                  <div className="text-sm">
+                    <span className="font-medium">Status:</span>{" "}
+                    {selectedStation.status}
+                  </div>
+
+                  <Link
                     to={`/station-map/${selectedStation.kode_stasiun}`}
                     state={{ station: selectedStation }}
                     className="w-full mt-3 px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors text-center block"
