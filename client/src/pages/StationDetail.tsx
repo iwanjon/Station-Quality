@@ -4,6 +4,7 @@ import axiosServer from "../utilities/AxiosServer";
 import ChartSlide from "../components/ChartSlide";
 import LazyLatencyChart from "../components/LazyLatencyChart";
 import MainLayout from "../layouts/MainLayout";
+import WebicorderSection from "../components/WebicorderSection";
 import dayjs from "dayjs";
 
 // --- INTERFACES & TYPES ---
@@ -317,6 +318,9 @@ const StationDetail = () => {
             </div> */}
           </div>
         </div>
+
+        {/* --- 24-Hour Waveform / Webicorder Visualization Section --- */}
+        <WebicorderSection stationCode={selectedStation || stationCode} />
 
         {/*
           ========================================================================
