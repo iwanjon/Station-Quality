@@ -15,6 +15,7 @@ export interface DataTableProps<TData> {
   data: TData[];
   globalFilter?: string;
   setGlobalFilter?: (value: string) => void;
+  showGlobalSearch?: boolean;
 }
 
 // Komponen icon sorting dengan SVG dan Tailwind
@@ -68,6 +69,7 @@ function DataTable<TData extends object>({
   data,
   globalFilter: globalFilterProp,
   setGlobalFilter: setGlobalFilterProp,
+  showGlobalSearch = true,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
 
@@ -127,16 +129,17 @@ function DataTable<TData extends object>({
 
   return (
     <div className="w-full min-w-0 max-w-full overflow-x-hidden">
-      {/* Global Search Input */}
-      <div className="mb-4 w-full min-w-0 max-w-full">
-        <input
-          type="text"
-          placeholder="Search..."
-          value={globalFilterValue ?? ""}
-          onChange={(e) => setGlobalFilterValue(e.target.value)}
-          className="w-full max-w-xl border border-gray-300 px-3 py-2 rounded text-sm"
-        />
-      </div>
+      {showGlobalSearch && (
+        <div className="mb-4 w-full min-w-0 max-w-full">
+          <input
+            type="text"
+            placeholder="Search..."
+            value={globalFilterValue ?? ""}
+            onChange={(e) => setGlobalFilterValue(e.target.value)}
+            className="w-full max-w-xl border border-gray-300 px-3 py-2 rounded text-sm"
+          />
+        </div>
+      )}
 
       {/* Single native horizontal scroll viewport for the DataTable */}
       <div
