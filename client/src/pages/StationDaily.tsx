@@ -156,6 +156,10 @@ const StationDaily = () => {
   const [loadingStatus, setLoadingStatus] = useState(false);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [stationCode]);
+
+  useEffect(() => {
     axiosServer.get("/api/stasiun").then((res) => {
         const stations: StationData[] = res.data || [];
         const codes = stations.map((s) => s.kode_stasiun);

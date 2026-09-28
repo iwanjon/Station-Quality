@@ -422,7 +422,7 @@ const StationQuality = () => {
       header: "Detail Stasiun",
       cell: ({ row }) => (
         <Link
-          to={`/station/${row.original.kode_stasiun}`}
+          to={`/station-daily/${row.original.kode_stasiun}`}
           className="text-blue-600 hover:underline text-sm font-medium"
         >
           Detail
@@ -466,6 +466,13 @@ const StationQuality = () => {
                       <b>Stasiun: {station.data.kode_stasiun}</b><br />
                       Status: {station.data.result}<br />
                       {station.data.quality_percentage !== null && `Kualitas: ${station.data.quality_percentage.toFixed(1)}%`}
+                      <br />
+                      <Link
+                        to={`/station-daily/${station.data.kode_stasiun}`}
+                        className="text-blue-600 hover:underline text-xs block mt-1 font-medium"
+                      >
+                        Detail Stasiun &rarr;
+                      </Link>
                     </Popup>
                   </Marker>
                 ))}
