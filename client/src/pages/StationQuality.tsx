@@ -152,6 +152,11 @@ const QualityDonutChart = ({ data }: { data: StationDataComplete[] }) => {
     }));
   }, [data]);
 
+  const totalCount = useMemo(() => {
+    if (!data) return 0;
+    return data.length;
+  }, [data]);
+
   const dataForChart = useMemo(() => ({
     labels: chartData.map(d => d.label),
     datasets: [
@@ -174,12 +179,41 @@ const QualityDonutChart = ({ data }: { data: StationDataComplete[] }) => {
     },
   }), []);
 
+  // Plugin untuk menampilkan angka total dan label di tengah Donut Chart
+  const centerTextPlugin = useMemo(() => ({
+    id: 'centerText',
+    afterDatasetsDraw: (chart: any) => {
+      const { ctx } = chart;
+      const meta = chart.getDatasetMeta(0);
+      if (!meta || !meta.data || !meta.data.length || !meta.data[0]) return;
+
+      const { x, y } = meta.data[0];
+      if (typeof x !== 'number' || typeof y !== 'number') return;
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // 1. Tampilkan angka jumlah stasiun
+      ctx.font = 'bold 28px Montserrat, sans-serif';
+      ctx.fillStyle = '#1e293b'; // slate-800
+      ctx.fillText(totalCount.toLocaleString('id-ID'), x, y - 7);
+
+      // 2. Tampilkan label deskripsi
+      ctx.font = '600 11px Montserrat, sans-serif';
+      ctx.fillStyle = '#64748b'; // slate-500
+      ctx.fillText('Total Stasiun', x, y + 14);
+
+      ctx.restore();
+    },
+  }), [totalCount]);
+
   // [Safety Guard] If data is loading or empty, prevent Chart.js from exploding
   if (!data || data.length === 0) {
     return <div className="flex items-center justify-center h-full text-gray-400 text-sm">Loading Chart...</div>;
   }
 
-  return <Doughnut data={dataForChart} options={options} />;
+  return <Doughnut data={dataForChart} options={options} plugins={[centerTextPlugin]} />;
 };
 
 const StationQuality = () => {
