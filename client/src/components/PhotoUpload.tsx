@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, Image as ImageIcon, Camera, Trash2, X } from 'lucide-react';
+import { Upload, Image as ImageIcon, Camera, Trash2, X, Check } from 'lucide-react';
 import axiosServer from '../utilities/AxiosServer';
 
 interface PhotoUploadProps {
@@ -23,15 +23,160 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const getPhotoArray = (photoString: string | null): string[] => {
+    if (!photoString) return [];
+    return photoString.split(',').filter((p) => p.trim());
+  };
+
+  const getPhotoUrl = (photoPath: string) => {
+    if (photoPath.startsWith('http')) {
+      return photoPath;
+    }
+
+    const baseUrl = import.meta.env.VITE_SERVER_BASE_URL || 'http://localhost:5000';
+    return `${baseUrl}${photoPath}`;
+  };
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
+
+    if (e.type === 'dragenter' || e.type === 'dragover') {
       setDragActive(true);
-    } else if (e.type === "dragleave") {
+    } else if (e.type === 'dragleave') {
       setDragActive(false);
+    }
+  };
+
+  const uploadFile = async (file: File): Promise<string | null> => {
+    const formData = new FormData();
+    formData.append('photo', file);
+
+    const response = await axiosServer.post(
+      `/api/stasiun/${stationCode}/upload-photo`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+
+    if (!response.data.success) {
+      throw new Error(response.data.message);
+    }
+
+    return response.data.data.allPhotos;
+  };
+
+  const handleFileSelect = async (files: File[]) => {
+    if (files.length === 0) {
+      return;
+    }
+
+    const validFiles: File[] = [];
+
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) {
+        alert(`"${file.name}" is not an image file.`);
+        continue;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        alert(`"${file.name}" exceeds the 5MB size limit.`);
+        continue;
+      }
+
+      validFiles.push(file);
+    }
+
+    if (validFiles.length === 0) {
+      return;
+    }
+
+    setIsUploading(true);
+    setPreviewUrl(null);
+
+    let latestPhotoPaths = currentPhoto;
+    let successfulUploads = 0;
+    let failedUploads = 0;
+    const failedFileNames: string[] = [];
+
+    try {
+      for (const file of validFiles) {
+        try {
+          const reader = new FileReader();
+
+          const previewData = await new Promise<string>((resolve, reject) => {
+            reader.onload = (event) => {
+              const result = event.target?.result;
+
+              if (typeof result === 'string') {
+                resolve(result);
+              } else {
+                reject(new Error('Unable to generate photo preview.'));
+              }
+            };
+
+            reader.onerror = () => {
+              reject(new Error('Unable to read selected photo.'));
+            };
+
+            reader.readAsDataURL(file);
+          });
+
+          setPreviewUrl(previewData);
+
+          const updatedPhotos = await uploadFile(file);
+          latestPhotoPaths = updatedPhotos;
+          successfulUploads++;
+
+          onPhotoUpdate(latestPhotoPaths);
+        } catch (error: unknown) {
+          failedUploads++;
+          failedFileNames.push(file.name);
+
+          console.error(`Upload error for "${file.name}":`, error);
+        }
+      }
+
+      setPreviewUrl(null);
+
+      if (successfulUploads > 0) {
+        onPhotoUpdate(latestPhotoPaths);
+
+        if (failedUploads === 0) {
+          alert(
+            successfulUploads === 1
+              ? 'Photo uploaded successfully!'
+              : `${successfulUploads} photos uploaded successfully!`
+          );
+        } else {
+          alert(
+            `${successfulUploads} photo${
+              successfulUploads > 1 ? 's' : ''
+            } uploaded successfully, but ${failedUploads} failed.\n\nFailed files:\n${failedFileNames.join(
+              '\n'
+            )}`
+          );
+        }
+      } else {
+        alert(
+          `Failed to upload selected photo${
+            validFiles.length > 1 ? 's' : ''
+          }.`
+        );
+      }
+    } finally {
+      setIsUploading(false);
+      setPreviewUrl(null);
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -40,104 +185,135 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
     e.stopPropagation();
     setDragActive(false);
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileSelect(e.dataTransfer.files[0]);
+    const files = Array.from(e.dataTransfer.files || []);
+
+    if (files.length > 0) {
+      void handleFileSelect(files);
     }
   };
 
-  const handleFileSelect = (file: File) => {
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
-      return;
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+
+    if (files.length > 0) {
+      void handleFileSelect(files);
     }
-
-    // Validate file size (5MB limit)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB');
-      return;
-    }
-
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setPreviewUrl(e.target?.result as string);
-    };
-    reader.readAsDataURL(file);
-
-    // Upload file
-    uploadFile(file);
   };
 
-  const uploadFile = async (file: File) => {
-    setIsUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('photo', file);
-
-      const response = await axiosServer.post(`/api/stasiun/${stationCode}/upload-photo`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      if (response.data.success) {
-        onPhotoUpdate(response.data.data.allPhotos);
-        setPreviewUrl(null);
-        alert('Photo uploaded successfully!');
-      } else {
-        throw new Error(response.data.message);
+  const togglePhotoSelection = (photoPath: string) => {
+    setSelectedPhotos((currentSelected) => {
+      if (currentSelected.includes(photoPath)) {
+        return currentSelected.filter((path) => path !== photoPath);
       }
-    } catch (error: unknown) {
-      console.error('Upload error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      alert('Failed to upload photo: ' + errorMessage);
-      setPreviewUrl(null);
-    } finally {
-      setIsUploading(false);
+
+      return [...currentSelected, photoPath];
+    });
+  };
+
+  const clearSelection = () => {
+    setSelectedPhotos([]);
+  };
+
+  const handleDeletePhoto = async (
+    photoPath: string,
+    showConfirmation = true
+  ): Promise<string | null> => {
+    if (
+      showConfirmation &&
+      !confirm('Are you sure you want to delete this photo?')
+    ) {
+      return null;
     }
-  };
 
-  const getPhotoUrl = (photoPath: string) => {
-    if (photoPath.startsWith('http')) {
-      return photoPath;
+    const response = await axiosServer.delete(
+      `/api/stasiun/${stationCode}/photo`,
+      {
+        data: { photoPath }
+      }
+    );
+
+    if (!response.data.success) {
+      throw new Error(response.data.message);
     }
-    // Use environment variable for base URL
-    const baseUrl = import.meta.env.VITE_SERVER_BASE_URL || 'http://localhost:5000';
-    return `${baseUrl}${photoPath}`;
+
+    return response.data.data.remainingPhotos;
   };
 
-  // Get array of photo paths from comma-separated string
-  const getPhotoArray = (photoString: string | null): string[] => {
-    if (!photoString) return [];
-    return photoString.split(',').filter(p => p.trim());
-  };
+  const handleBulkDelete = async () => {
+    if (selectedPhotos.length === 0 || isDeleting) {
+      return;
+    }
 
-  const handleDeletePhoto = async (photoPath: string) => {
-    if (!confirm('Are you sure you want to delete this photo?')) {
+    const selectedCount = selectedPhotos.length;
+
+    if (
+      !confirm(
+        `Are you sure you want to delete ${selectedCount} selected photo${
+          selectedCount > 1 ? 's' : ''
+        }?`
+      )
+    ) {
       return;
     }
 
     setIsDeleting(true);
-    try {
-      const response = await axiosServer.delete(`/api/stasiun/${stationCode}/photo`, {
-        data: { photoPath }
-      });
 
-      if (response.data.success) {
-        onPhotoUpdate(response.data.data.remainingPhotos);
-        alert('Photo deleted successfully!');
-      } else {
-        throw new Error(response.data.message);
+    let latestPhotoPaths = currentPhoto;
+    let successfulDeletes = 0;
+    let failedDeletes = 0;
+    const failedPhotoPaths: string[] = [];
+
+    try {
+      for (const photoPath of selectedPhotos) {
+        try {
+          const remainingPhotos = await handleDeletePhoto(photoPath, false);
+
+          latestPhotoPaths = remainingPhotos;
+          successfulDeletes++;
+
+          onPhotoUpdate(latestPhotoPaths);
+        } catch (error: unknown) {
+          failedDeletes++;
+          failedPhotoPaths.push(photoPath);
+
+          console.error(`Delete error for "${photoPath}":`, error);
+        }
       }
-    } catch (error: unknown) {
-      console.error('Delete error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      alert('Failed to delete photo: ' + errorMessage);
+
+      onPhotoUpdate(latestPhotoPaths);
+
+      if (failedDeletes === 0) {
+        clearSelection();
+
+        alert(
+          `${successfulDeletes} photo${
+            successfulDeletes > 1 ? 's' : ''
+          } deleted successfully!`
+        );
+      } else if (successfulDeletes > 0) {
+        clearSelection();
+
+        alert(
+          `${successfulDeletes} photo${
+            successfulDeletes > 1 ? 's' : ''
+          } deleted successfully, but ${failedDeletes} failed.\n\nFailed photo paths:\n${failedPhotoPaths.join(
+            '\n'
+          )}`
+        );
+      } else {
+        alert(
+          `Failed to delete the selected photo${
+            selectedCount > 1 ? 's' : ''
+          }.`
+        );
+      }
     } finally {
       setIsDeleting(false);
     }
   };
+
+  const photos = getPhotoArray(currentPhoto);
+  const selectedCount = selectedPhotos.length;
 
   // If modal mode and not open, don't render anything
   if (isModal && !isOpen) {
@@ -147,38 +323,111 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
   const content = (
     <div className="space-y-4">
       {/* Current Photos Display */}
-      {currentPhoto && getPhotoArray(currentPhoto).length > 0 && (
+      {photos.length > 0 && (
         <div className="relative">
           <div className="bg-gray-100 rounded-lg p-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">
-              Current Site Photos ({getPhotoArray(currentPhoto).length})
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {getPhotoArray(currentPhoto).map((photoPath, index) => (
-                <div key={index} className="relative group">
-                  <img
-                    src={getPhotoUrl(photoPath)}
-                    alt={`Site photo ${index + 1}`}
-                    className="w-full h-32 object-contain rounded-lg border border-gray-300 bg-gray-100"
-                    onError={(e) => {
-                      console.error('Failed to load image:', photoPath);
-                      e.currentTarget.src = '/placeholder-image.png'; // Fallback image
-                    }}
-                  />
+            <div className="flex items-center justify-between mb-3 gap-3">
+              <h4 className="text-sm font-medium text-gray-700">
+                Current Site Photos ({photos.length})
+              </h4>
+
+              {selectedCount > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">
+                    {selectedCount} selected
+                  </span>
+
                   <button
-                    onClick={() => handleDeletePhoto(photoPath)}
+                    type="button"
+                    onClick={clearSelection}
                     disabled={isDeleting}
-                    className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full hover:bg-red-700 transition-colors disabled:opacity-50 opacity-0 group-hover:opacity-100"
-                    title="Delete photo"
+                    className="px-3 py-1.5 bg-gray-500 text-white text-sm font-medium rounded-md hover:bg-gray-600 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleBulkDelete}
+                    disabled={isDeleting}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors disabled:opacity-50"
                   >
                     {isDeleting ? (
-                      <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     ) : (
-                      <Trash2 size={12} />
+                      <Trash2 size={14} />
                     )}
+                    Delete Selected
                   </button>
                 </div>
-              ))}
+              )}
+            </div>
+
+            <p className="text-xs text-gray-500 mb-3">
+              Click a photo to select it. Use the image area to open the photo
+              in full size after selection is cleared.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {photos.map((photoPath, index) => {
+                const isSelected = selectedPhotos.includes(photoPath);
+
+                return (
+                  <div
+                    key={photoPath}
+                    className={`relative group rounded-lg ${
+                      isSelected
+                        ? 'ring-2 ring-blue-600 ring-offset-2'
+                        : ''
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedCount > 0) {
+                          togglePhotoSelection(photoPath);
+                        } else {
+                          togglePhotoSelection(photoPath);
+                        }
+                      }}
+                      className={`relative block w-full overflow-hidden rounded-lg border bg-gray-100 transition-all ${
+                        isSelected
+                          ? 'border-blue-600'
+                          : 'border-gray-300 hover:border-blue-400'
+                      }`}
+                      title={
+                        isSelected
+                          ? 'Deselect photo'
+                          : 'Select photo for bulk delete'
+                      }
+                    >
+                      <img
+                        src={getPhotoUrl(photoPath)}
+                        alt={`Site photo ${index + 1}`}
+                        className="w-full h-32 object-contain rounded-lg"
+                        onError={(e) => {
+                          console.error('Failed to load image:', photoPath);
+                          e.currentTarget.src = '/placeholder-image.png';
+                        }}
+                      />
+
+                      {isSelected && (
+                        <div className="absolute inset-0 bg-blue-600/20 flex items-start justify-end p-2">
+                          <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center shadow">
+                            <Check size={16} />
+                          </div>
+                        </div>
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-3 text-xs text-gray-500">
+              {selectedCount > 0
+                ? 'Selected photos are highlighted. Click selected photos again to remove them from the selection.'
+                : 'Select one or more photos above to enable bulk delete.'}
             </div>
           </div>
         </div>
@@ -187,7 +436,7 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
       {/* Upload Area */}
       <div className="bg-gray-50 rounded-lg p-6">
         <h4 className="text-sm font-medium text-gray-700 mb-4">
-          {currentPhoto && getPhotoArray(currentPhoto).length > 0 ? 'Add More Photos' : 'Upload Site Photos'}
+          {photos.length > 0 ? 'Add More Photos' : 'Upload Site Photos'}
         </h4>
 
         <div
@@ -208,6 +457,7 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
                 alt="Preview"
                 className="max-w-full h-32 object-cover rounded-lg mx-auto border border-gray-300"
               />
+
               <div className="flex items-center justify-center space-x-2">
                 {isUploading ? (
                   <div className="flex items-center space-x-2 text-blue-600">
@@ -222,6 +472,7 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
                     >
                       Choose Different File
                     </button>
+
                     <button
                       onClick={() => setPreviewUrl(null)}
                       className="px-4 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 transition-colors"
@@ -235,30 +486,32 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
           ) : (
             <div className="space-y-4">
               <div className="flex justify-center">
-                {currentPhoto ? (
+                {photos.length > 0 ? (
                   <Camera className="w-12 h-12 text-gray-400" />
                 ) : (
                   <ImageIcon className="w-12 h-12 text-gray-400" />
                 )}
               </div>
+
               <div>
                 <p className="text-gray-600 mb-2">
-                  {currentPhoto && getPhotoArray(currentPhoto).length > 0
+                  {photos.length > 0
                     ? 'Drop additional photos here or click to add more'
-                    : 'Drop photos here or click to upload'
-                  }
+                    : 'Drop photos here or click to upload'}
                 </p>
+
                 <p className="text-sm text-gray-500">
                   PNG, JPG, JPEG up to 5MB each
                 </p>
               </div>
+
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
                 <Upload size={16} />
-                {isUploading ? 'Uploading...' : 'Choose File'}
+                {isUploading ? 'Uploading...' : 'Choose Files'}
               </button>
             </div>
           )}
@@ -267,12 +520,8 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                handleFileSelect(file);
-              }
-            }}
+            multiple
+            onChange={handleFileInputChange}
             className="hidden"
           />
         </div>
@@ -298,6 +547,7 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
         <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <h2 className="text-xl font-bold text-gray-800">Site Photos</h2>
+
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -305,6 +555,7 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
               <X size={24} />
             </button>
           </div>
+
           <div className="p-6">
             {content}
           </div>
