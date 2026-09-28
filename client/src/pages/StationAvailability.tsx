@@ -6,7 +6,7 @@ import type { FilterConfig } from "../components/TableFilters";
 import DataTable from "../components/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import axiosServer from "../utilities/AxiosServer";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import AvailabilityChartSection from "../components/station-availability/AvailabilityChartSection";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -136,7 +136,7 @@ interface DateRange {
 interface ChartDataPoint {
   month: string;
   counts: Record<string, number>;
-  [key: string]: string | number | Record<string, number>; // Allow dynamic keys for availability ranges
+  [key: string]: string | number | Record<string, number>;
 }
 
 interface ApiInfo {
@@ -179,7 +179,9 @@ function processStationData(apiResponse: APIResponse, selectedRange: DateRange):
       }
 
       currentDate.setMonth(currentDate.getMonth() + 1);
-    }    stations.push({
+    }
+
+    stations.push({
       id: id++,
       kode: stationCode,
       dailyData: stationData,
@@ -223,29 +225,6 @@ const StationAvailability = () => {
   const [data, setData] = useState<Station[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiInfo, setApiInfo] = useState<ApiInfo | null>(null);
-  // const [selectedMonth, setSelectedMonth] = useState<DateRange>(() => {
-  //   const today = new Date();
-  //   let endYear = today.getFullYear();
-  //   let endMonth = today.getMonth() - 1; // Bulan lalu (0-based)
-  //   if (endMonth < 0) {
-  //     endMonth = 11;
-  //     endYear -= 1;
-  //   }
-  //   // Start: 12 bulan sebelum endMonth
-  //   let startMonth = endMonth - 11;
-  //   let startYear = endYear;
-  //   if (startMonth < 0) {
-  //     startMonth += 12;
-  //     startYear -= 1;
-  //   }
-  //   return {
-  //     startYear,
-  //     startMonth,
-  //     endYear,
-  //     endMonth
-  //   };
-  // });
-
 
   // 1. Modify the initial state to check sessionStorage first
   const [selectedMonth, setSelectedMonth] = useState<DateRange>(() => {
@@ -287,12 +266,14 @@ const StationAvailability = () => {
     sessionStorage.setItem("stationAvailabilityDate", JSON.stringify(selectedMonth));
   }, [selectedMonth]);
 
-
-
   const [filters, setFilters] = useState<Record<string, string[]>>({
     kode: [],
     availabilityCategory: [],
   });
+
+  const [chartType, setChartType] = useState<"stacked" | "line" | "grouped">("stacked");
+  const [metric, setMetric] = useState<"count" | "percentage">("percentage");
+
   // Memoize chart data calculation
   const chartData = useMemo(() => {
     if (!data.length) return [];
@@ -368,53 +349,7 @@ const StationAvailability = () => {
     };
   }, [data]);
 
-  // useEffect(() => {
-  //   setLoading(true);
-
-  //   const firstDayOfRange = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
-  //   const lastDayOfRange = new Date(selectedMonth.endYear, selectedMonth.endMonth + 1, 0);
-
-  //   // Avoid timezone conversion issues by using local date components
-  //   const start_date = `${firstDayOfRange.getFullYear()}-${String(firstDayOfRange.getMonth() + 1).padStart(2, '0')}-${String(firstDayOfRange.getDate()).padStart(2, '0')}`;
-  //   const end_date = `${lastDayOfRange.getFullYear()}-${String(lastDayOfRange.getMonth() + 1).padStart(2, '0')}-${String(lastDayOfRange.getDate()).padStart(2, '0')}`;
-
-  //   axiosServer
-  //     .get("/api/availability", {
-  //       params: {
-  //         start_date,
-  //         end_date
-  //       },
-  //     })
-  //     .then((res) => {
-  //       const apiResponse: APIResponse = res.data;
-
-  //       if (apiResponse.success) {
-  //         // Process data to calculate statistics per station
-  //         const processedStations = processStationData(apiResponse, selectedMonth);
-
-  //         // Convert to Station format for table
-  //         const stations = convertToStationFormat(processedStations);
-
-  //         setData(stations);
-
-  //         // Set API info for display
-  //         setApiInfo({
-  //           cached: apiResponse.cached,
-  //           totalStations: apiResponse.meta.stationCount,
-  //           dateRange: `${apiResponse.meta.dateRange.start_date} to ${apiResponse.meta.dateRange.end_date}`
-  //         });
-  //       } else {
-  //         setData([]);
-  //       }
-  //     })
-  //     .catch(() => {
-  //       setData([]);
-  //     })
-  //     .finally(() => setLoading(false));
-  // }, [selectedMonth]);
-
-
-useEffect(() => {
+  useEffect(() => {
     setLoading(true);
 
     const firstDayOfRange = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
@@ -426,7 +361,7 @@ useEffect(() => {
 
     // 1. Create a unique cache key based on the selected dates
     const cacheKey = `station_data_${start_date}_${end_date}`;
-    
+
     // 2. Check if we already have this data saved in sessionStorage
     const savedDataString = sessionStorage.getItem(cacheKey);
     if (savedDataString) {
@@ -458,7 +393,7 @@ useEffect(() => {
 
           // Convert to Station format for table
           const stations = convertToStationFormat(processedStations);
-          
+
           const newApiInfo = {
             cached: apiResponse.cached,
             totalStations: apiResponse.meta.stationCount,
@@ -483,9 +418,6 @@ useEffect(() => {
       })
       .finally(() => setLoading(false));
   }, [selectedMonth]);
-
-
-
 
   // Memoize columns generation
   const columns = useMemo((): ColumnDef<Station>[] => {
@@ -569,45 +501,37 @@ useEffect(() => {
     return columns;
   }, [selectedMonth]);
 
+  const handleDownloadCSV = () => {
+    // Step 1: Collect all unique months across the entire dataset
+    const allMonths = new Set<string>();
 
- const handleDownloadCSV = () => {
-
- 
-  // Step 1: Collect all unique months across the entire dataset
-  const allMonths = new Set<string>(); // Using a Set to ensure unique months
-
-  filteredData.forEach((item) => {
-    Object.keys(item.monthlyData).forEach((month) => {
-      allMonths.add(month); // Add each month to the set
-    });
-  });
-
-  // Convert the set to an array and sort months (optional, depending on your preference)
-  const months = Array.from(allMonths).sort();
-
-  // Step 2: Map the months to their full names with the year (e.g., "2025-09" -> "September 2025")
-  const formatMonth = (month: string) => {
-    const date = new Date(month);
-    const options = { year: 'numeric', month: 'long' } as const;
-    return date.toLocaleDateString('en-US', options); // Output as "Month Year"
-  };
-
-  // Step 3: Prepare the CSV content with the header row
-  let csvContent = 'kode,' + months.map(formatMonth).join(',') + '\n';
-
-  // Step 4: Loop through the data to generate the rows
-  filteredData.forEach((item) => {
-    const values = months.map((month) => {
-      // If the month exists in the current item's monthlyData, return the value
-      // Otherwise, return an empty string (or zero, depending on your preference)
-      return item.monthlyData[month] !== null ? item.monthlyData[month] : ''; 
+    filteredData.forEach((item) => {
+      Object.keys(item.monthlyData).forEach((month) => {
+        allMonths.add(month);
+      });
     });
 
-    // Create a row with the kode followed by the values for each month
-    csvContent += `${item.kode},${values.join(',')}\n`;
-  });
+    // Convert the set to an array and sort months
+    const months = Array.from(allMonths).sort();
 
-  // return csvContent;
+    // Step 2: Map the months to their full names with the year
+    const formatMonth = (month: string) => {
+      const date = new Date(month);
+      const options = { year: 'numeric', month: 'long' } as const;
+      return date.toLocaleDateString('en-US', options);
+    };
+
+    // Step 3: Prepare the CSV content with the header row
+    let csvContent = 'kode,' + months.map(formatMonth).join(',') + '\n';
+
+    // Step 4: Loop through the data to generate the rows
+    filteredData.forEach((item) => {
+      const values = months.map((month) => {
+        return item.monthlyData[month] !== null ? item.monthlyData[month] : '';
+      });
+
+      csvContent += `${item.kode},${values.join(',')}\n`;
+    });
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
@@ -617,17 +541,14 @@ useEffect(() => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-};
-
-
-//  console.log(filteredData)
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <MainLayout>
-          <h1 className="text-left text-2xl font-bold mt-0 mb-2 ml-1">
-            Data Availability
-          </h1>
+        <h1 className="text-left text-2xl font-bold mt-0 mb-2 ml-1">
+          Data Availability
+        </h1>
         <div className="bg-white p-4 rounded-xl shadow mb-6">
           <div className="flex gap-4">
             {/* Filters on the left - More Compact */}
@@ -637,68 +558,62 @@ useEffect(() => {
                 <div className="space-y-2">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-gray-700">From:</label>
-                    <select
-                      value={`${selectedMonth.startYear}-${selectedMonth.startMonth}`}
+                    <input
+                      type="month"
+                      value={`${selectedMonth.startYear}-${String(selectedMonth.startMonth + 1).padStart(2, "0")}`}
+                      max={`${selectedMonth.endYear}-${String(selectedMonth.endMonth + 1).padStart(2, "0")}`}
                       onChange={(e) => {
-                        const [year, month] = e.target.value.split('-').map(Number);
-                        setSelectedMonth({ ...selectedMonth, startYear: year, startMonth: month });
+                        if (!e.target.value) return;
+
+                        const [year, month] = e.target.value.split("-").map(Number);
+                        const nextStartMonth = month - 1;
+
+                        if (
+                          year > selectedMonth.endYear ||
+                          (year === selectedMonth.endYear &&
+                            nextStartMonth > selectedMonth.endMonth)
+                        ) {
+                          return;
+                        }
+
+                        setSelectedMonth({
+                          ...selectedMonth,
+                          startYear: year,
+                          startMonth: nextStartMonth,
+                        });
                       }}
                       className="border px-2 py-1 rounded text-xs w-full"
-                    >
-                      {(() => {
-                        const currentDate = new Date();
-                       
-                        const currentYear = currentDate.getFullYear();
-                      
-                        const currentMonth = currentDate.getMonth() +1;
-                      
-                        const months = [];
-                        for (let year = currentYear; year >= currentYear - 1; year--) {
-                          const maxMonth = year === currentYear ? currentMonth - 1 : 11;
-                          for (let month = maxMonth; month >= 0; month--) {
-                            months.push({ year, month });
-                          }
-                        }
-                        
-                        return months.map(({ year, month }) => (
-                          <option key={`start-${year}-${month}`} value={`${year}-${month}`}>
-                            {MONTH_NAMES[month]} {year}
-                          </option>
-                        ));
-                      })()}
-                    </select>
+                    />
                   </div>
-                  
+
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-gray-700">To:</label>
-                    <select
-                      value={`${selectedMonth.endYear}-${selectedMonth.endMonth}`}
+                    <input
+                      type="month"
+                      value={`${selectedMonth.endYear}-${String(selectedMonth.endMonth + 1).padStart(2, "0")}`}
+                      min={`${selectedMonth.startYear}-${String(selectedMonth.startMonth + 1).padStart(2, "0")}`}
                       onChange={(e) => {
-                        const [year, month] = e.target.value.split('-').map(Number);
-                        setSelectedMonth({ ...selectedMonth, endYear: year, endMonth: month });
+                        if (!e.target.value) return;
+
+                        const [year, month] = e.target.value.split("-").map(Number);
+                        const nextEndMonth = month - 1;
+
+                        if (
+                          year < selectedMonth.startYear ||
+                          (year === selectedMonth.startYear &&
+                            nextEndMonth < selectedMonth.startMonth)
+                        ) {
+                          return;
+                        }
+
+                        setSelectedMonth({
+                          ...selectedMonth,
+                          endYear: year,
+                          endMonth: nextEndMonth,
+                        });
                       }}
                       className="border px-2 py-1 rounded text-xs w-full"
-                    >
-                      {(() => {
-                        const currentDate = new Date();
-                        const currentYear = currentDate.getFullYear();
-                        const currentMonth = currentDate.getMonth()+1;
-                        const months = [];
-                        
-                        for (let year = currentYear; year >= currentYear - 1; year--) {
-                          const maxMonth = year === currentYear ? currentMonth - 1 : 11;
-                          for (let month = maxMonth; month >= 0; month--) {
-                            months.push({ year, month });
-                          }
-                        }
-                        
-                        return months.map(({ year, month }) => (
-                          <option key={`end-${year}-${month}`} value={`${year}-${month}`}>
-                            {MONTH_NAMES[month]} {year}
-                          </option>
-                        ));
-                      })()}
-                    </select>
+                    />
                   </div>
                 </div>
 
@@ -726,70 +641,20 @@ useEffect(() => {
                 )}
               </div>
             </div>
-            
+
             {/* Chart on the right - More Space */}
             <div className="w-4/5">
-              {/* Chart Section */}
-              {loading ? (
-                <div className="bg-white p-4 rounded-lg">
-                  <h2 className="text-lg font-semibold text-gray-700 mb-3">Station Percentage Distribution by Month based on Availability</h2>
-                  <div className="h-64 flex items-center justify-center">
-                    <p className="text-center text-gray-500 text-sm">Loading chart data...</p>
-                  </div>
-                </div>
-              ) : chartData.length > 0 ? (
-                <div className="p-4">
-                  <h2 className="text-lg font-semibold text-gray-700 mb-3">Station Percentage Distribution by Month based on Availability</h2>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 40 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis 
-                          dataKey="month" 
-                          angle={-45} 
-                          textAnchor="end" 
-                          height={60}
-                          interval={0}
-                          fontSize={11}
-                        />
-                        <YAxis 
-                          domain={[0, 100]} 
-                          ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
-                          label={{ value: 'Percentage (%)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: '12px' } }} 
-                          fontSize={11}
-                        />
-                        <Tooltip 
-                          formatter={(_, name, item) => {
-                            const count = item.payload.counts[name];
-                            return [`${count} stations`, name];
-                          }}
-                          labelStyle={{ color: '#000' }}
-                        />
-                        {AVAILABILITY_CONFIG.ranges.map((range, index) => (
-                          <Bar
-                            key={range.key}
-                            dataKey={range.key}
-                            stackId="a"
-                            fill={range.chartColor}
-                            radius={index === AVAILABILITY_CONFIG.ranges.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                          />
-                        ))}
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="flex justify-center gap-6 mt-4 text-sm">
-                    {AVAILABILITY_CONFIG.ranges.map(range => (
-                      <div key={range.key} className="flex items-center gap-2">
-                        <div className={`w-4 h-4 ${range.legendColor} rounded`}></div>
-                        <span>{range.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
+              <AvailabilityChartSection
+                chartData={chartData}
+                availabilityRanges={AVAILABILITY_CONFIG.ranges}
+                chartType={chartType}
+                onChartTypeChange={setChartType}
+                metric={metric}
+                onMetricChange={setMetric}
+                minHeightClassName="min-h-[420px]"
+              />
             </div>
           </div>
-          
         </div>
 
         <div className="bg-white p-2 rounded-xl shadow">
@@ -798,13 +663,13 @@ useEffect(() => {
           ) : (
             <div className="overflow-x-auto text-xs">
               <div className="flex justify-between items-center mb-4">
-            <button
-              onClick={handleDownloadCSV}
-              className="bg-green-600 text-white rounded-lg px-3 py-2.5 hover:bg-green-700 transition duration-300 text-sm"
-            >
-              Export CSV
-            </button>
-          </div>
+                <button
+                  onClick={handleDownloadCSV}
+                  className="bg-green-600 text-white rounded-lg px-3 py-2.5 hover:bg-green-700 transition duration-300 text-sm"
+                >
+                  Export CSV
+                </button>
+              </div>
               <div className="min-w-full">
                 <DataTable columns={columns} data={filteredData} />
               </div>
