@@ -194,7 +194,7 @@ const TableFilters: React.FC<TableFiltersProps> = ({
           )}
         </button>
 
-        {/* Tombol Clear Sederhana Bawaan */}
+        {/* Reset button when filters are active */}
         {totalActiveFilters > 0 && (
           <button
             type="button"
@@ -202,7 +202,7 @@ const TableFilters: React.FC<TableFiltersProps> = ({
             className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-2.5 py-1.5 rounded text-xs font-medium transition-colors"
             title="Reset semua filter"
           >
-            Clear
+            Reset
           </button>
         )}
       </div>

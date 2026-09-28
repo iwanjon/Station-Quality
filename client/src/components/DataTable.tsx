@@ -131,7 +131,7 @@ function DataTable<TData extends object>({
       <div className="mb-4 w-full">
         <input
           type="text"
-          placeholder="Search..."
+          placeholder="Cari stasiun..."
           value={globalFilterValue ?? ""}
           onChange={(e) => setGlobalFilterValue(e.target.value)}
           className="w-full max-w-xl border border-gray-300 px-3 py-2 rounded text-sm"
@@ -217,7 +217,7 @@ function DataTable<TData extends object>({
                   colSpan={columns.length}
                   className="text-center p-4 text-gray-500"
                 >
-                  No data available
+                  Tidak ada data tersedia
                 </td>
               </tr>
             )}
@@ -232,13 +232,13 @@ function DataTable<TData extends object>({
           onClick={() => table.previousPage()}
           disabled={!table.getCanPreviousPage()}
         >
-          Prev
+          Sebelumnya
         </button>
 
         <span>
-          Page{" "}
+          Halaman{" "}
           <strong>
-            {table.getState().pagination.pageIndex + 1} of{" "}
+            {table.getState().pagination.pageIndex + 1} dari{" "}
             {table.getPageCount()}
           </strong>
         </span>
@@ -248,12 +248,12 @@ function DataTable<TData extends object>({
           onClick={() => table.nextPage()}
           disabled={!table.getCanNextPage()}
         >
-          Next
+          Selanjutnya
         </button>
 
         <div className="flex items-center gap-2 ml-2">
           <label htmlFor="page-input" className="text-sm">
-            Go to
+            Ke halaman
           </label>
 
           <input
@@ -279,7 +279,7 @@ function DataTable<TData extends object>({
         >
           {[5, 10, 20, 50].map((size) => (
             <option key={size} value={size}>
-              Show {size}
+              Tampilkan {size}
             </option>
           ))}
         </select>

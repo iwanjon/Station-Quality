@@ -26,6 +26,15 @@ const STATUS_CONFIG: { [key: string]: { label: string; color: string; textColor:
   "default": { label: "N/A", color: "#9ca3af", textColor: "text-white" },
 };
 
+// Mapping dictionary for Site Quality from external API (English) to standardized Indonesian
+const SITE_QUALITY_MAP: Record<string, string> = {
+  "Very Good": "Sangat Baik",
+  "Good": "Baik",
+  "Fair": "Cukup Baik",
+  "Poor": "Buruk",
+  "-": "-",
+};
+
 interface QCSummary {
   code: string;
   quality_percentage: number | null;
@@ -93,10 +102,10 @@ const getColorByResult = (result: string | null): string => {
 
 const MapLegend = () => {
   const legendItems = [
-    { label: "Good", color: STATUS_CONFIG["Baik"].color },
-    { label: "Fair", color: STATUS_CONFIG["Cukup Baik"].color },
-    { label: "Poor", color: STATUS_CONFIG["Buruk"].color },
-    { label: "No Data", color: STATUS_CONFIG["Mati"].color },
+    { label: "Baik", color: STATUS_CONFIG["Baik"].color },
+    { label: "Cukup Baik", color: STATUS_CONFIG["Cukup Baik"].color },
+    { label: "Buruk", color: STATUS_CONFIG["Buruk"].color },
+    { label: "Mati", color: STATUS_CONFIG["Mati"].color },
   ];
 
   return (
@@ -128,21 +137,22 @@ const MapLegend = () => {
 // 3. Added a safety check for empty data to prevent initial render crashes.
 const QualityDonutChart = ({ data }: { data: StationDataComplete[] }) => {
   const chartData = useMemo(() => {
+    // Categories standardized to Indonesian
     const categories: { [key: string]: { count: number; color: string } } = {
-      "GOOD": { count: 0, color: STATUS_CONFIG["Baik"].color },
-      "FAIR": { count: 0, color: STATUS_CONFIG["Cukup Baik"].color },
-      "POOR": { count: 0, color: STATUS_CONFIG["Buruk"].color },
-      "NO DATA": { count: 0, color: STATUS_CONFIG["No Data"].color },
+      "BAIK": { count: 0, color: STATUS_CONFIG["Baik"].color },
+      "CUKUP BAIK": { count: 0, color: STATUS_CONFIG["Cukup Baik"].color },
+      "BURUK": { count: 0, color: STATUS_CONFIG["Buruk"].color },
+      "MATI": { count: 0, color: STATUS_CONFIG["Mati"].color },
     };
 
     if (!data) return [];
 
     data.forEach(station => {
       const r = station.result;
-      if (r === "Baik") categories["GOOD"].count++;
-      else if (r === "Cukup Baik") categories["FAIR"].count++;
-      else if (r === "Buruk") categories["POOR"].count++;
-      else if (r === "Mati" || r === "No Data") categories["NO DATA"].count++;
+      if (r === "Baik") categories["BAIK"].count++;
+      else if (r === "Cukup Baik") categories["CUKUP BAIK"].count++;
+      else if (r === "Buruk") categories["BURUK"].count++;
+      else categories["MATI"].count++;
     });
 
     return Object.entries(categories).map(([label, { count, color }]) => ({
@@ -300,7 +310,7 @@ const StationQuality = () => {
     }
   }, [stationData]);
 
-  // --- CORE DATA MERGING ---
+  // --- CORE DATA MERGING (Standardized to Indonesian, No Data -> Mati) ---
   const allMergedData = useMemo<StationDataComplete[]>(() => {
     if (stationData.length === 0) return [];
     
@@ -308,12 +318,18 @@ const StationQuality = () => {
 
     return stationData.map(station => {
       const summary = summaryMap.get(station.kode_stasiun);
-      const siteQ = siteQualityMap[station.kode_stasiun] ?? "-";
+      const rawSiteQ = siteQualityMap[station.kode_stasiun] ?? "-";
+      // Map Site Quality values from English to standardized Indonesian
+      const siteQ = SITE_QUALITY_MAP[rawSiteQ] || rawSiteQ || "-";
       
+      const rawResult = summary ? summary.result : (station.result || "Mati");
+      // Map empty or "No Data" status to "Mati"
+      const mappedResult = (!rawResult || rawResult === "No Data") ? "Mati" : rawResult;
+
       return {
         ...station,
         quality_percentage: summary ? summary.quality_percentage : null,
-        result: summary ? summary.result : (station.result || "No Data"), 
+        result: mappedResult, 
         site_quality: siteQ,
       };
     });
@@ -327,13 +343,24 @@ const StationQuality = () => {
         return [...new Set(allValues)].filter(v => v !== "" && v !== "null").sort();
       };
 
+      // Order Site Quality logically from highest to lowest quality
+      const getSiteQualityOptions = (): string[] => {
+        const present = new Set(allMergedData.map(item => item.site_quality));
+        const preferredOrder = ["Sangat Baik", "Baik", "Cukup Baik", "Buruk", "-"];
+        const ordered = preferredOrder.filter(opt => present.has(opt));
+        present.forEach(opt => {
+          if (opt && !ordered.includes(opt)) ordered.push(opt);
+        });
+        return ordered;
+      };
+
       const dynamicFilterConfig: Record<string, FilterConfig> = {
         prioritas: { label: "Prioritas", type: "multi", options: getUniqueOptions("prioritas") },
         upt_penanggung_jawab: { label: "UPT", type: "multi", options: getUniqueOptions("upt_penanggung_jawab") },
         jaringan: { label: "Jaringan", type: "multi", options: getUniqueOptions("jaringan") },
         provinsi: { label: "Provinsi", type: "multi", options: getUniqueOptions("provinsi") },
-        result: { label: "Summary", type: "multi", options: getUniqueOptions("result") }, 
-        site_quality: { label: "Site Quality", type: "multi", options: getUniqueOptions("site_quality") },
+        result: { label: "Summary Kualitas", type: "multi", options: getUniqueOptions("result") }, 
+        site_quality: { label: "Site Quality", type: "multi", options: getSiteQualityOptions() },
       };
       
       setFilterConfig(dynamicFilterConfig);
@@ -404,8 +431,8 @@ const StationQuality = () => {
     { accessorKey: "stasiun_id", header: "No" },
     { accessorKey: "kode_stasiun", header: "Kode Stasiun" },
     { accessorKey: "lokasi", header: "Lokasi" },
-    { accessorKey: "provinsi", header: "Province" },
-    { accessorKey: "jaringan", header: "Group" },
+    { accessorKey: "provinsi", header: "Provinsi" },
+    { accessorKey: "jaringan", header: "Jaringan" },
     { accessorKey: "prioritas", header: "Prioritas" },
     { accessorKey: "upt_penanggung_jawab", header: "UPT" },
     {
@@ -414,11 +441,13 @@ const StationQuality = () => {
       header: "Summary Kualitas",
       cell: ({ row }) => {
         const result = row.original.result;
-        let label = "-";
-        if (result === "Baik") label = "Good";
-        else if (result === "Cukup Baik") label = "Fair";
-        else if (result === "Buruk") label = "Poor";
-        else if (result === "Mati" || result === "No Data") label = "No Data";
+        let label = "Mati";
+        if (result === "Baik") label = "Baik";
+        else if (result === "Cukup Baik") label = "Cukup Baik";
+        else if (result === "Buruk") label = "Buruk";
+        else if (result === "Mati" || result === "No Data" || !result) label = "Mati";
+        else label = result;
+
         return (
           <div className="flex flex-col justify-center">
             <StatusBadge value={label} />
@@ -429,11 +458,20 @@ const StationQuality = () => {
     {
       accessorKey: "site_quality",
       header: "Site Quality",
-      cell: ({ getValue }) => (
-        <span className="block w-full py-1 rounded-sm text-[11px] font-bold text-center bg-blue-50 text-blue-800">
-          {getValue<string>()}
-        </span>
-      ),
+      cell: ({ getValue }) => {
+        const val = getValue<string>();
+        let colorClass = "bg-gray-100 text-gray-700";
+        if (val === "Sangat Baik") colorClass = "bg-emerald-100 text-emerald-800";
+        else if (val === "Baik") colorClass = "bg-green-100 text-green-800";
+        else if (val === "Cukup Baik") colorClass = "bg-orange-100 text-orange-800";
+        else if (val === "Buruk") colorClass = "bg-red-100 text-red-800";
+
+        return (
+          <span className={`block w-full py-1 rounded-sm text-[11px] font-bold text-center ${colorClass}`}>
+            {val}
+          </span>
+        );
+      },
     },
     {
       id: "detail",
@@ -509,11 +547,11 @@ const StationQuality = () => {
               onClick={handleDownloadCSV}
               className="bg-green-600 text-white rounded-lg px-3 py-2.5 hover:bg-green-700 transition duration-300 text-sm"
             >
-              Export CSV
+              Ekspor CSV
             </button>
           </div>
 
-          {loading && <p>Loading station data...</p>}
+          {loading && <p className="text-sm text-gray-500">Memuat data stasiun...</p>}
           {!loading && (
             <DataTable
               columns={columns}

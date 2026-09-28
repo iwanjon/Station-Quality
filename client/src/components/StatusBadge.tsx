@@ -6,12 +6,19 @@ interface Props {
   value: string; // Teks yang akan ditampilkan, misal: "Good", "Fair", "Poor", "No Data"
 }
 
-// Mapping label Inggris ke warna sesuai permintaan
+// Mapping status labels (Indonesian and English fallback) to Tailwind styles
 const styleMap: Record<string, string> = {
-  Good: "bg-green-100 text-green-600",
+  // Indonesian standard
+  Baik: "bg-green-100 text-green-700",
+  "Cukup Baik": "bg-orange-100 text-orange-800",
+  Buruk: "bg-red-100 text-red-800",
+  Mati: "bg-gray-200 text-gray-800",
+
+  // English fallback
+  Good: "bg-green-100 text-green-700",
   Fair: "bg-orange-100 text-orange-800",
   Poor: "bg-red-100 text-red-800",
-  "No Data": "bg-gray-100 text-gray-800",
+  "No Data": "bg-gray-200 text-gray-800",
 };
 
 const StatusBadge: React.FC<Props> = ({ value }) => (
