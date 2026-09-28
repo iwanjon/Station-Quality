@@ -58,7 +58,7 @@ const SortIcon = ({
       strokeLinejoin="round"
     >
       <path d="M6 9l6-6 6 6" />
-      <path d="M6 15l6 6 6-6" />
+      <path d="M6 15l6 6 6 6" />
     </svg>
   );
 };
@@ -126,9 +126,9 @@ function DataTable<TData extends object>({
   };
 
   return (
-    <div className="w-full min-w-0">
+    <div className="w-full min-w-0 max-w-full overflow-x-hidden">
       {/* Global Search Input */}
-      <div className="mb-4 w-full">
+      <div className="mb-4 w-full min-w-0 max-w-full">
         <input
           type="text"
           placeholder="Search..."
@@ -138,8 +138,18 @@ function DataTable<TData extends object>({
         />
       </div>
 
-      <div className="w-full min-w-0 overflow-x-auto">
-        <table className="min-w-full border border-gray-300 text-center table-fixed">
+      {/* Single native horizontal scroll viewport for the DataTable */}
+      <div
+        className="block w-full min-w-0 max-w-full overflow-x-auto overflow-y-hidden overscroll-x-contain"
+        style={{
+          width: "100%",
+          maxWidth: "100%",
+          boxSizing: "border-box",
+          scrollbarGutter: "stable",
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
+        <table className="w-max min-w-full border border-gray-300 text-center">
           <thead className="bg-gray-50">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
@@ -152,6 +162,19 @@ function DataTable<TData extends object>({
                     }`}
                     style={{
                       width: (
+                        header.column.columnDef as ColumnDef<TData> & {
+                          size?: number;
+                        }
+                      ).size
+                        ? `${
+                            (
+                              header.column.columnDef as ColumnDef<TData> & {
+                                size?: number;
+                              }
+                            ).size
+                          }px`
+                        : "auto",
+                      minWidth: (
                         header.column.columnDef as ColumnDef<TData> & {
                           size?: number;
                         }
