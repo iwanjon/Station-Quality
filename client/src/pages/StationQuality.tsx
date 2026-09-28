@@ -14,6 +14,9 @@ import { Link } from "react-router-dom";
 import axiosServer from "../utilities/AxiosServer.tsx";
 import StatusBadge from "../components/StatusBadge";
 import dayjs from "dayjs";
+import { Calendar } from "lucide-react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -253,6 +256,12 @@ const StationQuality = () => {
   const [filterConfig, setFilterConfig] = useState<Record<string, FilterConfig>>({});
   const [globalFilter, setGlobalFilter] = useState<string>("");
 
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    // Default to yesterday
+    return dayjs().subtract(1, 'day').toDate();
+  });
+  const [summaryLoading, setSummaryLoading] = useState<boolean>(false);
+
   const fetchStationMetadata = async () => {
     try {
       setLoading(true);
@@ -265,13 +274,18 @@ const StationQuality = () => {
     }
   };
 
-  const fetchQCSummary = async () => {
+  // Fetch QC summary data for selected date
+  const fetchQCSummary = async (targetDate: Date) => {
     try {
-      const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
-      const response = await axiosServer.get(`/api/qc/summary/${yesterday}`);
-      setQcSummaryData(response.data);
+      setSummaryLoading(true);
+      const dateStr = dayjs(targetDate).format('YYYY-MM-DD');
+      const response = await axiosServer.get(`/api/qc/summary/${dateStr}`);
+      setQcSummaryData(response.data || []);
     } catch (error) {
       console.error("Error fetching QC summary data:", error);
+      setQcSummaryData([]);
+    } finally {
+      setSummaryLoading(false);
     }
   };
 
@@ -300,8 +314,12 @@ const StationQuality = () => {
     const savedFilters = localStorage.getItem('stationQualityFilters');
     if (savedFilters) setFilters(JSON.parse(savedFilters));
     fetchStationMetadata();
-    fetchQCSummary();
   }, []);
+
+  // Re-fetch QC summary whenever the selected date changes
+  useEffect(() => {
+    fetchQCSummary(selectedDate);
+  }, [selectedDate]);
 
   useEffect(() => {
     if (stationData.length > 0) {
@@ -403,8 +421,10 @@ const StationQuality = () => {
   const handleDownloadCSV = () => {
     if (filteredData.length === 0) return;
 
+    const formattedDate = dayjs(selectedDate).format('YYYY-MM-DD');
     const dataToDownload = filteredData.map(item => ({
       ...item,
+      tanggal: formattedDate,
       summary_kualitas: item.result,
       persentase_kualitas: item.quality_percentage !== null ? `${item.quality_percentage.toFixed(1)}%` : 'N/A',
       site_quality: item.site_quality
@@ -421,7 +441,7 @@ const StationQuality = () => {
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", "station_quality.csv");
+    link.setAttribute("download", `station_quality_${formattedDate}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -496,11 +516,37 @@ const StationQuality = () => {
 
         <CardContainer className="mb-4 p-3">
           <div className="flex flex-col lg:flex-row gap-3">
-            <div className="lg:w-1/4 w-full h-[405px] flex flex-col items-center justify-center p-2">
-              <h2 className="text-lg font-bold mb-2">Ringkasan Status Stasiun</h2>
-              <div className="w-full h-full max-w-xs">
-                {/* Synchronized with active filters, table, and map data */}
-                <QualityDonutChart data={filteredData} />
+            <div className="lg:w-1/4 w-full h-[405px] flex flex-col items-center justify-between p-2">
+              <div className="w-full flex flex-col items-center">
+                <h2 className="text-base font-bold text-gray-800 mb-1 text-center">Ringkasan Status Stasiun</h2>
+                
+                {/* Date Picker Filter for QC Summary */}
+                <div className="flex items-center gap-1.5 bg-white border border-gray-300 rounded-md px-2.5 py-1 text-xs shadow-xs hover:border-blue-400 transition-colors">
+                  <Calendar size={13} className="text-blue-600 shrink-0" />
+                  <span className="text-gray-500 font-medium">Tanggal:</span>
+                  <DatePicker
+                    selected={selectedDate}
+                    onChange={(date: Date | null) => {
+                      if (date) setSelectedDate(date);
+                    }}
+                    maxDate={new Date()}
+                    dateFormat="yyyy-MM-dd"
+                    popperClassName="z-[1050]"
+                    className="w-24 text-xs font-semibold text-gray-800 bg-transparent focus:outline-none cursor-pointer text-center"
+                    placeholderText="Pilih tanggal"
+                  />
+                </div>
+              </div>
+
+              <div className="w-full h-[320px] max-w-xs flex items-center justify-center">
+                {summaryLoading ? (
+                  <div className="flex flex-col items-center justify-center text-xs text-gray-500 py-8">
+                    <span className="animate-pulse">Memuat ringkasan kualitas...</span>
+                  </div>
+                ) : (
+                  /* Synchronized with active filters, table, and map data */
+                  <QualityDonutChart data={filteredData} />
+                )}
               </div>
             </div>
 

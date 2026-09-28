@@ -64,9 +64,9 @@ const StationDetail = () => {
   const [qcData, setQcData] = useState<QCData[]>([]);
   // Inisialisasi summaryData diubah menjadi kosong, kita akan populate semua variasi prioritas di fetch
   const [summaryData, setSummaryData] = useState<Record<string, SummaryDataItem[]>>({});
-  const [loadingSummary, setLoadingSummary]= useState(true);
+  const [loadingSummary, setLoadingSummary]= useState(false);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stationList, setStationList] = useState<string[]>([]);
 
@@ -170,8 +170,9 @@ const StationDetail = () => {
       }
     };
 
-    fetchQcData();
-    fetchSummaryData();
+    // Temporarily disabled legacy 7-day fetches per client request
+    // fetchQcData();
+    // fetchSummaryData();
 
   }, [stationCode]);
   
@@ -310,197 +311,210 @@ const StationDetail = () => {
                 Time Series
               </button>
             </div>
-            <div className="mt-1 px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-semibold rounded-full">
+            {/* Last 7 Days badge commented out per client request */}
+            {/* <div className="mt-1 px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-semibold rounded-full">
               Last 7 Days
-            </div>
+            </div> */}
           </div>
         </div>
 
-        {/* --- Summary Section --- */}
-        <div className="bg-white p-1 sm:p-2 rounded-lg shadow mb-2">
-          <h2 className="text-base font-bold mb-1 text-gray-800">Summary</h2>
-          {loadingSummary ? (
-            <div className="text-center text-gray-500 text-xs">Memuat summary...</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              {activeChannelsFull.map((channel) => (
-                <div key={channel} className="flex flex-col items-center">
-                  <h3 className="text-sm font-semibold text-center mb-1">{channel}</h3>
-                  <div className="inline-flex flex-col items-center">
-                    <div className="flex">
-                      {summaryData[channel]?.map((item) => (
-                        <div
-                          key={item.date}
-                          className={`flex flex-col items-center justify-center px-2 py-0.5 border border-gray-200 border-b-0 first:rounded-tl last:rounded-tr text-[11px] font-bold ${getStatusColor(item.status)}`}
-                          style={{ minWidth: 48 }}
-                        >
-                          <span>{item.status}</span>
+        {/*
+          ========================================================================
+          TEMPORARILY COMMENTED OUT PER CLIENT REQUEST:
+          Legacy 7-days summary and time series charts (RMS, Amplitude, Gaps,
+          Spikes, SP/BW/LP, Latency, NLNM/NHNM, Dead Channels) are commented out
+          to prepare for upcoming hourly signal/waveform visualization.
+          ========================================================================
+        */}
+        {false && (
+          <>
+            {/* --- Summary Section --- */}
+            <div className="bg-white p-1 sm:p-2 rounded-lg shadow mb-2">
+              <h2 className="text-base font-bold mb-1 text-gray-800">Summary</h2>
+              {loadingSummary ? (
+                <div className="text-center text-gray-500 text-xs">Memuat summary...</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {activeChannelsFull.map((channel) => (
+                    <div key={channel} className="flex flex-col items-center">
+                      <h3 className="text-sm font-semibold text-center mb-1">{channel}</h3>
+                      <div className="inline-flex flex-col items-center">
+                        <div className="flex">
+                          {summaryData[channel]?.map((item) => (
+                            <div
+                              key={item.date}
+                              className={`flex flex-col items-center justify-center px-2 py-0.5 border border-gray-200 border-b-0 first:rounded-tl last:rounded-tr text-[11px] font-bold ${getStatusColor(item.status)}`}
+                              style={{ minWidth: 48 }}
+                            >
+                              <span>{item.status}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                    <div className="flex">
-                      {summaryData[channel]?.map((item) => (
-                        <div
-                          key={item.date + "-date"}
-                          className="flex items-center justify-center px-2 py-0.5 border border-gray-200 border-t-0 first:rounded-bl last:rounded-br text-[10px] bg-white"
-                          style={{ minWidth: 48 }}
-                        >
-                          {/* --- PERUBAHAN FORMAT TANGGAL DI SUMMARY --- */}
-                          <span>{dayjs(item.date).format("DD-MMM")}</span>
+                        <div className="flex">
+                          {summaryData[channel]?.map((item) => (
+                            <div
+                              key={item.date + "-date"}
+                              className="flex items-center justify-center px-2 py-0.5 border border-gray-200 border-t-0 first:rounded-bl last:rounded-br text-[10px] bg-white"
+                              style={{ minWidth: 48 }}
+                            >
+                              {/* --- PERUBAHAN FORMAT TANGGAL DI SUMMARY --- */}
+                              <span>{dayjs(item.date).format("DD-MMM")}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      </div>
                     </div>
-                  </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* --- Time Series Chart Sections --- */}
+            <ChartGridSection title="RMS">
+              {CHANNELS.map((ch) => (
+                <div key={`rms-${ch}`}>
+                  <ChartSlide
+                    channel={ch}
+                    titlePrefix={`RMS - ${activeChannels[ch]}`}
+                    data={groupedByChannel[ch]}
+                    lines={[{ dataKey: "rms", stroke: "#6366f1" }]}
+                    height={180}
+                    xAxisProps={xAxisConfig}
+                  />
                 </div>
               ))}
-            </div>
-          )}
-        </div>
+            </ChartGridSection>
 
-        {/* --- Time Series Chart Sections --- */}
-        <ChartGridSection title="RMS">
-          {CHANNELS.map((ch) => (
-            <div key={`rms-${ch}`}>
-              <ChartSlide
-                channel={ch}
-                titlePrefix={`RMS - ${activeChannels[ch]}`}
-                data={groupedByChannel[ch]}
-                lines={[{ dataKey: "rms", stroke: "#6366f1" }]}
-                height={180}
-                xAxisProps={xAxisConfig}
-              />
-            </div>
-          ))}
-        </ChartGridSection>
+            <ChartGridSection title="Amplitude Ratio per Channel">
+              {CHANNELS.map((ch, idx) => (
+                <div key={`amp-${ch}`}>
+                  <ChartSlide
+                    channel={ch}
+                    titlePrefix={`Amplitude Ratio - ${activeChannels[ch]}`}
+                    data={groupedByChannel[ch]}
+                    lines={[
+                      {
+                        dataKey: "amplitude_ratio",
+                        stroke: ["#10b981", "#3b82f6", "#f59e0b"][idx],
+                      },
+                    ]}
+                    height={180}
+                    xAxisProps={xAxisConfig} 
+                  />
+                </div>
+              ))}
+            </ChartGridSection>
 
-        <ChartGridSection title="Amplitude Ratio per Channel">
-          {CHANNELS.map((ch, idx) => (
-            <div key={`amp-${ch}`}>
-              <ChartSlide
-                channel={ch}
-                titlePrefix={`Amplitude Ratio - ${activeChannels[ch]}`}
-                data={groupedByChannel[ch]}
-                lines={[
-                  {
-                    dataKey: "amplitude_ratio",
-                    stroke: ["#10b981", "#3b82f6", "#f59e0b"][idx],
-                  },
-                ]}
-                height={180}
-                xAxisProps={xAxisConfig} 
-              />
-            </div>
-          ))}
-        </ChartGridSection>
+            <ChartGridSection title="Gaps">
+              {CHANNELS.map((ch) => (
+                <div key={`gaps-${ch}`}>
+                  <ChartSlide
+                    channel={ch}
+                    titlePrefix={`Gaps - ${activeChannels[ch]}`}
+                    data={groupedByChannel[ch]}
+                    lines={[{ dataKey: "num_gap", stroke: "#f97316" }]}
+                    yAxisProps={{ domain: [0, 24], tickCount: 7 }}
+                    height={180}
+                    xAxisProps={xAxisConfig} 
+                  />
+                </div>
+              ))}
+            </ChartGridSection>
 
-        <ChartGridSection title="Gaps">
-          {CHANNELS.map((ch) => (
-            <div key={`gaps-${ch}`}>
-              <ChartSlide
-                channel={ch}
-                titlePrefix={`Gaps - ${activeChannels[ch]}`}
-                data={groupedByChannel[ch]}
-                lines={[{ dataKey: "num_gap", stroke: "#f97316" }]}
-                yAxisProps={{ domain: [0, 24], tickCount: 7 }}
-                height={180}
-                xAxisProps={xAxisConfig} 
-              />
-            </div>
-          ))}
-        </ChartGridSection>
+            <ChartGridSection title="Spikes">
+              {CHANNELS.map((ch) => (
+                <div key={`spikes-${ch}`}>
+                  <ChartSlide
+                    channel={ch}
+                    titlePrefix={`Spikes - ${activeChannels[ch]}`}
+                    data={groupedByChannel[ch]}
+                    lines={[{ dataKey: "num_spikes", stroke: "#ef4444" }]}
+                    yAxisProps={{ domain: [0, 24], tickCount: 7 }}
+                    height={180}
+                    xAxisProps={xAxisConfig} 
+                  />
+                </div>
+              ))}
+            </ChartGridSection>
 
-        <ChartGridSection title="Spikes">
-          {CHANNELS.map((ch) => (
-            <div key={`spikes-${ch}`}>
-              <ChartSlide
-                channel={ch}
-                titlePrefix={`Spikes - ${activeChannels[ch]}`}
-                data={groupedByChannel[ch]}
-                lines={[{ dataKey: "num_spikes", stroke: "#ef4444" }]}
-                yAxisProps={{ domain: [0, 24], tickCount: 7 }}
-                height={180}
-                xAxisProps={xAxisConfig} 
-              />
-            </div>
-          ))}
-        </ChartGridSection>
+            <ChartGridSection title="SP / BW / LP Percentage">
+              {CHANNELS.map((ch) => (
+                <div key={`sbl-${ch}`}>
+                  <ChartSlide
+                    channel={ch}
+                    titlePrefix={`SP / BW / LP - ${activeChannels[ch]}`}
+                    data={groupedByChannel[ch]}
+                    lines={[
+                      { dataKey: "sp_percentage", stroke: "#6366f1" },
+                      { dataKey: "bw_percentage", stroke: "#10b981" },
+                      { dataKey: "lp_percentage", stroke: "#f59e0b" },
+                    ]}
+                    yAxisProps={{ domain: [50, 120] }}
+                    height={180}
+                    xAxisProps={xAxisConfig} 
+                  />
+                </div>
+              ))}
+            </ChartGridSection>
 
-        <ChartGridSection title="SP / BW / LP Percentage">
-          {CHANNELS.map((ch) => (
-            <div key={`sbl-${ch}`}>
-              <ChartSlide
-                channel={ch}
-                titlePrefix={`SP / BW / LP - ${activeChannels[ch]}`}
-                data={groupedByChannel[ch]}
-                lines={[
-                  { dataKey: "sp_percentage", stroke: "#6366f1" },
-                  { dataKey: "bw_percentage", stroke: "#10b981" },
-                  { dataKey: "lp_percentage", stroke: "#f59e0b" },
-                ]}
-                yAxisProps={{ domain: [50, 120] }}
-                height={180}
-                xAxisProps={xAxisConfig} 
-              />
-            </div>
-          ))}
-        </ChartGridSection>
+            {stationCode && <LazyLatencyChart stationCode={stationCode} />}
 
-        {stationCode && <LazyLatencyChart stationCode={stationCode} />}
+            <ChartGridSection title="% Below NLNM & % Above NHNM">
+              {CHANNELS.map((ch) => (
+                <div key={`nlnm-nhnm-${ch}`}>
+                  <ChartSlide
+                    channel={ch}
+                    titlePrefix={`% Below NLNM & % Above NHNM - ${activeChannels[ch]}`}
+                    data={groupedByChannel[ch]}
+                    lines={[
+                      { dataKey: "perc_below_nlnm", stroke: "#10b981" },
+                      { dataKey: "perc_above_nhnm", stroke: "#ef4444" },
+                    ]}
+                    yAxisProps={{ domain: [0, 100] }}
+                    height={180}
+                    xAxisProps={xAxisConfig} 
+                  />
+                </div>
+              ))}
+            </ChartGridSection>
 
-        <ChartGridSection title="% Below NLNM & % Above NHNM">
-          {CHANNELS.map((ch) => (
-            <div key={`nlnm-nhnm-${ch}`}>
-              <ChartSlide
-                channel={ch}
-                titlePrefix={`% Below NLNM & % Above NHNM - ${activeChannels[ch]}`}
-                data={groupedByChannel[ch]}
-                lines={[
-                  { dataKey: "perc_below_nlnm", stroke: "#10b981" },
-                  { dataKey: "perc_above_nhnm", stroke: "#ef4444" },
-                ]}
-                yAxisProps={{ domain: [0, 100] }}
-                height={180}
-                xAxisProps={xAxisConfig} 
-              />
-            </div>
-          ))}
-        </ChartGridSection>
+            <ChartGridSection title="Linear Dead Channel">
+              {CHANNELS.map((ch) => (
+                <div key={`ldc-${ch}`}>
+                  <ChartSlide
+                    channel={ch}
+                    titlePrefix={`Linear Dead Channel - ${activeChannels[ch]}`}
+                    data={groupedByChannel[ch]}
+                    lines={[
+                      { dataKey: "linear_dead_channel", stroke: "#6366f1" },
+                    ]}
+                    yAxisProps={{ domain: [0, "auto"] }}
+                    height={180}
+                    xAxisProps={xAxisConfig} 
+                  />
+                </div>
+              ))}
+            </ChartGridSection>
 
-        <ChartGridSection title="Linear Dead Channel">
-          {CHANNELS.map((ch) => (
-            <div key={`ldc-${ch}`}>
-              <ChartSlide
-                channel={ch}
-                titlePrefix={`Linear Dead Channel - ${activeChannels[ch]}`}
-                data={groupedByChannel[ch]}
-                lines={[
-                  { dataKey: "linear_dead_channel", stroke: "#6366f1" },
-                ]}
-                yAxisProps={{ domain: [0, "auto"] }}
-                height={180}
-                xAxisProps={xAxisConfig} 
-              />
-            </div>
-          ))}
-        </ChartGridSection>
-
-        <ChartGridSection title="GSN Dead Channel">
-          {CHANNELS.map((ch) => (
-            <div key={`gsn-${ch}`}>
-              <ChartSlide
-                channel={ch}
-                titlePrefix={`GSN Dead Channel - ${activeChannels[ch]}`}
-                data={groupedByChannel[ch]}
-                lines={[
-                  { dataKey: "gsn_dead_channel", stroke: "#f59e0b" },
-                ]}
-                yAxisProps={{ domain: [0, "auto"] }}
-                height={180}
-                xAxisProps={xAxisConfig} 
-              />
-            </div>
-          ))}
-        </ChartGridSection>
+            <ChartGridSection title="GSN Dead Channel">
+              {CHANNELS.map((ch) => (
+                <div key={`gsn-${ch}`}>
+                  <ChartSlide
+                    channel={ch}
+                    titlePrefix={`GSN Dead Channel - ${activeChannels[ch]}`}
+                    data={groupedByChannel[ch]}
+                    lines={[
+                      { dataKey: "gsn_dead_channel", stroke: "#f59e0b" },
+                    ]}
+                    yAxisProps={{ domain: [0, "auto"] }}
+                    height={180}
+                    xAxisProps={xAxisConfig} 
+                  />
+                </div>
+              ))}
+            </ChartGridSection>
+          </>
+        )}
       </div>
     </MainLayout>
   );
