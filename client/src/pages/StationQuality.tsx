@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
 import MainLayout from "../layouts/MainLayout.tsx";
@@ -157,6 +157,9 @@ const QualityDonutChart = ({ data }: { data: StationDataComplete[] }) => {
     return data.length;
   }, [data]);
 
+  const totalCountRef = useRef(totalCount);
+  totalCountRef.current = totalCount;
+
   const dataForChart = useMemo(() => ({
     labels: chartData.map(d => d.label),
     datasets: [
@@ -179,7 +182,7 @@ const QualityDonutChart = ({ data }: { data: StationDataComplete[] }) => {
     },
   }), []);
 
-  // Plugin untuk menampilkan angka total dan label di tengah Donut Chart
+  // Plugin to render center total station count and description label dynamically
   const centerTextPlugin = useMemo(() => ({
     id: 'centerText',
     afterDatasetsDraw: (chart: any) => {
@@ -190,27 +193,42 @@ const QualityDonutChart = ({ data }: { data: StationDataComplete[] }) => {
       const { x, y } = meta.data[0];
       if (typeof x !== 'number' || typeof y !== 'number') return;
 
+      // Calculate total count directly from active chart dataset to avoid stale closure
+      const dataset = chart.data?.datasets?.[0];
+      const activeTotal: number =
+        dataset && Array.isArray(dataset.data)
+          ? dataset.data.reduce(
+              (sum: number, val: any) => sum + (Number(val) || 0),
+              0
+            )
+          : totalCountRef.current;
+
       ctx.save();
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // 1. Tampilkan angka jumlah stasiun
+      // 1. Render active filtered total station count
       ctx.font = 'bold 28px Montserrat, sans-serif';
       ctx.fillStyle = '#1e293b'; // slate-800
-      ctx.fillText(totalCount.toLocaleString('id-ID'), x, y - 7);
+      ctx.fillText(activeTotal.toLocaleString('id-ID'), x, y - 7);
 
-      // 2. Tampilkan label deskripsi
+      // 2. Render descriptive label
       ctx.font = '600 11px Montserrat, sans-serif';
       ctx.fillStyle = '#64748b'; // slate-500
       ctx.fillText('Total Stasiun', x, y + 14);
 
       ctx.restore();
     },
-  }), [totalCount]);
+  }), []);
 
-  // [Safety Guard] If data is loading or empty, prevent Chart.js from exploding
+  // Fallback guard when no data matches active filter or data is empty
   if (!data || data.length === 0) {
-    return <div className="flex items-center justify-center h-full text-gray-400 text-sm">Loading Chart...</div>;
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-gray-400 text-xs text-center p-4">
+        <p className="font-semibold text-gray-500 mb-1">Tidak Ada Data</p>
+        <p>Tidak ada stasiun yang sesuai dengan filter.</p>
+      </div>
+    );
   }
 
   return <Doughnut data={dataForChart} options={options} plugins={[centerTextPlugin]} />;
@@ -443,10 +461,8 @@ const StationQuality = () => {
             <div className="lg:w-1/4 w-full h-[405px] flex flex-col items-center justify-center p-2">
               <h2 className="text-lg font-bold mb-2">Ringkasan Status Stasiun</h2>
               <div className="w-full h-full max-w-xs">
-                {/* Passing 'allMergedData' allows the chart to show total statistics.
-                  If you want the chart to respect filters, pass 'filteredData' instead.
-                */}
-                <QualityDonutChart data={allMergedData} />
+                {/* Synchronized with active filters, table, and map data */}
+                <QualityDonutChart data={filteredData} />
               </div>
             </div>
 
