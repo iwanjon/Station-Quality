@@ -830,7 +830,7 @@ const StationMap = () => {
     status_accelerometer: [] 
   });
 
-  // Upgraded: Broader search term state instead of just 'searchKode'
+  // Search station identity only
   const [searchTerm, setSearchTerm] = useState<string>("");
 
   // Upgraded: Added new columns to visibility state mapping
@@ -994,17 +994,15 @@ const StationMap = () => {
       });
   }, []);
 
-  // Upgraded: Broadened filter searches across dynamic tracking parameters
+  // Unified search: station identity only.
+  // Advanced filters remain responsible for station attributes.
   const filteredData = data && Array.isArray(data) ? data.filter((station) => {
     const searchLower = searchTerm.toLowerCase();
-    const matchesSearch = searchTerm === "" || 
+
+    const matchesSearch =
+      searchTerm === "" ||
       station.kode_stasiun?.toLowerCase().includes(searchLower) ||
-      station.lokasi?.toLowerCase().includes(searchLower) ||
-      station.provinsi?.toLowerCase().includes(searchLower) ||
-      station.jaringan?.toLowerCase().includes(searchLower) ||
-      station.accelerometer?.toLowerCase().includes(searchLower) ||
-      station.seismometer?.toLowerCase().includes(searchLower) ||
-      station.upt_penanggung_jawab?.toLowerCase().includes(searchLower);
+      station.lokasi?.toLowerCase().includes(searchLower);
 
     return (
       matchesSearch &&
@@ -1252,7 +1250,7 @@ const StationMap = () => {
                   id="search-kode"
                   type="text"
                   className="border rounded px-2 py-1 text-sm w-full"
-                  placeholder="Search by code, sensor, location..."
+                  placeholder="Search station name or code..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -1382,7 +1380,11 @@ const StationMap = () => {
             </div>
           </div>
           <div className="overflow-x-auto w-full pb-2">
-            <DataTable columns={visibleColumnsArray} data={filteredData} />
+            <DataTable
+              columns={visibleColumnsArray}
+              data={filteredData}
+              showGlobalSearch={false}
+            />
           </div>
         </div>
 

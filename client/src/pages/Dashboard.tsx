@@ -134,7 +134,6 @@
 //   if (latencyString.endsWith("h")) return value * 3600; 
 //   if (latencyString.endsWith("d")) return value * 86400;
 //   if (latencyString.endsWith("m")) return value * 60;
-  
 //   return value; 
 // };
 
@@ -159,7 +158,6 @@
 //   if (minLatencySec < 60) return "#facc15"; // Yellow
 //   if (minLatencySec < 180) return "#fb923c"; // Orange
 //   if (minLatencySec < 1800) return "#ef4444"; // Red
-  
 //   return "#222222"; // Black
 // };
 
@@ -258,7 +256,7 @@
 //       try {
 //         setIsLoading(true);
 //         const response = await axiosServer.get('/api/stasiun/public/recent-updates');
-        
+//         
 //         if (response.data.success && Array.isArray(response.data.data)) {
 //           setRecentUpdates(response.data.data);
 //         } else {
@@ -270,7 +268,6 @@
 //         setIsLoading(false);
 //       }
 //     };
-
 //     fetchRecentUpdates();
 //   }, []);
 
@@ -278,7 +275,6 @@
 //     <InfoCard title="Metadata">
 //       <div className="text-left text-gray-800 w-full text-xs">
 //         <p className="font-semibold mb-1">Recent updates:</p>
-        
 //         {isLoading ? (
 //           <div className="flex items-center justify-center h-16">
 //             <p>Loading...</p> 
@@ -492,7 +488,7 @@
 //       const finalData = qcData.map((station) => {
 //         const slmonStation = slmonMap.get(station.code);
 //         const allLatencyStrings: string[] = [];
-        
+//         
 //         if (slmonStation) {
 //           for (let i = 1; i <= 6; i++) {
 //             const latencyKey = `latency${i}` as keyof typeof slmonStation.properties;
@@ -518,7 +514,7 @@
 //           station.properties.latency5  || "N/A",
 //           station.properties.latency6  || "N/A"
 //         ];
-        
+//         
 //         const slmonmap:SlmonMap ={
 //           ...station,
 //           code:station.properties.sta,
@@ -616,12 +612,12 @@
 //         console.error('Gagal mengambil data untuk stacked bar chart:', error);
 //       }
 //     };
-    
+//     
 //     fetchStackedBarData();
 //   }, []);
 
 //   // --- RESTRUCTURED HIGH-PERFORMANCE FILTERING LOGIC ---
-  
+//   
 //   // 1. Create a fast Dictionary/Hash Map for map data
 //   const slmonDict = useMemo(() => {
 //     const map = new Map<string, SlmonMap>();
@@ -645,7 +641,7 @@
 //   const filteredTableData = useMemo(() => {
 //     if (!searchTerm) return augmentedTableData;
 //     const searchLower = searchTerm.toLowerCase();
-    
+//     
 //     return augmentedTableData.filter((station) => {
 //       const qcStatusText = getStatusTextEn(station.qc_result || null).toLowerCase();
 
@@ -664,7 +660,7 @@
 //   // 4. Create a fast Set of filtered Table codes
 //   const filteredMapData = useMemo(() => {
 //     if (!searchTerm) return slmondatamap;
-    
+//     
 //     const validCodesSet = new Set(filteredTableData.map(t => t.kode_stasiun));
 //     const searchLower = searchTerm.toLowerCase();
 
@@ -684,7 +680,7 @@
 //       "Network", "Station Code", "Summary Quality", "Quality", "Accelerometer",
 //       "Location", "Province", "UPT", "Install Status", "Priority",
 //       "Digi/Comm", "Installation Year", "Latitude", "Longitude"
-//     ];
+//     ]);
 
 //     const csvRows = filteredTableData.map(station => [
 //       station.jaringan || "",
@@ -828,7 +824,7 @@
 
 //       {/* --- DASHBOARD DATA TABLE SECTION --- */}
 //       <div className="bg-white p-4 rounded-xl shadow mt-6 mb-4">
-        
+//         
 //         {/* CSS Block to cleanly hide the internal DataTable search box to avoid duplication */}
 //         <style>{`
 //           .datatable-wrapper input[placeholder="Search..."] {
@@ -838,7 +834,7 @@
 
 //         {/* HEADER: Search Bar, Export Button & Column Visibility Toggles */}
 //         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">            
-          
+//           
 //           {/* Input Group: Search + Export Button */}
 //           <div className="flex gap-2 w-full md:w-auto">
 //             <div className="w-full md:w-64">
@@ -850,7 +846,7 @@
 //                 onChange={(e) => setSearchTerm(e.target.value)}
 //               />
 //             </div>
-            
+//             
 //             <button
 //               onClick={handleExportCSV}
 //               className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm font-semibold rounded hover:bg-green-700 transition-colors shadow-sm whitespace-nowrap"
@@ -884,7 +880,7 @@
 //           </div>
 
 //         </div>
-        
+//         
 //         {/* Table wrapper ensuring horizontal scroll on mobile sizes without collapsing layout */}
 //         <div className="overflow-x-auto w-full pb-2 datatable-wrapper">
 //           <DataTable columns={visibleColumnsArray} data={filteredTableData} />
@@ -1336,8 +1332,7 @@ const Dashboard = () => {
   const [inactiveCount, setInactiveCount] = useState<number>(0);
   const [stackedBarData, setStackedBarData] = useState<StackedBarData[]>([]);
 
-  const [availabilityPieData, setAvailabilityPieData] = useState<{ name: string; value: number }[]>([]);
-  const [qualityPieData, setQualityPieData] = useState<{ name: string; value: number }[]>([]);
+  const [availabilityData, setAvailabilityData] = useState<Record<string, any>>({});
 
   // Shared Search State
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -1478,41 +1473,8 @@ const Dashboard = () => {
       setslmondatamap(slmonDataMap);
       setCombinedData(finalData);
 
-      let good = 0, fair = 0, poor = 0, nodata = 0;
-      qcData.forEach((item: any) => {
-        if (item.result === "Baik") good++;
-        else if (item.result === "Cukup Baik") fair++;
-        else if (item.result === "Buruk") poor++;
-        else nodata++;
-      });
-      setQualityPieData([
-        { name: "GOOD", value: good },
-        { name: "FAIR", value: fair },
-        { name: "POOR", value: poor },
-        { name: "NO DATA", value: nodata },
-      ]);
-
       const apiData = availabilityResponse.data?.data || {};
-      const allAvail: number[] = [];
-      Object.values(apiData).forEach((arr: any) => {
-        if (Array.isArray(arr) && arr.length > 0) {
-          const avail = arr[0]?.availability;
-          if (typeof avail === "number") allAvail.push(avail);
-        }
-      });
-      const categories = { ">97%": 0, "90-97%": 0, "1-89%": 0, "0%": 0, "No Data": 0 };
-      allAvail.forEach((val) => {
-        const cat = getAvailabilityCategory(val);
-        categories[cat] = (categories[cat] || 0) + 1;
-      });
-      const totalAvailStations = Object.keys(apiData).length;
-      const counted = categories[">97%"] + categories["90-97%"] + categories["1-89%"] + categories["0%"];
-      categories["No Data"] = totalAvailStations - counted;
-      setAvailabilityPieData(
-        Object.entries(categories)
-          .filter(([_, v]) => v > 0)
-          .map(([name, value]) => ({ name, value }))
-      );
+      setAvailabilityData(apiData);
 
     } catch (err) {
       console.error("Gagal memuat atau menggabungkan data:", err);
@@ -1594,6 +1556,61 @@ const Dashboard = () => {
       );
     });
   }, [augmentedTableData, searchTerm]);
+
+  const qualityPieData = useMemo(() => {
+    let good = 0;
+    let fair = 0;
+    let poor = 0;
+
+    filteredTableData.forEach((station) => {
+      if (station.qc_result === "Baik") {
+        good++;
+      } else if (station.qc_result === "Cukup Baik") {
+        fair++;
+      } else if (station.qc_result === "Buruk") {
+        poor++;
+      }
+    });
+
+    return [
+      { name: "GOOD", value: good },
+      { name: "FAIR", value: fair },
+      { name: "POOR", value: poor },
+      {
+        name: "NO DATA",
+        value: filteredTableData.length - good - fair - poor,
+      },
+    ];
+  }, [filteredTableData]);
+
+  const availabilityPieData = useMemo(() => {
+    const categories = {
+      ">97%": 0,
+      "90-97%": 0,
+      "1-89%": 0,
+      "0%": 0,
+      "No Data": 0,
+    };
+
+    filteredTableData.forEach((station) => {
+      const records = availabilityData[station.kode_stasiun];
+      const firstRecord =
+        Array.isArray(records) && records.length > 0
+          ? records[0]
+          : null;
+      const availability = firstRecord?.availability;
+
+      const category = getAvailabilityCategory(
+        typeof availability === "number" ? availability : null
+      );
+
+      categories[category] += 1;
+    });
+
+    return Object.entries(categories)
+      .filter(([_, value]) => value > 0)
+      .map(([name, value]) => ({ name, value }));
+  }, [availabilityData, filteredTableData]);
 
   const filteredMapData = useMemo(() => {
     if (!searchTerm) return slmondatamap;
