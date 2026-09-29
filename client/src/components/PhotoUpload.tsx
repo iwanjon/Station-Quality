@@ -210,6 +210,10 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
     });
   };
 
+  const selectAllPhotos = () => {
+    setSelectedPhotos(photos);
+  };
+
   const clearSelection = () => {
     setSelectedPhotos([]);
   };
@@ -314,6 +318,7 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
 
   const photos = getPhotoArray(currentPhoto);
   const selectedCount = selectedPhotos.length;
+  const allPhotosSelected = photos.length > 0 && selectedCount === photos.length;
 
   // If modal mode and not open, don't render anything
   if (isModal && !isOpen) {
@@ -326,46 +331,57 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
       {photos.length > 0 && (
         <div className="relative">
           <div className="bg-gray-100 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-3 gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-3">
               <h4 className="text-sm font-medium text-gray-700">
                 Current Site Photos ({photos.length})
               </h4>
 
-              {selectedCount > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">
-                    {selectedCount} selected
-                  </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-gray-600">
+                  {selectedCount} selected
+                </span>
 
-                  <button
-                    type="button"
-                    onClick={clearSelection}
-                    disabled={isDeleting}
-                    className="px-3 py-1.5 bg-gray-500 text-white text-sm font-medium rounded-md hover:bg-gray-600 transition-colors disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
+                <button
+                  type="button"
+                  onClick={allPhotosSelected ? clearSelection : selectAllPhotos}
+                  disabled={isDeleting}
+                  className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  {allPhotosSelected ? 'Batal Pilih Semua' : 'Pilih Semua'}
+                </button>
 
-                  <button
-                    type="button"
-                    onClick={handleBulkDelete}
-                    disabled={isDeleting}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors disabled:opacity-50"
-                  >
-                    {isDeleting ? (
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    ) : (
-                      <Trash2 size={14} />
-                    )}
-                    Delete Selected
-                  </button>
-                </div>
-              )}
+                {selectedCount > 0 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={clearSelection}
+                      disabled={isDeleting}
+                      className="px-3 py-1.5 bg-gray-500 text-white text-sm font-medium rounded-md hover:bg-gray-600 transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleBulkDelete}
+                      disabled={isDeleting}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors disabled:opacity-50"
+                    >
+                      {isDeleting ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      ) : (
+                        <Trash2 size={14} />
+                      )}
+                      Delete Selected
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
 
             <p className="text-xs text-gray-500 mb-3">
-              Click a photo to select it. Use the image area to open the photo
-              in full size after selection is cleared.
+              Pilih foto yang ingin dihapus. Gunakan pilihan individual atau
+              Pilih Semua untuk memilih seluruh foto.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -383,13 +399,7 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
                   >
                     <button
                       type="button"
-                      onClick={() => {
-                        if (selectedCount > 0) {
-                          togglePhotoSelection(photoPath);
-                        } else {
-                          togglePhotoSelection(photoPath);
-                        }
-                      }}
+                      onClick={() => togglePhotoSelection(photoPath)}
                       className={`relative block w-full overflow-hidden rounded-lg border bg-gray-100 transition-all ${
                         isSelected
                           ? 'border-blue-600'
@@ -425,9 +435,11 @@ const PhotoUpload: React.FC<PhotoUploadProps> = ({
             </div>
 
             <div className="mt-3 text-xs text-gray-500">
-              {selectedCount > 0
-                ? 'Selected photos are highlighted. Click selected photos again to remove them from the selection.'
-                : 'Select one or more photos above to enable bulk delete.'}
+              {allPhotosSelected
+                ? 'Semua foto dipilih.'
+                : selectedCount > 0
+                ? 'Foto terpilih ditandai. Klik foto terpilih lagi untuk membatalkan pilihan.'
+                : 'Pilih satu atau beberapa foto untuk mengaktifkan hapus massal.'}
             </div>
           </div>
         </div>

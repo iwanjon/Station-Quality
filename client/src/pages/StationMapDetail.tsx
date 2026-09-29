@@ -134,6 +134,7 @@ const StationMapDetail = () => {
   const [editingSection, setEditingSection] = useState<string>('');
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const [stationSearch, setStationSearch] = useState("");
 
   const fetchStationDetail = useCallback(async () => {
@@ -613,7 +614,7 @@ const StationMapDetail = () => {
                   ) : (
                     <button
                       disabled
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-gray-400 text-white text-sm font-medium rounded-lg cursor-not-allowed"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-gray-400 text-white text-sm font-medium rounded-lg hover:bg-gray-500 transition-colors cursor-not-allowed"
                     >
                       <MapPin size={16} />
                       Open in Google Maps
@@ -670,18 +671,11 @@ const StationMapDetail = () => {
                   {getPhotoArray(station.photo_shelter).length > 4 && (
                     <button
                       type="button"
-                      onClick={() => {
-                        const photos = getPhotoArray(station.photo_shelter);
-                        const fifthPhoto = photos[4];
-
-                        if (fifthPhoto) {
-                          setSelectedPhoto(fifthPhoto);
-                        }
-                      }}
+                      onClick={() => setGalleryOpen(true)}
                       className="flex items-center justify-center w-full h-32 bg-gray-200 rounded-lg border border-gray-300 hover:bg-gray-300 transition-colors"
                     >
                       <span className="text-sm text-gray-600 font-medium">
-                        +{getPhotoArray(station.photo_shelter).length - 4} more
+                        +{getPhotoArray(station.photo_shelter).length - 4} foto lainnya
                       </span>
                     </button>
                   )}
@@ -697,6 +691,65 @@ const StationMapDetail = () => {
               </div>
             )}
           </div>
+
+          {/* Photo Gallery */}
+          {galleryOpen && (
+            <div
+              className="fixed inset-0 z-[900] flex items-center justify-center bg-black/70 p-4"
+              onClick={() => setGalleryOpen(false)}
+            >
+              <div
+                className="bg-white rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800">
+                      Site Photo Gallery
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {getPhotoArray(station.photo_shelter).length} photos
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setGalleryOpen(false)}
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors text-2xl leading-none"
+                    aria-label="Close photo gallery"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="p-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {getPhotoArray(station.photo_shelter).map((photoPath, index) => (
+                      <button
+                        key={photoPath}
+                        type="button"
+                        onClick={() => {
+                          setGalleryOpen(false);
+                          setSelectedPhoto(photoPath);
+                        }}
+                        className="relative h-40 rounded-lg border border-gray-300 bg-gray-100 overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all"
+                      >
+                        <img
+                          src={getPhotoUrl(photoPath)}
+                          alt={`Site photo ${index + 1}`}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            console.error("Failed to load image:", photoPath);
+                            e.currentTarget.src = "/placeholder-image.png";
+                          }}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Photo Lightbox */}
           {selectedPhoto && (
