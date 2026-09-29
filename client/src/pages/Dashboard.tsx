@@ -1410,7 +1410,7 @@ const Dashboard = () => {
       const [qcResponse, slmonResponse, stasiunResponse, availabilityResponse] = await Promise.all([
         axiosServer.get<Omit<QCSummary, "latencyStrings" | "primaryLatency" | "primaryColor">[]>(`/api/qc/public/summary/${yesterday}`),
         axiosServer.get<SlmonFeatureCollection>("/api/dashboard/slmon/laststatus"),
-        axiosServer.get<any[]>("/api/stasiun/public/sensor"), // ROUTE UPDATED HERE
+        axiosServer.get<any[]>("/api/stasiun/public/sensor"),
         axiosServer.get(`/api/availability/public`, { params: { start_date: yesterday, end_date: yesterday } })
       ]);
 
@@ -1487,7 +1487,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     axiosServer
-      .get("/api/stasiun/public/sensor") // ROUTE UPDATED HERE
+      .get("/api/stasiun/public/sensor")
       .then((res) => {
         setStationTableData(res.data);
       })
@@ -1550,8 +1550,8 @@ const Dashboard = () => {
         station.upt_penanggung_jawab?.toLowerCase().includes(searchLower) ||
         station.jaringan?.toLowerCase().includes(searchLower) ||
         station.prioritas?.toLowerCase().includes(searchLower) ||
-        station.accelerometer?.toLowerCase().includes(searchLower) || // Search sensor updates
-        station.seismometer?.toLowerCase().includes(searchLower) ||   // Search sensor updates
+        station.accelerometer?.toLowerCase().includes(searchLower) ||
+        station.seismometer?.toLowerCase().includes(searchLower) ||
         qcStatusText.includes(searchLower)
       );
     });
@@ -1777,27 +1777,12 @@ const Dashboard = () => {
 
       {/* --- DASHBOARD DATA TABLE SECTION --- */}
       <div className="bg-white p-4 rounded-xl shadow mt-6 mb-4">
-        <style>{`
-          .datatable-wrapper input[placeholder="Search..."] {
-            display: none !important;
-          }
-        `}</style>
 
-        {/* HEADER: Search Bar, Export Button & Column Visibility Toggles */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">            
+        {/* HEADER: Export Button & Column Visibility Toggles */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
           
-          {/* Input Group: Search + Export Button */}
+          {/* Export Button */}
           <div className="flex gap-2 w-full md:w-auto">
-            <div className="w-full md:w-64">
-              <input
-                type="text"
-                className="border border-gray-300 rounded px-3 py-1.5 text-sm w-full focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors shadow-sm"
-                placeholder="Search..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            
             <button
               onClick={handleExportCSV}
               className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-sm font-semibold rounded hover:bg-green-700 transition-colors shadow-sm whitespace-nowrap"
@@ -1820,8 +1805,13 @@ const Dashboard = () => {
 
         </div>
         
-        <div className="overflow-x-auto w-full pb-2 datatable-wrapper">
-          <DataTable columns={visibleColumnsArray} data={filteredTableData} />
+        <div className="overflow-x-auto w-full pb-2">
+          <DataTable
+            columns={visibleColumnsArray}
+            data={filteredTableData}
+            globalFilter={searchTerm}
+            setGlobalFilter={setSearchTerm}
+          />
         </div>
       </div>
 

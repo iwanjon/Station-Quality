@@ -16,6 +16,7 @@ export interface DataTableProps<TData> {
   globalFilter?: string;
   setGlobalFilter?: (value: string) => void;
   showGlobalSearch?: boolean;
+  searchPlaceholder?: string;
 }
 
 // Komponen icon sorting dengan SVG dan Tailwind
@@ -70,6 +71,7 @@ function DataTable<TData extends object>({
   globalFilter: globalFilterProp,
   setGlobalFilter: setGlobalFilterProp,
   showGlobalSearch = true,
+  searchPlaceholder = "Cari",
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
 
@@ -134,7 +136,7 @@ function DataTable<TData extends object>({
         <div className="mb-4 w-full min-w-0 max-w-full">
           <input
             type="text"
-            placeholder="Cari stasiun..."
+            placeholder={searchPlaceholder}
             value={globalFilterValue ?? ""}
             onChange={(e) => setGlobalFilterValue(e.target.value)}
             className="w-full max-w-xl border border-gray-300 px-3 py-2 rounded text-sm"
@@ -161,8 +163,9 @@ function DataTable<TData extends object>({
                   <th
                     key={header.id}
                     colSpan={header.colSpan}
-                    className={`border border-gray-300 p-2 text-sm font-semibold select-none ${header.column.getCanSort() ? "cursor-pointer" : ""
-                      }`}
+                    className={`border border-gray-300 p-2 text-sm font-semibold select-none ${
+                      header.column.getCanSort() ? "cursor-pointer" : ""
+                    }`}
                     style={{
                       width: (
                         header.column.columnDef as ColumnDef<TData> & {
@@ -170,11 +173,10 @@ function DataTable<TData extends object>({
                         }
                       ).size
                         ? `${(
-                          header.column.columnDef as ColumnDef<TData> & {
-                            size?: number;
-                          }
-                        ).size
-                        }px`
+                            header.column.columnDef as ColumnDef<TData> & {
+                              size?: number;
+                            }
+                          ).size}px`
                         : "auto",
                       minWidth: (
                         header.column.columnDef as ColumnDef<TData> & {
@@ -182,11 +184,10 @@ function DataTable<TData extends object>({
                         }
                       ).size
                         ? `${(
-                          header.column.columnDef as ColumnDef<TData> & {
-                            size?: number;
-                          }
-                        ).size
-                        }px`
+                            header.column.columnDef as ColumnDef<TData> & {
+                              size?: number;
+                            }
+                          ).size}px`
                         : "auto",
                     }}
                     onClick={
@@ -198,9 +199,9 @@ function DataTable<TData extends object>({
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
 
                     {header.column.getCanSort() && (
                       <SortIcon

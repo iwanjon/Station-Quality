@@ -226,9 +226,7 @@ const StationAvailability = () => {
   const [loading, setLoading] = useState(true);
   const [apiInfo, setApiInfo] = useState<ApiInfo | null>(null);
 
-  // 1. Modify the initial state to check sessionStorage first
   const [selectedMonth, setSelectedMonth] = useState<DateRange>(() => {
-    // Check if we have a saved date range in this browser session
     const saved = sessionStorage.getItem("stationAvailabilityDate");
     if (saved) {
       try {
@@ -238,21 +236,21 @@ const StationAvailability = () => {
       }
     }
 
-    // Default calculation (your original logic)
     const today = new Date();
     let endYear = today.getFullYear();
-    let endMonth = today.getMonth() - 1; // Bulan lalu (0-based)
+    let endMonth = today.getMonth() - 1;
     if (endMonth < 0) {
       endMonth = 11;
       endYear -= 1;
     }
-    // Start: 12 bulan sebelum endMonth
+
     let startMonth = endMonth - 11;
     let startYear = endYear;
     if (startMonth < 0) {
       startMonth += 12;
       startYear -= 1;
     }
+
     return {
       startYear,
       startMonth,
@@ -261,7 +259,6 @@ const StationAvailability = () => {
     };
   });
 
-  // 2. Add this right below your useState declarations to save changes
   useEffect(() => {
     sessionStorage.setItem("stationAvailabilityDate", JSON.stringify(selectedMonth));
   }, [selectedMonth]);
@@ -274,7 +271,6 @@ const StationAvailability = () => {
   const [chartType, setChartType] = useState<"stacked" | "line" | "grouped">("stacked");
   const [metric, setMetric] = useState<"count" | "percentage">("percentage");
 
-  // Memoize chart data calculation
   const chartData = useMemo(() => {
     if (!data.length) return [];
 
@@ -298,7 +294,6 @@ const StationAvailability = () => {
         distribution[category]++;
       });
 
-      // Calculate total stations and convert to percentage
       const totalStations = Object.values(distribution).reduce((sum, count) => sum + count, 0);
 
       const chartDataPoint: ChartDataPoint = {
@@ -306,7 +301,6 @@ const StationAvailability = () => {
         counts: { ...distribution }
       };
 
-      // Add percentage values for each range
       AVAILABILITY_CONFIG.ranges.forEach(range => {
         chartDataPoint[range.key] = totalStations > 0
           ? Math.round((distribution[range.key] / totalStations) * 100 * 10) / 10
@@ -314,15 +308,12 @@ const StationAvailability = () => {
       });
 
       chartDataTemp.push(chartDataPoint);
-
-      // Next month
       currentDate.setMonth(currentDate.getMonth() + 1);
     }
 
     return chartDataTemp;
   }, [data, selectedMonth]);
 
-  // Memoize filtered data
   const filteredData = useMemo(() => {
     return data.filter((item) => {
       if (filters.kode.length > 0 && !filters.kode.includes(item.kode)) return false;
@@ -336,7 +327,6 @@ const StationAvailability = () => {
     });
   }, [filters, data]);
 
-  // Memoize filter config
   const filterConfig = useMemo((): Record<string, FilterConfig> => {
     if (!data.length) return {};
 
@@ -355,14 +345,11 @@ const StationAvailability = () => {
     const firstDayOfRange = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
     const lastDayOfRange = new Date(selectedMonth.endYear, selectedMonth.endMonth + 1, 0);
 
-    // Avoid timezone conversion issues by using local date components
     const start_date = `${firstDayOfRange.getFullYear()}-${String(firstDayOfRange.getMonth() + 1).padStart(2, '0')}-${String(firstDayOfRange.getDate()).padStart(2, '0')}`;
     const end_date = `${lastDayOfRange.getFullYear()}-${String(lastDayOfRange.getMonth() + 1).padStart(2, '0')}-${String(lastDayOfRange.getDate()).padStart(2, '0')}`;
 
-    // 1. Create a unique cache key based on the selected dates
     const cacheKey = `station_data_${start_date}_${end_date}`;
 
-    // 2. Check if we already have this data saved in sessionStorage
     const savedDataString = sessionStorage.getItem(cacheKey);
     if (savedDataString) {
       try {
@@ -370,13 +357,12 @@ const StationAvailability = () => {
         setData(savedData.stations);
         setApiInfo(savedData.apiInfo);
         setLoading(false);
-        return; // Exit early! We don't need to make the API call.
+        return;
       } catch (e) {
         console.error("Failed to parse cached API data, fetching fresh data...", e);
       }
     }
 
-    // 3. If no cached data, fetch from the API as normal
     axiosServer
       .get("/api/availability", {
         params: {
@@ -388,10 +374,7 @@ const StationAvailability = () => {
         const apiResponse: APIResponse = res.data;
 
         if (apiResponse.success) {
-          // Process data to calculate statistics per station
           const processedStations = processStationData(apiResponse, selectedMonth);
-
-          // Convert to Station format for table
           const stations = convertToStationFormat(processedStations);
 
           const newApiInfo = {
@@ -403,12 +386,10 @@ const StationAvailability = () => {
           setData(stations);
           setApiInfo(newApiInfo);
 
-          // 4. Save the successfully processed data to sessionStorage for next time
           sessionStorage.setItem(cacheKey, JSON.stringify({
             stations: stations,
             apiInfo: newApiInfo
           }));
-
         } else {
           setData([]);
         }
@@ -419,20 +400,20 @@ const StationAvailability = () => {
       .finally(() => setLoading(false));
   }, [selectedMonth]);
 
-  // Memoize columns generation
   const columns = useMemo((): ColumnDef<Station>[] => {
     const totalColumns = (() => {
-      let count = 2; // Station Code + Detail
+      let count = 2;
       const currentDate = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
       const endDate = new Date(selectedMonth.endYear, selectedMonth.endMonth, 1);
+
       while (currentDate <= endDate) {
         count++;
         currentDate.setMonth(currentDate.getMonth() + 1);
       }
+
       return count;
     })();
 
-    // Set uniform width for all columns (assuming table width ~1200px)
     const uniformWidth = Math.max(80, Math.floor(1200 / totalColumns));
 
     const columns: ColumnDef<Station>[] = [
@@ -443,6 +424,7 @@ const StationAvailability = () => {
         size: uniformWidth,
         cell: ({ row }) => {
           const station = row.original;
+
           return (
             <span className="font-medium text-gray-900">
               {station.kode}
@@ -467,6 +449,7 @@ const StationAvailability = () => {
         cell: ({ row }) => {
           const station = row.original;
           const value = station.monthlyData[monthKey];
+
           if (value === null || value === undefined) return "-";
 
           const formatted = value.toFixed(2);
@@ -479,7 +462,6 @@ const StationAvailability = () => {
       currentDate.setMonth(currentDate.getMonth() + 1);
     }
 
-    // Add Station Detail column at the end
     columns.push({
       header: "Detail",
       accessorKey: "actions",
@@ -487,6 +469,7 @@ const StationAvailability = () => {
       size: uniformWidth,
       cell: ({ row }) => {
         const station = row.original;
+
         return (
           <Link
             to={`/station-availability/${station.kode}`}
@@ -502,7 +485,6 @@ const StationAvailability = () => {
   }, [selectedMonth]);
 
   const handleDownloadCSV = () => {
-    // Step 1: Collect all unique months across the entire dataset
     const allMonths = new Set<string>();
 
     filteredData.forEach((item) => {
@@ -511,20 +493,16 @@ const StationAvailability = () => {
       });
     });
 
-    // Convert the set to an array and sort months
     const months = Array.from(allMonths).sort();
 
-    // Step 2: Map the months to their full names with the year
     const formatMonth = (month: string) => {
       const date = new Date(month);
       const options = { year: 'numeric', month: 'long' } as const;
       return date.toLocaleDateString('en-US', options);
     };
 
-    // Step 3: Prepare the CSV content with the header row
     let csvContent = 'kode,' + months.map(formatMonth).join(',') + '\n';
 
-    // Step 4: Loop through the data to generate the rows
     filteredData.forEach((item) => {
       const values = months.map((month) => {
         return item.monthlyData[month] !== null ? item.monthlyData[month] : '';
@@ -549,12 +527,11 @@ const StationAvailability = () => {
         <h1 className="text-left text-2xl font-bold mt-0 mb-2 ml-1">
           Data Availability
         </h1>
+
         <div className="bg-white p-4 rounded-xl shadow mb-6">
           <div className="flex gap-4">
-            {/* Filters on the left - More Compact */}
             <div className="w-1/5 bg-gray-50 p-2 rounded-lg">
               <div className="space-y-3">
-                {/* Month Range Picker - Vertical Layout */}
                 <div className="space-y-2">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-gray-700">From:</label>
@@ -617,7 +594,6 @@ const StationAvailability = () => {
                   </div>
                 </div>
 
-                {/* API Info - Compact */}
                 {apiInfo && (
                   <div className="space-y-1 text-xs">
                     <div className={`px-2 py-1 rounded text-center ${apiInfo.cached ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
@@ -628,7 +604,6 @@ const StationAvailability = () => {
                   </div>
                 )}
 
-                {/* Table Filters - Compact */}
                 {Object.keys(filterConfig).length > 0 && (
                   <div className="pt-2 border-t border-gray-200">
                     <TableFilters
@@ -642,7 +617,6 @@ const StationAvailability = () => {
               </div>
             </div>
 
-            {/* Chart on the right - More Space */}
             <div className="w-4/5">
               <AvailabilityChartSection
                 chartData={chartData}
@@ -671,7 +645,11 @@ const StationAvailability = () => {
                 </button>
               </div>
               <div className="min-w-full">
-                <DataTable columns={columns} data={filteredData} />
+                <DataTable
+                  columns={columns}
+                  data={filteredData}
+                  searchPlaceholder="Cari Stasiun"
+                />
               </div>
             </div>
           )}
@@ -682,3 +660,4 @@ const StationAvailability = () => {
 };
 
 export default StationAvailability;
+
