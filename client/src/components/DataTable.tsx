@@ -59,7 +59,7 @@ const SortIcon = ({
       strokeLinejoin="round"
     >
       <path d="M6 9l6-6 6 6" />
-      <path d="M6 15l6 6 6 6" />
+      <path d="M6 15l6 6 6-6" />
     </svg>
   );
 };
