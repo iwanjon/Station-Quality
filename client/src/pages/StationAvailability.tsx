@@ -13,42 +13,45 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December"
 ];
 
-// Configuration for availability ranges, colors, and labels
-// Easily modify ranges, colors, and labels here - changes will apply to both chart and table
+// Configuration for availability ranges, colors, and labels per BMKG mentor guidelines:
+// - >= 97%: Sangat Baik (Hijau)
+// - 90 - 97%: Baik (Kuning)
+// - 50 - 89%: Kurang Baik (Oren)
+// - < 50%: Buruk (Merah)
 const AVAILABILITY_CONFIG = {
   ranges: [
     {
-      key: '> 97%',
-      label: '> 97%',
-      min: 97.01,
+      key: '≥ 97% (Sangat Baik)',
+      label: '≥ 97% (Sangat Baik)',
+      min: 97,
       max: 100,
       chartColor: '#16a34a',
       legendColor: 'bg-green-600',
       tableColor: 'text-green-600'
     },
     {
-      key: '90-97%',
-      label: '90-97%',
+      key: '90 - 97% (Baik)',
+      label: '90 - 97% (Baik)',
       min: 90,
-      max: 97,
+      max: 96.9999,
       chartColor: '#ffff00',
       legendColor: 'bg-yellow-200',
       tableColor: 'text-yellow-600'
     },
     {
-      key: '1-89%',
-      label: '1-89%',
-      min: 0.01,
-      max: 89.99,
+      key: '50 - 89% (Kurang Baik)',
+      label: '50 - 89% (Kurang Baik)',
+      min: 50,
+      max: 89.9999,
       chartColor: '#ff7f00',
       legendColor: 'bg-orange-400',
       tableColor: 'text-orange-400'
     },
     {
-      key: '0%',
-      label: '0%',
+      key: '< 50% (Buruk)',
+      label: '< 50% (Buruk)',
       min: 0,
-      max: 0,
+      max: 49.9999,
       chartColor: '#ff0000',
       legendColor: 'bg-red-500',
       tableColor: 'text-red-500'
@@ -58,8 +61,9 @@ const AVAILABILITY_CONFIG = {
 
 // Helper function to get availability category for a single value
 function getAvailabilityCategoryForValue(value: number | null): string {
-  if (value === null || value === undefined) {
-    return AVAILABILITY_CONFIG.ranges[3].key; // 0%
+  const fallbackKey = AVAILABILITY_CONFIG.ranges[AVAILABILITY_CONFIG.ranges.length - 1].key;
+  if (value === null || value === undefined || isNaN(value)) {
+    return fallbackKey; // < 50% (Buruk)
   }
 
   for (const range of AVAILABILITY_CONFIG.ranges) {
@@ -68,13 +72,14 @@ function getAvailabilityCategoryForValue(value: number | null): string {
     }
   }
 
-  return AVAILABILITY_CONFIG.ranges[3].key; // fallback to 0%
+  return fallbackKey; // fallback
 }
 
 // Helper function to get table color class for a value
 function getTableColorClass(value: number | null): string {
-  if (value === null || value === undefined) {
-    return `${AVAILABILITY_CONFIG.ranges[3].tableColor} font-semibold`;
+  const fallbackColor = AVAILABILITY_CONFIG.ranges[AVAILABILITY_CONFIG.ranges.length - 1].tableColor;
+  if (value === null || value === undefined || isNaN(value)) {
+    return `${fallbackColor} font-semibold`;
   }
 
   for (const range of AVAILABILITY_CONFIG.ranges) {
@@ -83,7 +88,7 @@ function getTableColorClass(value: number | null): string {
     }
   }
 
-  return `${AVAILABILITY_CONFIG.ranges[3].tableColor} font-semibold`; // fallback
+  return `${fallbackColor} font-semibold`; // fallback
 }
 
 interface StationData {
@@ -167,7 +172,7 @@ function processStationData(apiResponse: APIResponse, selectedRange: DateRange):
       const monthData = stationData.filter(record => {
         const recordDate = new Date(record.timestamp);
         return recordDate.getFullYear() === currentDate.getFullYear() &&
-               recordDate.getMonth() === currentDate.getMonth();
+          recordDate.getMonth() === currentDate.getMonth();
       });
 
       const validMonthData = monthData.filter(record => record.availability !== null);
@@ -212,7 +217,7 @@ function getAvailabilityCategory(station: Station): string {
   const monthlyValues = Object.values(station.monthlyData).filter(val => val !== null) as number[];
 
   if (monthlyValues.length === 0) {
-    return AVAILABILITY_CONFIG.ranges[3].key; // 0%
+    return AVAILABILITY_CONFIG.ranges[AVAILABILITY_CONFIG.ranges.length - 1].key; // Fallback to lowest range (< 50% Buruk)
   }
 
   const overallAverage = monthlyValues.reduce((sum, val) => sum + val, 0) / monthlyValues.length;

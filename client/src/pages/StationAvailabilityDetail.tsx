@@ -4,43 +4,46 @@ import MainLayout from "../layouts/MainLayout";
 import axiosServer from "../utilities/AxiosServer";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
-// Configuration for availability ranges, colors, and labels
-// Easily modify ranges, colors, and labels here - changes will apply to both chart and table
+// Configuration for availability ranges, colors, and labels per BMKG mentor guidelines:
+// - >= 97%: Sangat Baik (Hijau)
+// - 90 - 97%: Baik (Kuning)
+// - 50 - 89%: Kurang Baik (Oren)
+// - < 50%: Buruk (Merah)
 const AVAILABILITY_CONFIG = {
   ranges: [
     {
-      key: '> 97%',
-      label: '> 97%',
-      min: 97.01,
+      key: '≥ 97% (Sangat Baik)',
+      label: '≥ 97% (Sangat Baik)',
+      min: 97,
       max: 100,
       chartColor: '#16a34a',
       legendColor: 'bg-green-600',
       tableColor: 'text-green-600'
     },
     {
-      key: '90-97%',
-      label: '90-97%',
+      key: '90 - 97% (Baik)',
+      label: '90 - 97% (Baik)',
       min: 90,
-      max: 97,
-      chartColor: '#ffff00',
-      legendColor: 'bg-yellow-200',
+      max: 96.9999,
+      chartColor: '#eab308',
+      legendColor: 'bg-yellow-500',
       tableColor: 'text-yellow-600'
     },
     {
-      key: '1-89%',
-      label: '1-89%',
-      min: 0.01,
-      max: 89.99,
-      chartColor: '#ff7f00',
-      legendColor: 'bg-orange-400',
-      tableColor: 'text-orange-400'
+      key: '50 - 89% (Kurang Baik)',
+      label: '50 - 89% (Kurang Baik)',
+      min: 50,
+      max: 89.9999,
+      chartColor: '#f97316',
+      legendColor: 'bg-orange-500',
+      tableColor: 'text-orange-500'
     },
     {
-      key: '0%',
-      label: '0%',
+      key: '< 50% (Buruk)',
+      label: '< 50% (Buruk)',
       min: 0,
-      max: 0,
-      chartColor: '#ff0000',
+      max: 49.9999,
+      chartColor: '#ef4444',
       legendColor: 'bg-red-500',
       tableColor: 'text-red-500'
     }
@@ -49,8 +52,9 @@ const AVAILABILITY_CONFIG = {
 
 // Helper function to get chart color for a value
 function getChartColorForValue(value: number | null): string {
-  if (value === null || value === undefined) {
-    return AVAILABILITY_CONFIG.ranges[3].chartColor; // 0%
+  const fallbackColor = AVAILABILITY_CONFIG.ranges[AVAILABILITY_CONFIG.ranges.length - 1].chartColor;
+  if (value === null || value === undefined || isNaN(value)) {
+    return fallbackColor; // Fallback to < 50% (Buruk)
   }
 
   for (const range of AVAILABILITY_CONFIG.ranges) {
@@ -59,7 +63,7 @@ function getChartColorForValue(value: number | null): string {
     }
   }
 
-  return AVAILABILITY_CONFIG.ranges[3].chartColor; // fallback
+  return fallbackColor; // fallback
 }
 
 interface ChartDataPoint {
