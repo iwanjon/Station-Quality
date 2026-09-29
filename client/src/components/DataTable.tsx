@@ -128,17 +128,19 @@ function DataTable<TData extends object>({
   };
 
   return (
-    <div className="w-full min-w-0">
+    <div className="w-full min-w-0 max-w-full overflow-x-hidden">
       {/* Global Search Input */}
-      <div className="mb-4 w-full">
-        <input
-          type="text"
-          placeholder="Cari stasiun..."
-          value={globalFilterValue ?? ""}
-          onChange={(e) => setGlobalFilterValue(e.target.value)}
-          className="w-full max-w-xl border border-gray-300 px-3 py-2 rounded text-sm"
-        />
-      </div>
+      {showGlobalSearch && (
+        <div className="mb-4 w-full min-w-0 max-w-full">
+          <input
+            type="text"
+            placeholder="Cari stasiun..."
+            value={globalFilterValue ?? ""}
+            onChange={(e) => setGlobalFilterValue(e.target.value)}
+            className="w-full max-w-xl border border-gray-300 px-3 py-2 rounded text-sm"
+          />
+        </div>
+      )}
 
       {/* Single native horizontal scroll viewport for the DataTable */}
       <div
