@@ -2,15 +2,15 @@ import React, { useState, useEffect } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import dayjs from "dayjs";
-import { 
-  Calendar, 
-  Maximize2, 
-  Download, 
-  X, 
-  ZoomIn, 
-  ZoomOut, 
-  RotateCcw, 
-  Activity, 
+import {
+  Calendar,
+  Maximize2,
+  Download,
+  X,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Activity,
   Info,
   CheckCircle2,
   AlertCircle,
@@ -66,6 +66,8 @@ export const WebicorderSection: React.FC<WebicorderSectionProps> = ({ stationCod
 
     // Future BMKG Webicorder endpoint path
     const liveApiEndpoint = `/api/qc/data/webicorder/${formattedDate}/${stationCode}/${selectedChannel}`;
+
+    // Example: /api/qc/data/webicorder/2026-09-28/AAFM/SHZ.  
 
     axiosServer
       .get(liveApiEndpoint, { responseType: "blob" })
@@ -176,11 +178,10 @@ export const WebicorderSection: React.FC<WebicorderSectionProps> = ({ stationCod
                 key={ch.code}
                 onClick={() => setSelectedChannel(ch.code)}
                 title={ch.description}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  selectedChannel === ch.code
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${selectedChannel === ch.code
                     ? "bg-white text-blue-600 shadow-xs font-bold"
                     : "text-gray-600 hover:text-gray-900"
-                }`}
+                  }`}
               >
                 {ch.code}
               </button>
@@ -200,11 +201,10 @@ export const WebicorderSection: React.FC<WebicorderSectionProps> = ({ stationCod
               setIsModalOpen(true);
             }}
             disabled={hasError || isLoading}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-md shadow-2xs transition-all ${
-              hasError || isLoading
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-md shadow-2xs transition-all ${hasError || isLoading
                 ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
                 : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100 active:scale-95"
-            }`}
+              }`}
             title={hasError ? "Gambar tidak tersedia" : "Buka gambar layar penuh"}
           >
             <Maximize2 className="w-3.5 h-3.5 text-gray-500" />
@@ -213,11 +213,10 @@ export const WebicorderSection: React.FC<WebicorderSectionProps> = ({ stationCod
           <button
             onClick={handleDownload}
             disabled={hasError || isLoading}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-md shadow-2xs transition-all ${
-              hasError || isLoading
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-md shadow-2xs transition-all ${hasError || isLoading
                 ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
                 : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 active:scale-95"
-            }`}
+              }`}
             title={hasError ? "Gambar tidak tersedia" : "Unduh file gambar Webicorder"}
           >
             <Download className="w-3.5 h-3.5 text-blue-600" />
@@ -266,7 +265,7 @@ export const WebicorderSection: React.FC<WebicorderSectionProps> = ({ stationCod
           </div>
         ) : (
           /* Main Webicorder Image Container */
-          <div 
+          <div
             className="group relative cursor-pointer overflow-auto max-h-[720px] bg-slate-50 flex justify-center p-2"
             onClick={() => {
               setModalZoom(100);

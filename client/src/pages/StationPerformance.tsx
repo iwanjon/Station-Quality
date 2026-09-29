@@ -151,11 +151,20 @@ const StationPerformance = () => {
   }, [dataStasiunLengkap, filters, globalFilter]);
 
   const columns: ColumnDef<StasiunDenganSummary>[] = [
-    { accessorKey: "stasiun_id", header: "No" },
+    // Dynamic sequential row number that resets from 1 on filter and supports sorting
+    {
+      id: "no",
+      header: "No",
+      accessorFn: (row) => row.stasiun_id,
+      cell: ({ row, table }) => {
+        const { pageIndex, pageSize } = table.getState().pagination;
+        return pageIndex * pageSize + row.index + 1;
+      },
+    },
     { accessorKey: "kode_stasiun", header: "Kode Stasiun" },
     { accessorKey: "lokasi", header: "Lokasi" },
-    { accessorKey: "provinsi", header: "Province" },
-    { accessorKey: "jaringan", header: "Group" },
+    { accessorKey: "provinsi", header: "Provinsi" },
+    { accessorKey: "jaringan", header: "Jaringan" },
     { accessorKey: "prioritas", header: "Prioritas" },
     { accessorKey: "upt_penanggung_jawab", header: "UPT" },
     {
