@@ -138,7 +138,7 @@
 
 
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -174,7 +174,9 @@ const Sidebar: React.FC = () => {
     const stored = typeof window !== 'undefined' ? localStorage.getItem('sidebar-open') : null;
     return stored === null ? false : stored === 'true';
   });
-  
+
+  const sidebarRef = useRef<HTMLElement>(null);
+
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout); // Grab the logout function
@@ -188,17 +190,21 @@ const Sidebar: React.FC = () => {
       try {
         // 1. Tell the backend to clear the httpOnly cookie
         // Adjust the endpoint path if your logout route is different
-        await axiosServer.post('/api/user/logout'); 
+        await axiosServer.post('/api/user/logout');
       } catch (error) {
         console.error('Failed to logout on server:', error);
       } finally {
-        // 2. Always clear the local Zustand state and redirect, 
+        // 2. Always clear the local Zustand state and redirect,
         // even if the server request fails (fallback)
         logout();
         navigate('/login');
       }
     };
 
+  const closeSidebar = () => {
+    setOpen(false);
+    localStorage.setItem('sidebar-open', 'false');
+  };
 
   const sidebarVariants = {
     open: { width: 240, transition: { type: "spring" as const, stiffness: 300, damping: 30 } },
@@ -209,6 +215,34 @@ const Sidebar: React.FC = () => {
     open: { opacity: 1, x: 0, transition: { type: "spring" as const, stiffness: 300, damping: 25 } },
     closed: { opacity: 0, x: -10, transition: { type: "spring" as const, stiffness: 300, damping: 25 } },
   };
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+
+      if (sidebarRef.current && !sidebarRef.current.contains(target)) {
+        closeSidebar();
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeSidebar();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
 
   const NavLink: React.FC<{ item: NavItem }> = ({ item }) => {
     const isActive = pathname === item.to;
@@ -250,6 +284,7 @@ const Sidebar: React.FC = () => {
 
   return (
     <motion.aside
+      ref={sidebarRef}
       variants={sidebarVariants}
       initial={open ? 'open' : 'closed'}
       animate={open ? 'open' : 'closed'}
