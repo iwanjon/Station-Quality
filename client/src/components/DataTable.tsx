@@ -159,62 +159,65 @@ function DataTable<TData extends object>({
           <thead className="bg-gray-50">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    colSpan={header.colSpan}
-                    className={`border border-gray-300 p-2 text-sm font-semibold select-none ${
-                      header.column.getCanSort() ? "cursor-pointer" : ""
-                    }`}
-                    style={{
-                      width: (
-                        header.column.columnDef as ColumnDef<TData> & {
-                          size?: number;
-                        }
-                      ).size
-                        ? `${(
-                            header.column.columnDef as ColumnDef<TData> & {
-                              size?: number;
-                            }
-                          ).size}px`
-                        : "auto",
-                      minWidth: (
-                        header.column.columnDef as ColumnDef<TData> & {
-                          size?: number;
-                        }
-                      ).size
-                        ? `${(
-                            header.column.columnDef as ColumnDef<TData> & {
-                              size?: number;
-                            }
-                          ).size}px`
-                        : "auto",
-                    }}
-                    onClick={
-                      header.column.getCanSort()
-                        ? header.column.getToggleSortingHandler()
-                        : undefined
-                    }
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                {headerGroup.headers.map((header) => {
+                  const isSticky = (header.column.columnDef.meta as any)?.sticky;
+                  return (
+                    <th
+                      key={header.id}
+                      colSpan={header.colSpan}
+                      className={`border border-gray-300 p-2 text-sm font-semibold select-none ${
+                        header.column.getCanSort() ? "cursor-pointer" : ""
+                      } ${isSticky ? "sticky left-0 bg-gray-100 z-20 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.1)]" : ""}`}
+                      style={{
+                        width: (
+                          header.column.columnDef as ColumnDef<TData> & {
+                            size?: number;
+                          }
+                        ).size
+                          ? `${(
+                              header.column.columnDef as ColumnDef<TData> & {
+                                size?: number;
+                              }
+                            ).size}px`
+                          : "auto",
+                        minWidth: (
+                          header.column.columnDef as ColumnDef<TData> & {
+                            size?: number;
+                          }
+                        ).size
+                          ? `${(
+                              header.column.columnDef as ColumnDef<TData> & {
+                                size?: number;
+                              }
+                            ).size}px`
+                          : "auto",
+                      }}
+                      onClick={
+                        header.column.getCanSort()
+                          ? header.column.getToggleSortingHandler()
+                          : undefined
+                      }
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
 
-                    {header.column.getCanSort() && (
-                      <SortIcon
-                        direction={
-                          (header.column.getIsSorted() as
-                            | "asc"
-                            | "desc"
-                            | false) || "none"
-                        }
-                      />
-                    )}
-                  </th>
-                ))}
+                      {header.column.getCanSort() && (
+                        <SortIcon
+                          direction={
+                            (header.column.getIsSorted() as
+                              | "asc"
+                              | "desc"
+                              | false) || "none"
+                          }
+                        />
+                      )}
+                    </th>
+                  );
+                })}
               </tr>
             ))}
           </thead>
@@ -223,17 +226,25 @@ function DataTable<TData extends object>({
             {table.getRowModel().rows.length > 0 ? (
               table.getRowModel().rows.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50">
-                  {row.getVisibleCells().map((cell) => (
-                    <td
-                      key={cell.id}
-                      className="border border-gray-300 p-2 text-sm"
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </td>
-                  ))}
+                  {row.getVisibleCells().map((cell) => {
+                    const isSticky = (cell.column.columnDef.meta as any)?.sticky;
+                    const noPadding = (cell.column.columnDef.meta as any)?.noPadding;
+                    return (
+                      <td
+                        key={cell.id}
+                        className={`border border-gray-300 text-sm align-middle text-center ${
+                          noPadding ? "p-0" : "p-2"
+                        } ${
+                          isSticky ? "sticky left-0 bg-white z-10 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.1)]" : ""
+                        }`}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))
             ) : (

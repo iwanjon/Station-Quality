@@ -7,6 +7,7 @@ import DataTable from "../components/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import axiosServer from "../utilities/AxiosServer";
 import AvailabilityChartSection from "../components/station-availability/AvailabilityChartSection";
+import { ChevronLeft, ChevronRight, Download, Calendar, CalendarDays } from "lucide-react";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -21,40 +22,40 @@ const MONTH_NAMES = [
 const AVAILABILITY_CONFIG = {
   ranges: [
     {
-      key: '≥ 97% (Sangat Baik)',
-      label: '≥ 97% (Sangat Baik)',
+      key: "≥ 97% (Sangat Baik)",
+      label: "≥ 97% (Sangat Baik)",
       min: 97,
       max: 100,
-      chartColor: '#16a34a',
-      legendColor: 'bg-green-600',
-      tableColor: 'text-green-600'
+      chartColor: "#16a34a",
+      legendColor: "bg-green-600",
+      tableColor: "text-green-600"
     },
     {
-      key: '90 - 97% (Baik)',
-      label: '90 - 97% (Baik)',
+      key: "90 - 97% (Baik)",
+      label: "90 - 97% (Baik)",
       min: 90,
       max: 96.9999,
-      chartColor: '#ffff00',
-      legendColor: 'bg-yellow-200',
-      tableColor: 'text-yellow-600'
+      chartColor: "#eab308",
+      legendColor: "bg-yellow-500",
+      tableColor: "text-yellow-600"
     },
     {
-      key: '50 - 89% (Kurang Baik)',
-      label: '50 - 89% (Kurang Baik)',
+      key: "50 - 89% (Kurang Baik)",
+      label: "50 - 89% (Kurang Baik)",
       min: 50,
       max: 89.9999,
-      chartColor: '#ff7f00',
-      legendColor: 'bg-orange-400',
-      tableColor: 'text-orange-400'
+      chartColor: "#f97316",
+      legendColor: "bg-orange-500",
+      tableColor: "text-orange-500"
     },
     {
-      key: '< 50% (Buruk)',
-      label: '< 50% (Buruk)',
+      key: "< 50% (Buruk)",
+      label: "< 50% (Buruk)",
       min: 0,
       max: 49.9999,
-      chartColor: '#ff0000',
-      legendColor: 'bg-red-500',
-      tableColor: 'text-red-500'
+      chartColor: "#ef4444",
+      legendColor: "bg-red-500",
+      tableColor: "text-red-500"
     }
   ]
 };
@@ -75,20 +76,53 @@ function getAvailabilityCategoryForValue(value: number | null): string {
   return fallbackKey; // fallback
 }
 
-// Helper function to get table color class for a value
-function getTableColorClass(value: number | null): string {
-  const fallbackColor = AVAILABILITY_CONFIG.ranges[AVAILABILITY_CONFIG.ranges.length - 1].tableColor;
+// Helper function for full-cell heatmap background and high-contrast typography
+interface HeatmapCellProps {
+  bgClass: string;
+  textClass: string;
+  label: string;
+  tooltipText: string;
+}
+
+function getHeatmapCellProps(value: number | null | undefined): HeatmapCellProps {
   if (value === null || value === undefined || isNaN(value)) {
-    return `${fallbackColor} font-semibold`;
+    return {
+      bgClass: "bg-gray-100",
+      textClass: "text-gray-400 font-normal",
+      label: "-",
+      tooltipText: "Tidak ada data",
+    };
   }
 
-  for (const range of AVAILABILITY_CONFIG.ranges) {
-    if (value >= range.min && value <= range.max) {
-      return `${range.tableColor} font-semibold`;
-    }
+  if (value >= 97) {
+    return {
+      bgClass: "bg-green-600",
+      textClass: "text-white font-semibold",
+      label: `${value.toFixed(2)}%`,
+      tooltipText: `${value.toFixed(2)}% (Sangat Baik)`,
+    };
+  } else if (value >= 90) {
+    return {
+      bgClass: "bg-yellow-400",
+      textClass: "text-gray-900 font-bold", // High-contrast dark text on yellow
+      label: `${value.toFixed(2)}%`,
+      tooltipText: `${value.toFixed(2)}% (Baik)`,
+    };
+  } else if (value >= 50) {
+    return {
+      bgClass: "bg-orange-500",
+      textClass: "text-white font-semibold",
+      label: `${value.toFixed(2)}%`,
+      tooltipText: `${value.toFixed(2)}% (Kurang Baik)`,
+    };
+  } else {
+    return {
+      bgClass: "bg-red-500",
+      textClass: "text-white font-semibold",
+      label: `${value.toFixed(2)}%`,
+      tooltipText: `${value.toFixed(2)}% (Buruk)`,
+    };
   }
-
-  return `${fallbackColor} font-semibold`; // fallback
 }
 
 interface StationData {
@@ -112,20 +146,23 @@ interface APIResponse {
   data: Record<string, StationData[]>;
 }
 
-interface ProcessedStation {
-  id: number;
-  kode: string;
-  dailyData: StationData[];
-  monthlyData: Record<string, number | null>;
-  totalDays: number;
-  availableDays: number;
-  missingDays: number;
+interface StationMetadata {
+  kode_stasiun: string;
+  prioritas: string;
+  upt_penanggung_jawab: string;
+  provinsi: string;
+  jaringan: string;
 }
 
 interface Station {
   id: number;
   kode: string;
+  prioritas?: string;
+  upt_penanggung_jawab?: string;
+  provinsi?: string;
+  jaringan?: string;
   monthlyData: Record<string, number | null>;
+  dailyData: Record<string, number | null>;
   totalDays: number;
   availableDays: number;
   missingDays: number;
@@ -150,34 +187,62 @@ interface ApiInfo {
   dateRange: string;
 }
 
-// Function to process API response and calculate statistics per station
-function processStationData(apiResponse: APIResponse, selectedRange: DateRange): ProcessedStation[] {
-  const stations: ProcessedStation[] = [];
+type ViewMode = "monthly" | "daily";
+
+// Function to process API response, calculate monthly averages, and preserve daily records
+function processStationData(
+  apiResponse: APIResponse,
+  selectedRange: DateRange,
+  stationMetaMap: Map<string, StationMetadata>
+): Station[] {
+  const stations: Station[] = [];
   let id = 1;
 
+  if (!apiResponse || !apiResponse.data) return stations;
+
   Object.entries(apiResponse.data).forEach(([stationCode, stationData]) => {
-    const validData = stationData.filter(record => record.availability !== null);
+    if (!Array.isArray(stationData)) return;
+
+    const validData = stationData.filter(record => record && record.availability !== null);
     const totalDays = stationData.length;
     const availableDays = validData.length;
     const missingDays = totalDays - availableDays;
 
     const monthlyData: Record<string, number | null> = {};
+    const dailyData: Record<string, number | null> = {};
+
+    // Build dictionary of daily records: "YYYY-MM-DD" -> percentage
+    stationData.forEach(record => {
+      if (!record || !record.timestamp) return;
+      const dateKey = record.timestamp.split("T")[0];
+      dailyData[dateKey] = record.availability !== null && record.availability !== undefined 
+        ? Math.round(Number(record.availability) * 100) / 100 
+        : null;
+    });
 
     const currentDate = new Date(selectedRange.startYear, selectedRange.startMonth, 1);
     const endDate = new Date(selectedRange.endYear, selectedRange.endMonth, 1);
 
     while (currentDate <= endDate) {
-      const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+      const targetYear = currentDate.getFullYear();
+      const targetMonth = currentDate.getMonth();
+      const monthKey = `${targetYear}-${String(targetMonth + 1).padStart(2, "0")}`;
 
       const monthData = stationData.filter(record => {
-        const recordDate = new Date(record.timestamp);
-        return recordDate.getFullYear() === currentDate.getFullYear() &&
-          recordDate.getMonth() === currentDate.getMonth();
+        if (!record || !record.timestamp) return false;
+        // Parse date from "YYYY-MM-DD" safely without timezone issues
+        const parts = record.timestamp.split("T")[0].split("-");
+        if (parts.length >= 2) {
+          const recYear = parseInt(parts[0], 10);
+          const recMonth = parseInt(parts[1], 10) - 1;
+          return recYear === targetYear && recMonth === targetMonth;
+        }
+        return false;
       });
 
-      const validMonthData = monthData.filter(record => record.availability !== null);
+      const validMonthData = monthData.filter(record => record.availability !== null && record.availability !== undefined);
       if (validMonthData.length > 0) {
-        const sum = validMonthData.reduce((acc, record) => acc + (record.availability || 0), 0);
+        const sum = validMonthData.reduce((acc, record) => acc + (Number(record.availability) || 0), 0);
         monthlyData[monthKey] = Math.round((sum / validMonthData.length) * 100) / 100;
       } else {
         monthlyData[monthKey] = null;
@@ -186,11 +251,17 @@ function processStationData(apiResponse: APIResponse, selectedRange: DateRange):
       currentDate.setMonth(currentDate.getMonth() + 1);
     }
 
+    const meta = stationMetaMap.get(stationCode);
+
     stations.push({
       id: id++,
       kode: stationCode,
-      dailyData: stationData,
+      prioritas: meta?.prioritas || "-",
+      upt_penanggung_jawab: meta?.upt_penanggung_jawab || "-",
+      provinsi: meta?.provinsi || "-",
+      jaringan: meta?.jaringan || "-",
       monthlyData,
+      dailyData,
       totalDays,
       availableDays,
       missingDays
@@ -200,84 +271,222 @@ function processStationData(apiResponse: APIResponse, selectedRange: DateRange):
   return stations;
 }
 
-// Function to convert ProcessedStation to Station format
-function convertToStationFormat(processedStations: ProcessedStation[]): Station[] {
-  return processedStations.map(station => ({
-    id: station.id,
-    kode: station.kode,
-    monthlyData: station.monthlyData,
-    totalDays: station.totalDays,
-    availableDays: station.availableDays,
-    missingDays: station.missingDays
-  }));
-}
-
-// Function to determine availability category based on overall average
+// Function to determine overall availability category based on average across all months
 function getAvailabilityCategory(station: Station): string {
-  const monthlyValues = Object.values(station.monthlyData).filter(val => val !== null) as number[];
+  const monthlyValues = Object.values(station.monthlyData).filter(val => val !== null && val !== undefined) as number[];
 
   if (monthlyValues.length === 0) {
     return AVAILABILITY_CONFIG.ranges[AVAILABILITY_CONFIG.ranges.length - 1].key; // Fallback to lowest range (< 50% Buruk)
   }
 
   const overallAverage = monthlyValues.reduce((sum, val) => sum + val, 0) / monthlyValues.length;
-
-  // Use the helper function to get category for the average value
   return getAvailabilityCategoryForValue(overallAverage);
 }
 
+interface AvailabilityCacheEntry {
+  apiResponse: APIResponse;
+  apiInfo: ApiInfo;
+  processedStations: Station[];
+}
+
+// Module-level RAM in-memory cache to ensure instant back-and-forth page transitions
+// Persists in browser memory across React component mount / unmount lifecycles
+const memoryAvailabilityCache = new Map<string, AvailabilityCacheEntry>();
+let memoryStationMetaMap: Map<string, StationMetadata> | null = null;
+let savedViewMode: ViewMode = "monthly";
+let savedDailyMonth: { year: number; month: number } | null = null;
+
+function getInitialDateRange(): DateRange {
+  const saved = sessionStorage.getItem("stationAvailabilityDate");
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to parse saved date, falling back to default");
+    }
+  }
+
+  const today = new Date();
+  let endYear = today.getFullYear();
+  let endMonth = today.getMonth() - 1;
+  if (endMonth < 0) {
+    endMonth = 11;
+    endYear -= 1;
+  }
+
+  let startMonth = endMonth - 11;
+  let startYear = endYear;
+  if (startMonth < 0) {
+    startMonth += 12;
+    startYear -= 1;
+  }
+
+  return {
+    startYear,
+    startMonth,
+    endYear,
+    endMonth,
+  };
+}
+
+function getAvailabilityCacheKey(range: DateRange): string {
+  const firstDay = new Date(range.startYear, range.startMonth, 1);
+  const lastDay = new Date(range.endYear, range.endMonth + 1, 0);
+
+  const start_date = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, "0")}-${String(firstDay.getDate()).padStart(2, "0")}`;
+  const end_date = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, "0")}-${String(lastDay.getDate()).padStart(2, "0")}`;
+
+  return `station_avail_v2_${start_date}_${end_date}`;
+}
+
 const StationAvailability = () => {
-  const [data, setData] = useState<Station[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [apiInfo, setApiInfo] = useState<ApiInfo | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<DateRange>(() => getInitialDateRange());
+  const initialCacheKey = useMemo(() => getAvailabilityCacheKey(selectedMonth), [selectedMonth]);
+  const initialCache = memoryAvailabilityCache.get(initialCacheKey);
 
-  const [selectedMonth, setSelectedMonth] = useState<DateRange>(() => {
-    const saved = sessionStorage.getItem("stationAvailabilityDate");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Failed to parse saved date, falling back to default");
-      }
-    }
+  const [data, setData] = useState<Station[]>(() => initialCache?.processedStations || []);
+  const [rawApiResponse, setRawApiResponse] = useState<APIResponse | null>(() => initialCache?.apiResponse || null);
+  const [stationMetaMap, setStationMetaMap] = useState<Map<string, StationMetadata>>(() => memoryStationMetaMap || new Map());
+  const [loading, setLoading] = useState<boolean>(() => !initialCache);
+  const [apiInfo, setApiInfo] = useState<ApiInfo | null>(() => initialCache?.apiInfo || null);
 
-    const today = new Date();
-    let endYear = today.getFullYear();
-    let endMonth = today.getMonth() - 1;
-    if (endMonth < 0) {
-      endMonth = 11;
-      endYear -= 1;
-    }
+  // View Mode: "monthly" (default) or "daily" - preserves user selection across navigation
+  const [viewMode, setViewMode] = useState<ViewMode>(savedViewMode);
 
-    let startMonth = endMonth - 11;
-    let startYear = endYear;
-    if (startMonth < 0) {
-      startMonth += 12;
-      startYear -= 1;
-    }
-
+  // Selected month for daily view mode - preserves user selection across navigation
+  const [dailyMonth, setDailyMonth] = useState<{ year: number; month: number }>(() => {
+    if (savedDailyMonth) return savedDailyMonth;
     return {
-      startYear,
-      startMonth,
-      endYear,
-      endMonth
+      year: selectedMonth.endYear,
+      month: selectedMonth.endMonth,
     };
   });
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    savedViewMode = mode;
+    setViewMode(mode);
+  };
+
+  const handleDailyMonthSelect = (dm: { year: number; month: number }) => {
+    savedDailyMonth = dm;
+    setDailyMonth(dm);
+  };
+
+  // Keep dailyMonth in bounds whenever selectedMonth changes
+  useEffect(() => {
+    const currentDailyTime = dailyMonth.year * 12 + dailyMonth.month;
+    const startTime = selectedMonth.startYear * 12 + selectedMonth.startMonth;
+    const endTime = selectedMonth.endYear * 12 + selectedMonth.endMonth;
+
+    if (currentDailyTime < startTime || currentDailyTime > endTime) {
+      const fallback = {
+        year: selectedMonth.endYear,
+        month: selectedMonth.endMonth,
+      };
+      savedDailyMonth = fallback;
+      setDailyMonth(fallback);
+    }
+  }, [selectedMonth, dailyMonth]);
 
   useEffect(() => {
     sessionStorage.setItem("stationAvailabilityDate", JSON.stringify(selectedMonth));
   }, [selectedMonth]);
 
-  const [filters, setFilters] = useState<Record<string, string[]>>({
-    kode: [],
-    availabilityCategory: [],
-  });
+  // Fetch station metadata (Prioritas, UPT, Provinsi, Jaringan) for enriched filtering
+  useEffect(() => {
+    if (memoryStationMetaMap && memoryStationMetaMap.size > 0) {
+      setStationMetaMap(memoryStationMetaMap);
+      return;
+    }
+
+    axiosServer
+      .get("/api/stasiun/public/active")
+      .then((res) => {
+        if (Array.isArray(res.data)) {
+          const map = new Map<string, StationMetadata>();
+          res.data.forEach((s: any) => {
+            map.set(s.kode_stasiun, {
+              kode_stasiun: s.kode_stasiun,
+              prioritas: s.prioritas || "-",
+              upt_penanggung_jawab: s.upt_penanggung_jawab || "-",
+              provinsi: s.provinsi || "-",
+              jaringan: s.jaringan || "-",
+            });
+          });
+          memoryStationMetaMap = map;
+          setStationMetaMap(map);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch station metadata:", err);
+      });
+  }, []);
+
+  // Re-process stations whenever raw API data or station metadata updates
+  useEffect(() => {
+    if (rawApiResponse && rawApiResponse.data) {
+      const processed = processStationData(rawApiResponse, selectedMonth, stationMetaMap);
+      setData(processed);
+    } else if (data.length > 0 && stationMetaMap.size > 0) {
+      // If data is already populated, enrich with updated metadata
+      setData((prev) =>
+        prev.map((station) => {
+          const meta = stationMetaMap.get(station.kode);
+          if (!meta) return station;
+          return {
+            ...station,
+            prioritas: meta.prioritas || station.prioritas || "-",
+            upt_penanggung_jawab: meta.upt_penanggung_jawab || station.upt_penanggung_jawab || "-",
+            provinsi: meta.provinsi || station.provinsi || "-",
+            jaringan: meta.jaringan || station.jaringan || "-",
+          };
+        })
+      );
+    }
+  }, [stationMetaMap, rawApiResponse, selectedMonth]);
+
+  // Active filters: Availability Category, Prioritas, UPT, Provinsi, Jaringan (Station Code removed)
+  const [filters, setFilters] = useState<Record<string, string[]>>({});
 
   const [chartType, setChartType] = useState<"stacked" | "line" | "grouped">("stacked");
   const [metric, setMetric] = useState<"count" | "percentage">("percentage");
 
+  // Filtered stations based on active filter criteria
+  const filteredData = useMemo(() => {
+    return data.filter((item) => {
+      // 1. Availability Category filter
+      if (filters.availabilityCategory && filters.availabilityCategory.length > 0) {
+        const category = getAvailabilityCategory(item);
+        if (!filters.availabilityCategory.includes(category)) return false;
+      }
+
+      // 2. Prioritas filter
+      if (filters.prioritas && filters.prioritas.length > 0) {
+        if (!filters.prioritas.includes(item.prioritas || "")) return false;
+      }
+
+      // 3. UPT filter
+      if (filters.upt_penanggung_jawab && filters.upt_penanggung_jawab.length > 0) {
+        if (!filters.upt_penanggung_jawab.includes(item.upt_penanggung_jawab || "")) return false;
+      }
+
+      // 4. Provinsi filter
+      if (filters.provinsi && filters.provinsi.length > 0) {
+        if (!filters.provinsi.includes(item.provinsi || "")) return false;
+      }
+
+      // 5. Jaringan filter
+      if (filters.jaringan && filters.jaringan.length > 0) {
+        if (!filters.jaringan.includes(item.jaringan || "")) return false;
+      }
+
+      return true;
+    });
+  }, [filters, data]);
+
+  // Chart data reactive to filteredData (Monthly macro summary)
   const chartData = useMemo(() => {
-    if (!data.length) return [];
+    if (!filteredData.length) return [];
 
     const chartDataTemp: ChartDataPoint[] = [];
 
@@ -285,7 +494,7 @@ const StationAvailability = () => {
     const endDate = new Date(selectedMonth.endYear, selectedMonth.endMonth, 1);
 
     while (currentDate <= endDate) {
-      const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+      const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
       const monthLabel = `${MONTH_NAMES[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
 
       const distribution: Record<string, number> = {};
@@ -293,7 +502,7 @@ const StationAvailability = () => {
         distribution[range.key] = 0;
       });
 
-      data.forEach(station => {
+      filteredData.forEach(station => {
         const value = station.monthlyData[monthKey];
         const category = getAvailabilityCategoryForValue(value);
         distribution[category]++;
@@ -317,56 +526,49 @@ const StationAvailability = () => {
     }
 
     return chartDataTemp;
-  }, [data, selectedMonth]);
+  }, [filteredData, selectedMonth]);
 
-  const filteredData = useMemo(() => {
-    return data.filter((item) => {
-      if (filters.kode.length > 0 && !filters.kode.includes(item.kode)) return false;
-
-      if (filters.availabilityCategory.length > 0) {
-        const category = getAvailabilityCategory(item);
-        if (!filters.availabilityCategory.includes(category)) return false;
-      }
-
-      return true;
-    });
-  }, [filters, data]);
-
+  // Filter config for TableFilters component
   const filterConfig = useMemo((): Record<string, FilterConfig> => {
     if (!data.length) return {};
 
-    const uniqueKode = Array.from(new Set(data.map((s: Station) => s.kode))).sort();
+    const getUniqueOptions = (key: keyof Station): string[] => {
+      const allValues = data.map(item => String(item[key] || ""));
+      return [...new Set(allValues)].filter(v => v !== "" && v !== "null" && v !== "-").sort();
+    };
+
     const availabilityCategories = AVAILABILITY_CONFIG.ranges.map(range => range.key);
 
     return {
-      kode: { label: "Station Code", type: "multi" as const, options: uniqueKode },
       availabilityCategory: { label: "Availability Category", type: "multi" as const, options: availabilityCategories },
+      prioritas: { label: "Prioritas", type: "multi" as const, options: getUniqueOptions("prioritas") },
+      upt_penanggung_jawab: { label: "UPT", type: "multi" as const, options: getUniqueOptions("upt_penanggung_jawab") },
+      provinsi: { label: "Provinsi", type: "multi" as const, options: getUniqueOptions("provinsi") },
+      jaringan: { label: "Jaringan", type: "multi" as const, options: getUniqueOptions("jaringan") },
     };
   }, [data]);
 
+  // Fetch availability data from API (RAM memory cache provides instant 0ms reload upon navigation back)
   useEffect(() => {
+    const cacheKey = getAvailabilityCacheKey(selectedMonth);
+
+    // 1. Check in-memory RAM cache first (instant 0ms response, no spinner)
+    if (memoryAvailabilityCache.has(cacheKey)) {
+      const cached = memoryAvailabilityCache.get(cacheKey)!;
+      setRawApiResponse(cached.apiResponse);
+      setApiInfo(cached.apiInfo);
+      setData(cached.processedStations);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
     const firstDayOfRange = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
     const lastDayOfRange = new Date(selectedMonth.endYear, selectedMonth.endMonth + 1, 0);
 
-    const start_date = `${firstDayOfRange.getFullYear()}-${String(firstDayOfRange.getMonth() + 1).padStart(2, '0')}-${String(firstDayOfRange.getDate()).padStart(2, '0')}`;
-    const end_date = `${lastDayOfRange.getFullYear()}-${String(lastDayOfRange.getMonth() + 1).padStart(2, '0')}-${String(lastDayOfRange.getDate()).padStart(2, '0')}`;
-
-    const cacheKey = `station_data_${start_date}_${end_date}`;
-
-    const savedDataString = sessionStorage.getItem(cacheKey);
-    if (savedDataString) {
-      try {
-        const savedData = JSON.parse(savedDataString);
-        setData(savedData.stations);
-        setApiInfo(savedData.apiInfo);
-        setLoading(false);
-        return;
-      } catch (e) {
-        console.error("Failed to parse cached API data, fetching fresh data...", e);
-      }
-    }
+    const start_date = `${firstDayOfRange.getFullYear()}-${String(firstDayOfRange.getMonth() + 1).padStart(2, "0")}-${String(firstDayOfRange.getDate()).padStart(2, "0")}`;
+    const end_date = `${lastDayOfRange.getFullYear()}-${String(lastDayOfRange.getMonth() + 1).padStart(2, "0")}-${String(lastDayOfRange.getDate()).padStart(2, "0")}`;
 
     axiosServer
       .get("/api/availability", {
@@ -378,152 +580,293 @@ const StationAvailability = () => {
       .then((res) => {
         const apiResponse: APIResponse = res.data;
 
-        if (apiResponse.success) {
-          const processedStations = processStationData(apiResponse, selectedMonth);
-          const stations = convertToStationFormat(processedStations);
-
+        if (apiResponse && apiResponse.success && apiResponse.data) {
+          const totalCount = apiResponse.meta?.stationCount || Object.keys(apiResponse.data).length;
           const newApiInfo = {
-            cached: apiResponse.cached,
-            totalStations: apiResponse.meta.stationCount,
-            dateRange: `${apiResponse.meta.dateRange.start_date} to ${apiResponse.meta.dateRange.end_date}`
+            cached: apiResponse.cached || false,
+            totalStations: totalCount,
+            dateRange: `${apiResponse.meta?.dateRange?.start_date || start_date} to ${apiResponse.meta?.dateRange?.end_date || end_date}`
           };
 
-          setData(stations);
+          setRawApiResponse(apiResponse);
           setApiInfo(newApiInfo);
 
-          sessionStorage.setItem(cacheKey, JSON.stringify({
-            stations: stations,
-            apiInfo: newApiInfo
-          }));
+          // Process and set stations immediately
+          const processed = processStationData(apiResponse, selectedMonth, stationMetaMap);
+          setData(processed);
+
+          // Store in in-memory RAM cache (persists throughout browser session with no 5MB limit)
+          memoryAvailabilityCache.set(cacheKey, {
+            apiResponse,
+            apiInfo: newApiInfo,
+            processedStations: processed,
+          });
         } else {
+          setRawApiResponse(null);
           setData([]);
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("Error fetching availability data:", err);
+        setRawApiResponse(null);
         setData([]);
       })
       .finally(() => setLoading(false));
   }, [selectedMonth]);
 
-  const columns = useMemo((): ColumnDef<Station>[] => {
-    const totalColumns = (() => {
-      let count = 2;
+  // List of available months for daily view navigation
+  const availableMonths = useMemo(() => {
+    const months: { year: number; month: number; label: string }[] = [];
+    const cur = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
+    const end = new Date(selectedMonth.endYear, selectedMonth.endMonth, 1);
+
+    while (cur <= end) {
+      months.push({
+        year: cur.getFullYear(),
+        month: cur.getMonth(),
+        label: `${MONTH_NAMES[cur.getMonth()]} ${cur.getFullYear()}`,
+      });
+      cur.setMonth(cur.getMonth() + 1);
+    }
+    return months;
+  }, [selectedMonth]);
+
+  const canGoPrevMonth = useMemo(() => {
+    const curTime = dailyMonth.year * 12 + dailyMonth.month;
+    const startTime = selectedMonth.startYear * 12 + selectedMonth.startMonth;
+    return curTime > startTime;
+  }, [dailyMonth, selectedMonth]);
+
+  const canGoNextMonth = useMemo(() => {
+    const curTime = dailyMonth.year * 12 + dailyMonth.month;
+    const endTime = selectedMonth.endYear * 12 + selectedMonth.endMonth;
+    return curTime < endTime;
+  }, [dailyMonth, selectedMonth]);
+
+  const handlePrevDailyMonth = () => {
+    if (!canGoPrevMonth) return;
+    setDailyMonth((prev) => {
+      const next = prev.month === 0 ? { year: prev.year - 1, month: 11 } : { year: prev.year, month: prev.month - 1 };
+      savedDailyMonth = next;
+      return next;
+    });
+  };
+
+  const handleNextDailyMonth = () => {
+    if (!canGoNextMonth) return;
+    setDailyMonth((prev) => {
+      const next = prev.month === 11 ? { year: prev.year + 1, month: 0 } : { year: prev.year, month: prev.month + 1 };
+      savedDailyMonth = next;
+      return next;
+    });
+  };
+
+  // Table Columns Definition based on viewMode (Monthly vs Daily)
+  const columns = useMemo((): (ColumnDef<Station> & { size?: number })[] => {
+    if (viewMode === "monthly") {
+      const cols: (ColumnDef<Station> & { size?: number })[] = [
+        {
+          id: "kode",
+          header: "Station Code",
+          accessorKey: "kode",
+          enableSorting: true,
+          size: 110,
+          meta: { sticky: true },
+          cell: ({ row }) => (
+            <span className="font-semibold text-gray-900 tracking-wide">
+              {row.original.kode}
+            </span>
+          ),
+        },
+      ];
+
       const currentDate = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
       const endDate = new Date(selectedMonth.endYear, selectedMonth.endMonth, 1);
 
       while (currentDate <= endDate) {
-        count++;
+        const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
+        const monthLabel = `${MONTH_NAMES[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+
+        cols.push({
+          id: monthKey,
+          header: monthLabel,
+          accessorKey: `monthlyData.${monthKey}`,
+          enableSorting: true,
+          size: 110,
+          meta: { noPadding: true },
+          cell: ({ row }) => {
+            const value = row.original.monthlyData[monthKey];
+            const { bgClass, textClass, label, tooltipText } = getHeatmapCellProps(value);
+
+            return (
+              <div
+                className={`w-full h-full min-h-[38px] flex items-center justify-center text-center p-2 ${bgClass} ${textClass} transition-colors select-none`}
+                title={`${row.original.kode} (${monthLabel}): ${tooltipText}`}
+              >
+                <span className="w-full text-center">{label}</span>
+              </div>
+            );
+          },
+        });
+
         currentDate.setMonth(currentDate.getMonth() + 1);
       }
 
-      return count;
-    })();
-
-    const uniformWidth = Math.max(80, Math.floor(1200 / totalColumns));
-
-    const columns: ColumnDef<Station>[] = [
-      {
-        header: "Station Code",
-        accessorKey: "kode",
-        enableSorting: true,
-        size: uniformWidth,
-        cell: ({ row }) => {
-          const station = row.original;
-
-          return (
-            <span className="font-medium text-gray-900">
-              {station.kode}
-            </span>
-          );
-        },
-      }
-    ];
-
-    const currentDate = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
-    const endDate = new Date(selectedMonth.endYear, selectedMonth.endMonth, 1);
-
-    while (currentDate <= endDate) {
-      const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-      const monthLabel = `${MONTH_NAMES[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
-
-      columns.push({
-        header: monthLabel,
-        accessorKey: `monthlyData.${monthKey}`,
-        enableSorting: true,
-        size: uniformWidth,
-        cell: ({ row }) => {
-          const station = row.original;
-          const value = station.monthlyData[monthKey];
-
-          if (value === null || value === undefined) return "-";
-
-          const formatted = value.toFixed(2);
-          const colorClass = getTableColorClass(value);
-
-          return <span className={colorClass}>{formatted}%</span>;
-        },
-      });
-
-      currentDate.setMonth(currentDate.getMonth() + 1);
-    }
-
-    columns.push({
-      header: "Detail",
-      accessorKey: "actions",
-      enableSorting: false,
-      size: uniformWidth,
-      cell: ({ row }) => {
-        const station = row.original;
-
-        return (
+      cols.push({
+        id: "actions",
+        header: "Detail",
+        accessorKey: "actions",
+        enableSorting: false,
+        size: 80,
+        cell: ({ row }) => (
           <Link
-            to={`/station-availability/${station.kode}`}
-            className="inline-flex items-center px-2 py-1 text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
+            to={`/station-availability/${row.original.kode}?year=${selectedMonth.endYear}&month=${selectedMonth.endMonth + 1}`}
+            className="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors shadow-2xs"
           >
             Detail
           </Link>
-        );
-      },
-    });
+        ),
+      });
 
-    return columns;
-  }, [selectedMonth]);
+      return cols;
+    } else {
+      // Daily Mode Columns
+      const daysInSelectedMonth = new Date(dailyMonth.year, dailyMonth.month + 1, 0).getDate();
+      const monthStr = String(dailyMonth.month + 1).padStart(2, "0");
+      const monthName = MONTH_NAMES[dailyMonth.month];
 
+      const cols: (ColumnDef<Station> & { size?: number })[] = [
+        {
+          id: "kode",
+          header: "Station Code",
+          accessorKey: "kode",
+          enableSorting: true,
+          size: 110,
+          meta: { sticky: true },
+          cell: ({ row }) => (
+            <span className="font-semibold text-gray-900 tracking-wide">
+              {row.original.kode}
+            </span>
+          ),
+        },
+      ];
+
+      for (let day = 1; day <= daysInSelectedMonth; day++) {
+        const dayStr = String(day).padStart(2, "0");
+        const dateKey = `${dailyMonth.year}-${monthStr}-${dayStr}`;
+
+        cols.push({
+          id: dateKey,
+          header: dayStr,
+          accessorKey: `dailyData.${dateKey}`,
+          enableSorting: true,
+          size: 72,
+          meta: { noPadding: true },
+          cell: ({ row }) => {
+            const value = row.original.dailyData[dateKey];
+            const { bgClass, textClass, label, tooltipText } = getHeatmapCellProps(value);
+
+            return (
+              <div
+                className={`w-full h-full min-h-[38px] flex items-center justify-center text-center px-1.5 py-2 ${bgClass} ${textClass} transition-colors select-none text-[11px] tabular-nums font-semibold`}
+                title={`${row.original.kode} (${dayStr} ${monthName} ${dailyMonth.year}): ${tooltipText}`}
+              >
+                <span className="w-full text-center">{label}</span>
+              </div>
+            );
+          },
+        });
+      }
+
+      cols.push({
+        id: "actions",
+        header: "Detail",
+        accessorKey: "actions",
+        enableSorting: false,
+        size: 80,
+        cell: ({ row }) => (
+          <Link
+            to={`/station-availability/${row.original.kode}?year=${dailyMonth.year}&month=${dailyMonth.month + 1}`}
+            className="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors shadow-2xs"
+          >
+            Detail
+          </Link>
+        ),
+      });
+
+      return cols;
+    }
+  }, [viewMode, selectedMonth, dailyMonth]);
+
+  // Dynamic CSV Export adapted to Monthly or Daily mode
   const handleDownloadCSV = () => {
-    const allMonths = new Set<string>();
+    if (filteredData.length === 0) return;
 
-    filteredData.forEach((item) => {
-      Object.keys(item.monthlyData).forEach((month) => {
-        allMonths.add(month);
-      });
-    });
-
-    const months = Array.from(allMonths).sort();
-
-    const formatMonth = (month: string) => {
-      const date = new Date(month);
-      const options = { year: 'numeric', month: 'long' } as const;
-      return date.toLocaleDateString('en-US', options);
-    };
-
-    let csvContent = 'kode,' + months.map(formatMonth).join(',') + '\n';
-
-    filteredData.forEach((item) => {
-      const values = months.map((month) => {
-        return item.monthlyData[month] !== null ? item.monthlyData[month] : '';
+    if (viewMode === "monthly") {
+      const allMonths = new Set<string>();
+      filteredData.forEach((item) => {
+        Object.keys(item.monthlyData).forEach((month) => {
+          allMonths.add(month);
+        });
       });
 
-      csvContent += `${item.kode},${values.join(',')}\n`;
-    });
+      const months = Array.from(allMonths).sort();
+      const formatMonth = (month: string) => {
+        const date = new Date(month);
+        const options = { year: "numeric", month: "long" } as const;
+        return date.toLocaleDateString("en-US", options);
+      };
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", "station_quality.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      let csvContent = "Station Code," + months.map(formatMonth).join(",") + "\n";
+
+      filteredData.forEach((item) => {
+        const values = months.map((month) => {
+          const val = item.monthlyData[month];
+          return val !== null && val !== undefined ? val.toFixed(2) : "";
+        });
+
+        csvContent += `${item.kode},${values.join(",")}\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `station_availability_monthly_${selectedMonth.startYear}-${selectedMonth.startMonth + 1}_to_${selectedMonth.endYear}-${selectedMonth.endMonth + 1}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      // Daily mode CSV export
+      const daysInSelectedMonth = new Date(dailyMonth.year, dailyMonth.month + 1, 0).getDate();
+      const monthStr = String(dailyMonth.month + 1).padStart(2, "0");
+      const dayKeys: string[] = [];
+
+      for (let day = 1; day <= daysInSelectedMonth; day++) {
+        const dayStr = String(day).padStart(2, "0");
+        dayKeys.push(`${dailyMonth.year}-${monthStr}-${dayStr}`);
+      }
+
+      let csvContent = "Station Code," + dayKeys.join(",") + "\n";
+
+      filteredData.forEach((item) => {
+        const values = dayKeys.map((dateKey) => {
+          const val = item.dailyData[dateKey];
+          return val !== null && val !== undefined ? val.toFixed(2) : "";
+        });
+
+        csvContent += `${item.kode},${values.join(",")}\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `station_availability_daily_${MONTH_NAMES[dailyMonth.month]}_${dailyMonth.year}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   return (
@@ -533,13 +876,14 @@ const StationAvailability = () => {
           Data Availability
         </h1>
 
-        <div className="bg-white p-4 rounded-xl shadow mb-6">
-          <div className="flex gap-4">
-            <div className="w-1/5 bg-gray-50 p-2 rounded-lg">
+        {/* --- Top Section: Date Range, Filters & Macro Stacked Bar Chart --- */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6">
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="lg:w-1/5 w-full bg-gray-50 p-3 rounded-lg border border-gray-100 flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="space-y-2">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-700">From:</label>
+                    <label className="text-xs font-semibold text-gray-700">From:</label>
                     <input
                       type="month"
                       value={`${selectedMonth.startYear}-${String(selectedMonth.startMonth + 1).padStart(2, "0")}`}
@@ -564,12 +908,12 @@ const StationAvailability = () => {
                           startMonth: nextStartMonth,
                         });
                       }}
-                      className="border px-2 py-1 rounded text-xs w-full"
+                      className="border border-gray-300 bg-white px-2 py-1.5 rounded text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-700">To:</label>
+                    <label className="text-xs font-semibold text-gray-700">To:</label>
                     <input
                       type="month"
                       value={`${selectedMonth.endYear}-${String(selectedMonth.endMonth + 1).padStart(2, "0")}`}
@@ -594,21 +938,22 @@ const StationAvailability = () => {
                           endMonth: nextEndMonth,
                         });
                       }}
-                      className="border px-2 py-1 rounded text-xs w-full"
+                      className="border border-gray-300 bg-white px-2 py-1.5 rounded text-xs w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
                 </div>
 
                 {apiInfo && (
-                  <div className="space-y-1 text-xs">
-                    <div className={`px-2 py-1 rounded text-center ${apiInfo.cached ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                      {apiInfo.cached ? '📋 Cache' : '🌐 Fresh'}
+                  <div className="space-y-1.5 text-xs pt-1">
+                    <div className={`px-2 py-1 rounded text-center font-medium ${apiInfo.cached ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                      {apiInfo.cached ? "📋 Cache" : "🌐 Fresh"}
                     </div>
-                    <div className="text-gray-600 text-center">📊 {apiInfo.totalStations} Stations</div>
-                    <div className="text-gray-600 text-center">📅 {apiInfo.dateRange}</div>
+                    <div className="text-gray-600 text-center font-medium">📊 {apiInfo.totalStations} Stations</div>
+                    <div className="text-gray-500 text-center text-[11px]">📅 {apiInfo.dateRange}</div>
                   </div>
                 )}
 
+                {/* Popover Filter: Availability Category, Prioritas, UPT, Provinsi, Jaringan */}
                 {Object.keys(filterConfig).length > 0 && (
                   <div className="pt-2 border-t border-gray-200">
                     <TableFilters
@@ -622,7 +967,7 @@ const StationAvailability = () => {
               </div>
             </div>
 
-            <div className="w-4/5">
+            <div className="lg:w-4/5 w-full">
               <AvailabilityChartSection
                 chartData={chartData}
                 availabilityRanges={AVAILABILITY_CONFIG.ranges}
@@ -636,19 +981,94 @@ const StationAvailability = () => {
           </div>
         </div>
 
-        <div className="bg-white p-2 rounded-xl shadow">
+        {/* --- Bottom Section: Heatmap Table, View Mode Toggle & Legend --- */}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6">
           {loading ? (
-            <p className="text-center text-gray-500 text-sm py-4">Loading data...</p>
+            <div className="flex flex-col items-center justify-center py-12 text-gray-500 text-sm">
+              <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+              <span>Memuat data ketersediaan stasiun...</span>
+            </div>
           ) : (
-            <div className="overflow-x-auto text-xs">
-              <div className="flex justify-between items-center mb-4">
+            <div className="text-xs">
+              {/* --- Toolbar: Export CSV, View Mode Toggle, Month Stepper --- */}
+              <div className="flex flex-wrap items-center gap-2.5 mb-4 pb-3 border-b border-gray-100">
                 <button
                   onClick={handleDownloadCSV}
-                  className="bg-green-600 text-white rounded-lg px-3 py-2.5 hover:bg-green-700 transition duration-300 text-sm"
+                  className="inline-flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg px-3 py-2 text-xs font-semibold shadow-2xs transition duration-200 active:scale-95"
+                  title="Unduh data tabel dalam format CSV"
                 >
-                  Export CSV
+                  <Download size={14} />
+                  <span>Ekspor CSV</span>
                 </button>
+
+                {/* Mode Toggle: Bulanan vs Harian */}
+                <div className="inline-flex p-0.5 bg-gray-100 rounded-lg border border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => handleViewModeChange("monthly")}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                      viewMode === "monthly"
+                        ? "bg-white text-blue-600 shadow-2xs font-bold"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    <Calendar size={14} className={viewMode === "monthly" ? "text-blue-600" : "text-gray-500"} />
+                    <span>Bulanan</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleViewModeChange("daily")}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                      viewMode === "daily"
+                        ? "bg-white text-blue-600 shadow-2xs font-bold"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    <CalendarDays size={14} className={viewMode === "daily" ? "text-blue-600" : "text-gray-500"} />
+                    <span>Harian</span>
+                  </button>
+                </div>
+
+                {/* Daily Month Stepper & Navigator */}
+                {viewMode === "daily" && (
+                  <div className="inline-flex items-center gap-1 bg-white border border-gray-300 rounded-lg px-2 py-1 shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={handlePrevDailyMonth}
+                      disabled={!canGoPrevMonth}
+                      className="p-1 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed transition"
+                      title="Bulan sebelumnya"
+                    >
+                      <ChevronLeft size={15} />
+                    </button>
+                    <select
+                      value={`${dailyMonth.year}-${dailyMonth.month}`}
+                      onChange={(e) => {
+                        const [year, month] = e.target.value.split("-").map(Number);
+                        handleDailyMonthSelect({ year, month });
+                      }}
+                      className="text-xs font-semibold text-gray-800 bg-transparent focus:outline-none cursor-pointer px-1 py-0.5"
+                    >
+                      {availableMonths.map((m) => (
+                        <option key={`${m.year}-${m.month}`} value={`${m.year}-${m.month}`}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleNextDailyMonth}
+                      disabled={!canGoNextMonth}
+                      className="p-1 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed transition"
+                      title="Bulan berikutnya"
+                    >
+                      <ChevronRight size={15} />
+                    </button>
+                  </div>
+                )}
               </div>
+
+              {/* DataTable with Heatmap Cells and Sticky First Column */}
               <div className="min-w-full">
                 <DataTable
                   columns={columns}
@@ -665,4 +1085,3 @@ const StationAvailability = () => {
 };
 
 export default StationAvailability;
-

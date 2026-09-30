@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import axiosServer from "../utilities/AxiosServer";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { ChevronLeft } from "lucide-react";
 
 // Configuration for availability ranges, colors, and labels per BMKG mentor guidelines:
 // - >= 97%: Sangat Baik (Hijau)
@@ -86,13 +87,53 @@ interface StationData {
 const StationAvailabilityDetail = () => {
   const { stationCode } = useParams<{ stationCode: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stationList, setStationList] = useState<string[]>([]);
   const [selectedStation, setSelectedStation] = useState<string | undefined>(stationCode);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  // Parse month and year from URL query params (defaults to current date if not provided)
+  const [selectedMonth, setSelectedMonth] = useState<number>(() => {
+    const monthParam = searchParams.get("month");
+    if (monthParam) {
+      const parsed = parseInt(monthParam, 10);
+      if (!isNaN(parsed) && parsed >= 1 && parsed <= 12) {
+        return parsed - 1; // 0-based month (0 = Jan, 11 = Dec)
+      }
+    }
+    return new Date().getMonth();
+  });
+
+  const [selectedYear, setSelectedYear] = useState<number>(() => {
+    const yearParam = searchParams.get("year");
+    if (yearParam) {
+      const parsed = parseInt(yearParam, 10);
+      if (!isNaN(parsed) && parsed >= 2000 && parsed <= 2100) {
+        return parsed;
+      }
+    }
+    return new Date().getFullYear();
+  });
+
+  // Sync state if searchParams change dynamically
+  useEffect(() => {
+    const yearParam = searchParams.get("year");
+    const monthParam = searchParams.get("month");
+    if (yearParam) {
+      const parsedYear = parseInt(yearParam, 10);
+      if (!isNaN(parsedYear) && parsedYear >= 2000 && parsedYear <= 2100) {
+        setSelectedYear(parsedYear);
+      }
+    }
+    if (monthParam) {
+      const parsedMonth = parseInt(monthParam, 10);
+      if (!isNaN(parsedMonth) && parsedMonth >= 1 && parsedMonth <= 12) {
+        setSelectedMonth(parsedMonth - 1);
+      }
+    }
+  }, [searchParams]);
 
   const handlePreviousMonth = () => {
     setSelectedMonth(prev => {
@@ -245,7 +286,16 @@ const StationAvailabilityDetail = () => {
     return (
       <MainLayout>
         <div className="p-3 bg-gray-50 min-h-screen">
-          <div className="flex items-start mb-3">
+          <div className="flex items-center gap-3 mb-3">
+            <button
+              onClick={() => navigate("/station-availability")}
+              className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition shadow-2xs"
+              title="Kembali ke Station Availability"
+            >
+              <ChevronLeft size={16} />
+              <span>Kembali</span>
+            </button>
+
             <div className="flex items-center space-x-3">
               <div
                 aria-hidden
@@ -258,7 +308,7 @@ const StationAvailabilityDetail = () => {
                 <select
                   value={selectedStation ?? ""}
                   onChange={(e) => {
-                    if (e.target.value) navigate(`/station-availability/${e.target.value}`);
+                    if (e.target.value) navigate(`/station-availability/${e.target.value}?year=${selectedYear}&month=${selectedMonth + 1}`);
                   }}
                   className="appearance-none min-w-[160px] border border-gray-300 rounded px-3 pr-10 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 >
@@ -298,7 +348,16 @@ const StationAvailabilityDetail = () => {
   return (
     <MainLayout>
       <div className="p-3 bg-gray-50 min-h-screen">
-        <div className="flex items-start mb-3">
+        <div className="flex items-center gap-3 mb-3">
+          <button
+            onClick={() => navigate("/station-availability")}
+            className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition shadow-2xs"
+            title="Kembali ke Station Availability"
+          >
+            <ChevronLeft size={16} />
+            <span>Kembali</span>
+          </button>
+
           <div className="flex items-center space-x-3">
             <div
               aria-hidden
@@ -311,7 +370,7 @@ const StationAvailabilityDetail = () => {
               <select
                 value={selectedStation ?? ""}
                 onChange={(e) => {
-                  if (e.target.value) navigate(`/station-availability/${e.target.value}`);
+                  if (e.target.value) navigate(`/station-availability/${e.target.value}?year=${selectedYear}&month=${selectedMonth + 1}`);
                 }}
                 className="appearance-none min-w-[160px] border border-gray-300 rounded px-3 pr-10 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
               >
