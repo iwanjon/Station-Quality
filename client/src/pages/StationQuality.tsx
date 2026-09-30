@@ -15,8 +15,6 @@ import axiosServer from "../utilities/AxiosServer.tsx";
 import StatusBadge from "../components/StatusBadge";
 import dayjs from "dayjs";
 import { Calendar } from "lucide-react";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -256,9 +254,9 @@ const StationQuality = () => {
   const [filterConfig, setFilterConfig] = useState<Record<string, FilterConfig>>({});
   const [globalFilter, setGlobalFilter] = useState<string>("");
 
-  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
     // Default to yesterday
-    return dayjs().subtract(1, 'day').toDate();
+    return dayjs().subtract(1, 'day').format('YYYY-MM-DD');
   });
   const [summaryLoading, setSummaryLoading] = useState<boolean>(false);
 
@@ -275,10 +273,9 @@ const StationQuality = () => {
   };
 
   // Fetch QC summary data for selected date
-  const fetchQCSummary = async (targetDate: Date) => {
+  const fetchQCSummary = async (dateStr: string) => {
     try {
       setSummaryLoading(true);
-      const dateStr = dayjs(targetDate).format('YYYY-MM-DD');
       const response = await axiosServer.get(`/api/qc/summary/${dateStr}`);
       setQcSummaryData(response.data || []);
     } catch (error) {
@@ -529,20 +526,15 @@ const StationQuality = () => {
               <div className="w-full flex flex-col items-center">
                 <h2 className="text-base font-bold text-gray-800 mb-1 text-center">Ringkasan Status Stasiun</h2>
                 
-                {/* Date Picker Filter for QC Summary */}
-                <div className="flex items-center gap-1.5 bg-white border border-gray-300 rounded-md px-2.5 py-1 text-xs shadow-xs hover:border-blue-400 transition-colors">
-                  <Calendar size={13} className="text-blue-600 shrink-0" />
-                  <span className="text-gray-500 font-medium">Tanggal:</span>
-                  <DatePicker
-                    selected={selectedDate}
-                    onChange={(date: Date | null) => {
-                      if (date) setSelectedDate(date);
-                    }}
-                    maxDate={new Date()}
-                    dateFormat="yyyy-MM-dd"
-                    popperClassName="z-[1050]"
-                    className="w-24 text-xs font-semibold text-gray-800 bg-transparent focus:outline-none cursor-pointer text-center"
-                    placeholderText="Pilih tanggal"
+                {/* Date Filter for QC Summary */}
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="text-xs font-medium text-gray-600 whitespace-nowrap">Tanggal:</span>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    max={dayjs().format("YYYY-MM-DD")}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-semibold rounded border-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                   />
                 </div>
               </div>
