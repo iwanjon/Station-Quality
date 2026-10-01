@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import axiosServer from '../utilities/AxiosServer';
@@ -53,7 +53,46 @@ const triangleIcon = (color: string) => L.divIcon({
   className: "", html: `<div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:12px solid ${color};position:relative;"><div style="position:absolute;left:-7px;top:-1px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:14px solid #222;z-index:-1;"></div></div>`,
   iconSize: [14, 14], iconAnchor: [7, 14],
 });
-const getColorByResult = (result: string | null) => "#14b8a6";
+
+/**
+ * Normalizes QC status values from English or raw API format to standardized Indonesian.
+ */
+const normalizeStatusResult = (rawResult?: string | null): string => {
+  if (!rawResult || rawResult === "No Data" || rawResult === "Mati") return "Mati";
+  if (rawResult === "Good" || rawResult === "Baik") return "Baik";
+  if (rawResult === "Fair" || rawResult === "Cukup Baik") return "Cukup Baik";
+  if (rawResult === "Poor" || rawResult === "Buruk") return "Buruk";
+  return rawResult;
+};
+
+/**
+ * Returns consistent Tailwind style class for status badges matching StationQuality.
+ */
+const getStatusBadgeStyle = (result: string): string => {
+  switch (result) {
+    case "Baik":
+      return "bg-green-100 text-green-800";
+    case "Cukup Baik":
+      return "bg-orange-100 text-orange-800";
+    case "Buruk":
+      return "bg-red-100 text-red-800";
+    case "Mati":
+      return "bg-gray-200 text-gray-800";
+    default:
+      return "bg-gray-100 text-gray-700";
+  }
+};
+
+/**
+ * Returns map marker pin color matching the active QC status.
+ */
+const getMarkerColorByResult = (result?: string | null): string => {
+  const norm = normalizeStatusResult(result);
+  if (norm === "Baik") return "#14b8a6";
+  if (norm === "Cukup Baik") return "#fb923c";
+  if (norm === "Buruk") return "#ef4444";
+  return "#374151"; // Mati / dark slate
+};
 
 function ResetMapView({ center, zoom }: { center: [number, number], zoom: number }) {
   const map = useMap();
@@ -148,12 +187,15 @@ const StationDaily = () => {
   //   console.log(`"${stationCode}" is in the list.`);
   // }
 
-  // State baru untuk Station Status table
-
-  // State baru untuk Station Status table
-  const [allStationsStatus, setAllStationsStatus] = useState<StationStatusData[]>([]); // <-- TAMBAHKAN INI
-  const [stationStatusData, setStationStatusData] = useState<StationStatusData | null>(null);
+  // State for Station Status table and header summary
+  const [allStationsStatus, setAllStationsStatus] = useState<StationStatusData[]>([]);
   const [loadingStatus, setLoadingStatus] = useState(false);
+
+  // Fast memoized lookup to avoid unnecessary re-renders and smooth performance
+  const stationStatusData = useMemo(() => {
+    if (!selectedStation || allStationsStatus.length === 0) return null;
+    return allStationsStatus.find((d) => d.code === selectedStation) || null;
+  }, [selectedStation, allStationsStatus]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
@@ -294,7 +336,7 @@ useEffect(() => {
     axiosServer.get(`/api/qc/summary/${selectedDate}/${selectedStation}`) 
       .then((res) => {
         const dataArray: StationStatusData[] = res.data || [];
-        setAllStationsStatus(dataArray); // Simpan semua data stasiun untuk tanggal ini
+        setAllStationsStatus(dataArray); // Store all stations summary data for selected date
       })
       .catch((err) => {
         console.error("Gagal mengambil data status stasiun:", err);
@@ -303,21 +345,7 @@ useEffect(() => {
       .finally(() => {
         setLoadingStatus(false);
       });
-  }, [selectedDate, selectedStation]); // <-- Hanya fetch ulang jika selectedDate berubah
-  
-  // 2. Update tabel HANYA dengan memfilter data lokal ketika stasiun berubah
-  useEffect(() => {
-    if (!selectedStation || allStationsStatus.length === 0) {
-        setStationStatusData(null);
-        return;
-    }
-    
-    // Cari data stasiun yang dipilih dari state lokal, tanpa hit API
-    const currentStationStatus = allStationsStatus.find((d) => d.code === selectedStation);
-    setStationStatusData(currentStationStatus || null);
-    
-  }, [selectedStation, allStationsStatus]); // <-- Jalan otomatis jika station ganti atau data baru selesai di-fetch
-
+  }, [selectedDate, selectedStation]);
 
   useEffect(() => { setSelectedDate(yesterday); }, [selectedStation]);
 
@@ -376,7 +404,7 @@ useEffect(() => {
               aria-hidden
               className="min-w-[80px] bg-gray-200 text-gray-800 font-bold px-3 py-2 rounded-md text-sm flex items-center justify-center"
             >
-              Station
+              Stasiun
             </div>
 
             <div className="relative">
@@ -406,23 +434,21 @@ useEffect(() => {
               </div>
             </div>
 
-            {!loadingSiteQuality && siteQualityData && (
-              <div className={
-                `min-w-[90px] rounded px-3 py-2 text-sm font-semibold flex items-center justify-center ` +
-                (siteQualityData.site_quality === 'Very Good' || siteQualityData.site_quality === 'Good'
-                  ? 'bg-green-100 text-green-800'
-                  : siteQualityData.site_quality === 'Fair'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-red-100 text-red-800')
-              }>
-                {siteQualityData.site_quality}
+            {/* Daily Quality Summary Badge (replaces Site Quality badge; hidden when loading or empty) */}
+            {!loadingStatus && stationStatusData && stationStatusData.result && (
+              <div
+                className={`min-w-[90px] rounded px-3 py-2 text-sm font-semibold flex items-center justify-center ${getStatusBadgeStyle(
+                  normalizeStatusResult(stationStatusData.result)
+                )}`}
+              >
+                {normalizeStatusResult(stationStatusData.result)}
               </div>
             )}
           </div>
           <div className="flex flex-col items-end">
             <div className="flex space-x-1 rounded bg-gray-200 p-0.5">
-              <button className="px-2 py-0.5 rounded text-xs font-medium bg-white shadow text-blue-600">Daily</button>
-              <Link to={`/station/${selectedStation}`} className="px-2 py-0.5 rounded text-xs font-medium text-gray-700 hover:bg-gray-300">Time Series</Link>
+              <button className="px-2 py-0.5 rounded text-xs font-medium bg-white shadow text-blue-600">Harian</button>
+              <Link to={`/station/${selectedStation}`} className="px-2 py-0.5 rounded text-xs font-medium text-gray-700 hover:bg-gray-300">Webicorder</Link>
             </div>
             <div className="mt-1">
               <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-semibold rounded border-none focus:ring-2 focus:ring-blue-500"/>
@@ -435,28 +461,28 @@ useEffect(() => {
             {/* Station Information */}
             <div>
               <div className="flex justify-between items-center mb-2">
-                <h2 className="text-sm font-bold text-gray-800">Station Information</h2>
+                <h2 className="text-sm font-bold text-gray-800">Informasi Stasiun</h2>
               </div>
               <table className="w-full border border-gray-300 text-xs">
                 <tbody>
                   <tr>
-                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300 w-1/2">Station Code</td>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300 w-1/2">Kode Stasiun</td>
                     <td className="px-2 py-1">{stationMeta?.kode_stasiun ?? '-'}</td>
                   </tr>
                   <tr>
-                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Group</td>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Jaringan</td>
                     <td className="px-2 py-1">{stationMeta?.jaringan ?? '-'}</td>
                   </tr>
                   <tr>
-                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Priority</td>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Prioritas</td>
                     <td className="px-2 py-1">{stationMeta?.prioritas ?? '-'}</td>
                   </tr>
                   <tr>
-                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Location</td>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Lokasi</td>
                     <td className="px-2 py-1">{stationMeta?.lokasi ?? '-'}</td>
                   </tr>
                   <tr>
-                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Province</td>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Provinsi</td>
                     <td className="px-2 py-1">{stationMeta?.provinsi ?? '-'}</td>
                   </tr>
                   <tr>
@@ -469,16 +495,16 @@ useEffect(() => {
             {/* Site Quality Analysis */}
             <div>
               <div className="flex justify-between items-center mb-2">
-                <h2 className="text-sm font-bold text-gray-800">Site Quality Analysis</h2>
+                <h2 className="text-sm font-bold text-gray-800">Analisis Kualitas Site</h2>
               </div>
               <table className="w-full border border-gray-300 text-xs">
                 <tbody>
                   <tr>
-                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300 w-1/2">Score</td>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300 w-1/2">Skor</td>
                     <td className="px-2 py-1">{siteQualityData?.score ?? '-'}</td>
                   </tr>
                   <tr>
-                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Geology</td>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Geologi</td>
                     <td className="px-2 py-1">{siteQualityData?.geology ?? '-'}</td>
                   </tr>
                   <tr>
@@ -486,7 +512,7 @@ useEffect(() => {
                     <td className="px-2 py-1">{siteQualityData?.vs30 ?? '-'}</td>
                   </tr>
                   <tr>
-                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Photovoltaic</td>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Fotovoltaik</td>
                     <td className="px-2 py-1">{siteQualityData?.photovoltaic ?? '-'}</td>
                   </tr>
                   <tr>
@@ -504,7 +530,7 @@ useEffect(() => {
           {/* Map diperkecil */}
           <div className="bg-white p-2 rounded-lg shadow-md lg:col-span-4 flex flex-col">
             <div className="flex justify-between items-center mb-2">
-              <h2 className="text-sm font-bold text-gray-800">Station Location Map</h2>
+              <h2 className="text-sm font-bold text-gray-800">Peta Lokasi Stasiun</h2>
             </div>
             <div className="w-full h-full rounded min-h-[180px] flex-1">
               {stationMeta && stationMeta.lintang && stationMeta.bujur ? (
@@ -516,7 +542,7 @@ useEffect(() => {
                 >
                   <ResetMapView center={[stationMeta.lintang, stationMeta.bujur]} zoom={16} />
                   <TileLayer attribution='&copy; <a href="https://osm.org/copyright">OSM</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/>
-                  <Marker position={[stationMeta.lintang, stationMeta.bujur]} icon={triangleIcon(getColorByResult(null))}>
+                  <Marker position={[stationMeta.lintang, stationMeta.bujur]} icon={triangleIcon(getMarkerColorByResult(stationStatusData?.result))}>
                     <Popup><b>Stasiun: {stationMeta.kode_stasiun}</b></Popup>
                   </Marker>
                 </MapContainer>
@@ -529,7 +555,7 @@ useEffect(() => {
           </div>
         </main>
 
-        <ChartGridSection title="Signal images">
+        <ChartGridSection title="Gambar Sinyal">
           {signalCharts.map((chart) => {
             const imageUrlPath = `/api/qc/data/signal/${selectedDate}/${selectedStation}/${chart.channel}`;
             return (
@@ -542,12 +568,8 @@ useEffect(() => {
           })}
         </ChartGridSection>
 
-        <ChartGridSection title="PSD Images">
+        <ChartGridSection title="Gambar PSD">
           {psdCharts.map((chart) => {
-            console.log(selectedDate)
-            console.log(selectedStation)
-            console.log(chart.channel)
-
             const imageUrlPath = `/api/qc/data/psd/${selectedDate}/${selectedStation}/${chart.channel}`;
             return (
               <ImagePanel key={`${chart.type}-${chart.channel}`}>
@@ -559,9 +581,9 @@ useEffect(() => {
           })}
         </ChartGridSection>
 
-        {/* --- TABEL BARU: Station Status Summary --- */}
+        {/* --- Station Status Summary Section --- */}
         <section className="bg-white p-2 rounded-lg shadow overflow-x-auto mb-4">
-          <h2 className="text-base font-bold mb-2 text-gray-800">Station Status Summary</h2>
+          <h2 className="text-base font-bold mb-2 text-gray-800">Ringkasan Status Stasiun</h2>
           {loadingStatus ? (
             <div className="text-center text-gray-500 py-4 text-sm">Memuat data status...</div>
           ) : stationStatusData ? (
@@ -588,11 +610,12 @@ useEffect(() => {
                     <td className="border border-gray-300 p-2 text-sm">
                       <span className={
                         `px-2 py-1 rounded text-xs font-semibold whitespace-nowrap ` + 
-                        (stationStatusData.result === 'Mati' ? 'bg-red-100 text-red-800' :
-                         stationStatusData.result === 'Buruk' ? 'bg-orange-100 text-orange-800' : 
+                        (normalizeStatusResult(stationStatusData.result) === 'Mati' ? 'bg-red-100 text-red-800' :
+                         normalizeStatusResult(stationStatusData.result) === 'Buruk' ? 'bg-orange-100 text-orange-800' : 
+                         normalizeStatusResult(stationStatusData.result) === 'Cukup Baik' ? 'bg-yellow-100 text-yellow-800' :
                          'bg-green-100 text-green-800')
                       }>
-                        {stationStatusData.result}
+                        {normalizeStatusResult(stationStatusData.result)}
                       </span>
                     </td>
                     <td className="border border-gray-300 p-2 text-sm text-left">
@@ -610,13 +633,13 @@ useEffect(() => {
             </div>
           ) : (
             <div className="text-center text-gray-500 py-4 text-sm border border-gray-300 rounded bg-gray-50">
-              No status data available
+              Tidak ada data status tersedia
             </div>
           )}
         </section>
 
         <section className="bg-white p-2 rounded-lg shadow overflow-x-auto">
-          <h2 className="text-base font-bold mb-2 text-gray-800">Channel Details</h2>
+          <h2 className="text-base font-bold mb-2 text-gray-800">Detail Saluran</h2>
           {loadingTable ? (
             <div className="text-center text-gray-500 py-4 text-sm">Memuat data...</div>
           ) : (
@@ -651,7 +674,7 @@ useEffect(() => {
                   ) : (
                     <tr>
                       <td colSpan={simpleTableColumns.length} className="text-center p-4 text-gray-500 text-sm">
-                        No data available
+                        Tidak ada data tersedia
                       </td>
                     </tr>
                   )}
