@@ -820,13 +820,13 @@ const StationMap = () => {
     networks: string[];
   } | null>(null);
 
-  // Filter states
+  // Filter states: Default to 'aktif' stations on initial load
   const [filters, setFilters] = useState<Record<string, string | string[]>>({
     provinsi: [],
     upt: [],
     tahun_instalasi: [],
     prioritas: [],
-    status: [],
+    status: ["aktif"],
     status_accelerometer: [] 
   });
 
@@ -1029,12 +1029,12 @@ const StationMap = () => {
   }, [data]);
 
   const filterConfig = useMemo(() => ({
-    provinsi: { label: "Province", type: "multi" as const, options: allOptions.provinsi },
+    provinsi: { label: "Provinsi", type: "multi" as const, options: allOptions.provinsi },
     upt: { label: "UPT", type: "multi" as const, options: allOptions.upt },
-    tahun_instalasi: { label: "Installation Year", type: "multi" as const, options: allOptions.tahun.map(String) },
-    prioritas: { label: "Priority", type: "multi" as const, options: allOptions.prioritas },
+    tahun_instalasi: { label: "Tahun Instalasi", type: "multi" as const, options: allOptions.tahun.map(String) },
+    prioritas: { label: "Prioritas", type: "multi" as const, options: allOptions.prioritas },
     status: { label: "Status", type: "multi" as const, options: allOptions.status },
-    status_accelerometer: { label: "Accel Status", type: "multi" as const, options: allOptions.status_accelerometer } 
+    status_accelerometer: { label: "Status Akselerometer", type: "multi" as const, options: allOptions.status_accelerometer } 
   }), [allOptions]);
 
   const center: [number, number] = [-2.5, 118];
@@ -1228,7 +1228,7 @@ const StationMap = () => {
             onClick={() => setFilterOpen((prev) => !prev)}
             className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
           >
-            {filterOpen ? "Hide Filters" : "Show Filters"}
+            {filterOpen ? "Sembunyikan Filter" : "Tampilkan Filter"}
           </button>
         </div>
 
@@ -1236,7 +1236,7 @@ const StationMap = () => {
         <div className="flex bg-white p-2 rounded-xl shadow">
           {filterOpen && (
             <div className="w-80 p-4 flex-shrink-0 border-r border-gray-200">
-              <h3 className="text-lg font-bold mb-4">Advanced Filter</h3>
+              <h3 className="text-lg font-bold mb-4">Filter Lanjutan</h3>
 
               {/* Global Search Input */}
               <div className="mb-4">
@@ -1244,13 +1244,13 @@ const StationMap = () => {
                   htmlFor="search-kode"
                   className="font-semibold text-sm mb-1 block"
                 >
-                  Search Data:
+                  Cari Data:
                 </label>
                 <input
                   id="search-kode"
                   type="text"
                   className="border rounded px-2 py-1 text-sm w-full"
-                  placeholder="Search station name or code..."
+                  placeholder="Cari nama atau kode stasiun..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -1270,7 +1270,7 @@ const StationMap = () => {
                   className="flex-1 px-3 py-2 rounded bg-green-600 hover:bg-green-700 text-white text-sm font-semibold"
                   onClick={handleExportCSV}
                 >
-                  Export CSV
+                  Ekspor CSV
                 </button>
               </div>
 
@@ -1278,8 +1278,8 @@ const StationMap = () => {
               <div className="mt-3 text-center">
                 <p className="text-sm text-gray-600">
                   {filteredData.length === 0
-                    ? "No stations found"
-                    : `Now showing ${filteredData.length} station${filteredData.length === 1 ? "" : "s"}`
+                    ? "Tidak ada stasiun ditemukan"
+                    : `Menampilkan ${filteredData.length} stasiun`
                   }
                 </p>
               </div>
