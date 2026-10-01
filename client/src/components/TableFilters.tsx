@@ -8,7 +8,7 @@ export type FilterType = "multi" | "date" | (string & {});
 export interface FilterConfig {
   label: string;
   type: FilterType;
-  options?: string[]; // Daftar opsi untuk tipe 'multi'
+  options?: string[]; // List of options for 'multi' type
 }
 
 interface TableFiltersProps {
@@ -16,12 +16,13 @@ interface TableFiltersProps {
   setFilters: React.Dispatch<React.SetStateAction<Record<string, any>>>;
   filterConfig: Record<string, FilterConfig>;
   closeOnClickOutside?: boolean;
+  variant?: "popover" | "inline";
 }
 
 /**
- * Batas jumlah opsi:
- * - Opsi <= 5 (Prioritas, Summary, Site Quality): Ditampilkan langsung sebagai Checkbox baris.
- * - Opsi > 5 (UPT, Jaringan, Provinsi): Ditampilkan sebagai Dropdown Searchable Checkbox.
+ * Option count threshold:
+ * - Options <= 5 (Priority, Summary, Status): Displayed directly as inline checkboxes.
+ * - Options > 5 (UPT, Network, Province, Year): Displayed as searchable dropdown checkboxes.
  */
 const COMPACT_OPTIONS_THRESHOLD = 5;
 
@@ -29,22 +30,26 @@ const TableFilters: React.FC<TableFiltersProps> = ({
   filters,
   setFilters,
   filterConfig,
-  closeOnClickOutside = true,
+  closeOnClickOutside,
+  variant = "popover",
 }) => {
-  // State popover filter utama
+  const isInline = variant === "inline";
+  const shouldCloseOutside = closeOnClickOutside !== undefined ? closeOnClickOutside : !isInline;
+
+  // Primary filter panel toggle state
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
-  // State untuk sub-dropdown yang sedang terbuka (UPT, Provinsi, dll.)
+  // Active sub-dropdown state for categories with > 5 options (UPT, Province, etc.)
   const [activeSubDropdown, setActiveSubDropdown] = useState<string | null>(null);
 
-  // State pencarian teks di dalam sub-dropdown
+  // Search queries for filtering options inside sub-dropdowns
   const [searchQueries, setSearchQueries] = useState<Record<string, string>>({});
 
-  // Ref untuk deteksi click-outside
+  // Refs for click-outside detection
   const mainFilterRef = useRef<HTMLDivElement>(null);
   const subDropdownRef = useRef<HTMLDivElement>(null);
 
-  // 1. Hitung total filter yang sedang aktif
+  // 1. Calculate active filters count
   const totalActiveFilters = useMemo(() => {
     return Object.keys(filterConfig).reduce((count, key) => {
       const val = filters[key];
@@ -54,7 +59,7 @@ const TableFilters: React.FC<TableFiltersProps> = ({
     }, 0);
   }, [filters, filterConfig]);
 
-  // 2. Kelompokkan kategori filter (Compact <= 5 vs Expandable > 5 vs Date)
+  // 2. Categorize filter configurations (Compact <= 5 vs Expandable > 5 vs Date)
   const { compactFilters, expandableFilters, dateFilters } = useMemo(() => {
     const compact: string[] = [];
     const expandable: string[] = [];
@@ -76,9 +81,9 @@ const TableFilters: React.FC<TableFiltersProps> = ({
     return { compactFilters: compact, expandableFilters: expandable, dateFilters: dates };
   }, [filterConfig]);
 
-  // 3. Click-Outside untuk menutup panel utama
+  // 3. Click-outside listener for closing main panel (active in popover mode or when explicitly set)
   useEffect(() => {
-    if (!closeOnClickOutside) return;
+    if (!shouldCloseOutside) return;
 
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -96,9 +101,9 @@ const TableFilters: React.FC<TableFiltersProps> = ({
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isOpen, closeOnClickOutside]);
+  }, [isOpen, shouldCloseOutside]);
 
-  // 4. Click-Outside untuk menutup sub-dropdown
+  // 4. Click-outside listener for closing active sub-dropdown
   useEffect(() => {
     const handleSubClickOutside = (event: MouseEvent) => {
       if (
@@ -117,7 +122,7 @@ const TableFilters: React.FC<TableFiltersProps> = ({
     };
   }, [activeSubDropdown]);
 
-  // 5. Toggle satu nilai checkbox
+  // 5. Toggle a specific checkbox option
   const handleToggleOption = (fieldKey: string, optionValue: string) => {
     const currentValues: string[] = Array.isArray(filters[fieldKey])
       ? [...filters[fieldKey]]
@@ -136,7 +141,7 @@ const TableFilters: React.FC<TableFiltersProps> = ({
     }));
   };
 
-  // 6. Pilih Semua opsi pada satu kategori
+  // 6. Select all options in a category
   const handleSelectAll = (fieldKey: string, options: string[]) => {
     setFilters((prev) => ({
       ...prev,
@@ -144,7 +149,7 @@ const TableFilters: React.FC<TableFiltersProps> = ({
     }));
   };
 
-  // 7. Hapus pilihan satu kategori
+  // 7. Clear all options in a single category
   const handleClearCategory = (fieldKey: string) => {
     setFilters((prev) => ({
       ...prev,
@@ -152,7 +157,7 @@ const TableFilters: React.FC<TableFiltersProps> = ({
     }));
   };
 
-  // 8. Reset Semua Filter
+  // 8. Reset all filters
   const handleClearAll = () => {
     const cleared = Object.keys(filterConfig).reduce(
       (acc, key) => ({
@@ -166,26 +171,34 @@ const TableFilters: React.FC<TableFiltersProps> = ({
   };
 
   return (
-    <div className="relative inline-block text-left" ref={mainFilterRef}>
-      {/* 1 TOMBOL PEMICU FILTER (Gaya Konsisten dengan Toolbar) */}
-      <div className="flex items-center gap-2">
+    <div
+      className={isInline ? "w-full text-left" : "relative inline-block text-left"}
+      ref={mainFilterRef}
+    >
+      {/* 1. FILTER TRIGGER BUTTON */}
+      <div className={`flex items-center gap-2 ${isInline ? "w-full" : ""}`}>
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded border text-sm font-medium transition-colors shadow-sm ${isOpen || totalActiveFilters > 0
-            ? "bg-blue-50 border-blue-500 text-blue-700"
-            : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
-            }`}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded border text-sm font-medium transition-colors shadow-sm ${
+            isInline ? "w-full justify-between" : ""
+          } ${
+            isOpen || totalActiveFilters > 0
+              ? "bg-blue-50 border-blue-500 text-blue-700"
+              : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
+          }`}
           title="Buka opsi filter"
         >
-          <Filter size={14} className={totalActiveFilters > 0 ? "text-blue-600" : "text-gray-500"} />
-          <span>Filter</span>
+          <div className="flex items-center gap-1.5">
+            <Filter size={14} className={totalActiveFilters > 0 ? "text-blue-600" : "text-gray-500"} />
+            <span>Filter</span>
 
-          {totalActiveFilters > 0 && (
-            <span className="bg-blue-600 text-white text-xs px-1.5 py-0.5 rounded-full font-semibold leading-none">
-              {totalActiveFilters}
-            </span>
-          )}
+            {totalActiveFilters > 0 && (
+              <span className="bg-blue-600 text-white text-xs px-1.5 py-0.5 rounded-full font-semibold leading-none">
+                {totalActiveFilters}
+              </span>
+            )}
+          </div>
 
           {isOpen ? (
             <ChevronUp size={14} className="text-gray-400 ml-0.5" />
@@ -199,7 +212,7 @@ const TableFilters: React.FC<TableFiltersProps> = ({
           <button
             type="button"
             onClick={handleClearAll}
-            className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-2.5 py-1.5 rounded text-xs font-medium transition-colors"
+            className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-2.5 py-1.5 rounded text-xs font-medium transition-colors shrink-0"
             title="Reset semua filter"
           >
             Reset
@@ -207,16 +220,22 @@ const TableFilters: React.FC<TableFiltersProps> = ({
         )}
       </div>
 
-      {/* POPOVER PANEL FILTER (Desain Simpel, Rapi & Bersih) */}
+      {/* 2. FILTER PANEL (INLINE ACCORDION OR ABSOLUTE POPOVER) */}
       {isOpen && (
-        <div className="absolute left-0 mt-1.5 z-[999] w-[92vw] sm:w-[580px] md:w-[680px] bg-white rounded-md shadow-lg border border-gray-300 p-4 transition-all">
-          {/* Header Popover */}
+        <div
+          className={
+            isInline
+              ? "w-full mt-2.5 bg-gray-50/80 rounded-lg border border-gray-200 p-3.5 transition-all shadow-sm"
+              : "absolute left-0 mt-1.5 z-[999] w-[92vw] sm:w-[580px] md:w-[680px] bg-white rounded-md shadow-lg border border-gray-300 p-4 transition-all"
+          }
+        >
+          {/* Header Panel */}
           <div className="flex items-center justify-between pb-2 mb-3 border-b border-gray-200">
-            <span className="text-sm font-semibold text-gray-800">
-              Filter Data Stasiun
+            <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+              {isInline ? "Opsi Filter" : "Filter Data Stasiun"}
             </span>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {totalActiveFilters > 0 && (
                 <button
                   type="button"
@@ -237,10 +256,20 @@ const TableFilters: React.FC<TableFiltersProps> = ({
             </div>
           </div>
 
-          <div className="space-y-4 max-h-[68vh] overflow-y-auto pr-1">
-            {/* 1. KATEGORI RINGKAS (<= 5 OPSI) - CHECKBOX ALAMI */}
+          <div
+            className={`space-y-3.5 overflow-y-auto pr-1 ${
+              isInline ? "max-h-[55vh]" : "max-h-[68vh]"
+            }`}
+          >
+            {/* 1. COMPACT CATEGORIES (<= 5 OPTIONS) - INLINE CHECKBOXES */}
             {compactFilters.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3.5 pt-1">
+              <div
+                className={
+                  isInline
+                    ? "flex flex-col gap-3 pt-0.5"
+                    : "grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3.5 pt-1"
+                }
+              >
                 {compactFilters.map((key) => {
                   const config = filterConfig[key];
                   const activeValues: string[] = filters[key] || [];
@@ -262,8 +291,8 @@ const TableFilters: React.FC<TableFiltersProps> = ({
                         )}
                       </div>
 
-                      {/* Deretan Checkbox Standar */}
-                      <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                      {/* Checkbox Items */}
+                      <div className="flex flex-wrap gap-x-3 gap-y-1.5">
                         {config.options?.map((opt) => {
                           const isChecked = activeValues.includes(opt);
 
@@ -289,16 +318,20 @@ const TableFilters: React.FC<TableFiltersProps> = ({
               </div>
             )}
 
-            {/* Garis Pemisah Antar Kategori */}
+            {/* Separator between compact and expandable filters */}
             {compactFilters.length > 0 && expandableFilters.length > 0 && (
               <div className="border-t border-gray-200"></div>
             )}
 
-            {/* 2. KATEGORI BANYAK (> 5 OPSI) - DROPDOWN CHECKBOX */}
+            {/* 2. EXPANDABLE CATEGORIES (> 5 OPTIONS) - DROPDOWN CHECKBOX */}
             {expandableFilters.length > 0 && (
               <div>
                 <div
-                  className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+                  className={
+                    isInline
+                      ? "flex flex-col gap-2.5"
+                      : "grid grid-cols-1 sm:grid-cols-3 gap-3"
+                  }
                   ref={subDropdownRef}
                 >
                   {expandableFilters.map((key) => {
@@ -307,7 +340,7 @@ const TableFilters: React.FC<TableFiltersProps> = ({
                     const isSubOpen = activeSubDropdown === key;
                     const query = (searchQueries[key] || "").toLowerCase();
 
-                    // Filter daftar opsi berdasarkan kata kunci
+                    // Filter option list based on search query
                     const filteredOptions = (config.options || []).filter((opt) =>
                       opt.toLowerCase().includes(query)
                     );
@@ -325,30 +358,41 @@ const TableFilters: React.FC<TableFiltersProps> = ({
                           )}
                         </div>
 
-                        {/* Tombol Kotak Dropdown Mirip Input Form */}
+                        {/* Dropdown trigger button */}
                         <button
                           type="button"
                           onClick={() =>
                             setActiveSubDropdown(isSubOpen ? null : key)
                           }
-                          className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs border rounded bg-white transition-colors ${activeValues.length > 0
-                            ? "border-blue-500 text-blue-800 bg-blue-50/30"
-                            : "border-gray-300 text-gray-600 hover:border-gray-400"
-                            }`}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 text-xs border rounded bg-white transition-colors ${
+                            activeValues.length > 0
+                              ? "border-blue-500 text-blue-800 bg-blue-50/30"
+                              : "border-gray-300 text-gray-600 hover:border-gray-400"
+                          }`}
                         >
                           <span className="truncate">
                             {activeValues.length > 0
                               ? activeValues.slice(0, 2).join(", ") +
-                              (activeValues.length > 2 ? "..." : "")
+                                (activeValues.length > 2 ? "..." : "")
                               : `Pilih ${config.label}...`}
                           </span>
-                          <ChevronDown size={14} className="text-gray-400 ml-1 shrink-0" />
+                          {isSubOpen ? (
+                            <ChevronUp size={14} className="text-gray-400 ml-1 shrink-0" />
+                          ) : (
+                            <ChevronDown size={14} className="text-gray-400 ml-1 shrink-0" />
+                          )}
                         </button>
 
-                        {/* Menu Popover Sub-Dropdown */}
+                        {/* Sub-dropdown Menu */}
                         {isSubOpen && (
-                          <div className="absolute left-0 top-full mt-1 w-64 bg-white border border-gray-300 rounded shadow-md p-2.5 z-[1000]">
-                            {/* Input Pencarian Sederhana */}
+                          <div
+                            className={
+                              isInline
+                                ? "w-full mt-1.5 bg-white border border-gray-300 rounded shadow-sm p-2.5"
+                                : "absolute left-0 top-full mt-1 w-64 bg-white border border-gray-300 rounded shadow-md p-2.5 z-[1000]"
+                            }
+                          >
+                            {/* Simple Search Input */}
                             <div className="relative mb-2">
                               <Search
                                 size={12}
@@ -383,7 +427,7 @@ const TableFilters: React.FC<TableFiltersProps> = ({
                               )}
                             </div>
 
-                            {/* Tombol Pintasan Pilih Semua / Hapus */}
+                            {/* Select All / Clear Selection Shortcuts */}
                             <div className="flex justify-between items-center px-1 pb-1 mb-1.5 border-b border-gray-100 text-[11px]">
                               <button
                                 type="button"
@@ -403,8 +447,8 @@ const TableFilters: React.FC<TableFiltersProps> = ({
                               </button>
                             </div>
 
-                            {/* Daftar Checkbox yang Dapat Di-scroll */}
-                            <div className="max-h-44 overflow-y-auto space-y-0.5 pr-1">
+                            {/* Scrollable Checkbox List */}
+                            <div className="max-h-40 overflow-y-auto space-y-0.5 pr-1">
                               {filteredOptions.length === 0 ? (
                                 <p className="text-center text-gray-400 text-xs py-2">
                                   Tidak ada opsi cocok
@@ -443,10 +487,16 @@ const TableFilters: React.FC<TableFiltersProps> = ({
               </div>
             )}
 
-            {/* 3. TIPE DATE (JIKA ADA KONFIGURASI TANGGAL) */}
+            {/* 3. DATE FILTER TYPE (IF CONFIGURED) */}
             {dateFilters.length > 0 && (
               <div className="pt-2 border-t border-gray-200">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div
+                  className={
+                    isInline
+                      ? "flex flex-col gap-2.5"
+                      : "grid grid-cols-1 sm:grid-cols-2 gap-3"
+                  }
+                >
                   {dateFilters.map((key) => {
                     const config = filterConfig[key];
                     return (
@@ -471,20 +521,18 @@ const TableFilters: React.FC<TableFiltersProps> = ({
             )}
           </div>
 
-          {/* ============================================================== */}
-          {/* 🏁 FOOTER POPOVER (Simpel & Selaras dengan UI Sekarang)         */}
-          {/* ============================================================== */}
-          <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-200">
+          {/* 🏁 FOOTER PANEL */}
+          <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-gray-200">
             <span className="text-xs text-gray-500">
               {totalActiveFilters > 0
                 ? `${totalActiveFilters} filter aktif`
-                : "Semua data ditampilkan"}
+                : "Semua data"}
             </span>
 
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
+              className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
             >
               Tutup
             </button>

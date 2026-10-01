@@ -540,7 +540,7 @@ const StationAvailability = () => {
     const availabilityCategories = AVAILABILITY_CONFIG.ranges.map(range => range.key);
 
     return {
-      availabilityCategory: { label: "Availability Category", type: "multi" as const, options: availabilityCategories },
+      availabilityCategory: { label: "Kategori Availability", type: "multi" as const, options: availabilityCategories },
       prioritas: { label: "Prioritas", type: "multi" as const, options: getUniqueOptions("prioritas") },
       upt_penanggung_jawab: { label: "UPT", type: "multi" as const, options: getUniqueOptions("upt_penanggung_jawab") },
       provinsi: { label: "Provinsi", type: "multi" as const, options: getUniqueOptions("provinsi") },
@@ -953,14 +953,14 @@ const StationAvailability = () => {
                   </div>
                 )}
 
-                {/* Popover Filter: Availability Category, Prioritas, UPT, Provinsi, Jaringan */}
+                {/* Inline Accordion Filter: Kategori Availability, Prioritas, UPT, Provinsi, Jaringan */}
                 {Object.keys(filterConfig).length > 0 && (
                   <div className="pt-2 border-t border-gray-200">
                     <TableFilters
                       filters={filters}
                       setFilters={setFilters}
                       filterConfig={filterConfig}
-                      closeOnClickOutside={true}
+                      variant="inline"
                     />
                   </div>
                 )}
