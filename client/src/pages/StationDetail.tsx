@@ -260,7 +260,7 @@ const StationDetail = () => {
               aria-hidden
               className="min-w-[80px] bg-gray-200 text-gray-800 font-bold px-3 py-2 rounded-md text-sm flex items-center justify-center"
             >
-              Station
+              Stasiun
             </div>
  
              <div className="relative">
@@ -306,10 +306,10 @@ const StationDetail = () => {
                   }
                 }}
               >
-                Daily
+                Harian
               </button>
               <button className="px-2 py-0.5 rounded text-xs font-medium bg-white shadow text-blue-600">
-                Time Series
+                Webicorder
               </button>
             </div>
             {/* Last 7 Days badge commented out per client request */}
