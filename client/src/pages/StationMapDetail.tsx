@@ -7,10 +7,25 @@ import L from "leaflet";
 import marker2x from "leaflet/dist/images/marker-icon-2x.png";
 import marker from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
-import { ChevronLeft, MapPin, ChevronDown, Edit, Camera } from "lucide-react";
+import {
+  ChevronLeft,
+  MapPin,
+  ChevronDown,
+  Edit,
+  Camera,
+  Upload,
+  MoreVertical,
+  Download,
+  Trash2,
+  FileText,
+  Pencil,
+  Save,
+  X,
+} from "lucide-react";
 import axiosServer from "../utilities/AxiosServer";
 import EditStationModal from "../components/EditStationModal";
 import PhotoUpload from "../components/PhotoUpload";
+import DocumentUploadModal from "../components/DocumentUploadModal";
 
 // Define StationData interface
 interface StationData {
@@ -40,6 +55,13 @@ interface StationHistory {
   paz: Record<string, unknown> | null;
   status: boolean;
   created_at: string;
+}
+
+interface DocumentItem {
+  id: number;
+  fileName: string;
+  description: string;
+  uploadedAt: string;
 }
 
 // Fix Leaflet default markers
@@ -117,6 +139,33 @@ interface Stasiun {
   updated_at: string;
 }
 
+const INITIAL_DOCUMENTS: DocumentItem[] = [
+  {
+    id: 1,
+    fileName: "site-survey.pdf",
+    description: "Dokumen hasil survei lokasi station.",
+    uploadedAt: "2026-09-10T08:30:00.000Z",
+  },
+  {
+    id: 2,
+    fileName: "station-equipment.xlsx",
+    description: "",
+    uploadedAt: "2026-09-12T10:15:00.000Z",
+  },
+  {
+    id: 3,
+    fileName: "installation-notes.docx",
+    description: "Catatan instalasi peralatan station.",
+    uploadedAt: "2026-09-15T13:45:00.000Z",
+  },
+  {
+    id: 4,
+    fileName: "sensor-metadata.xml",
+    description: "",
+    uploadedAt: "2026-09-18T09:20:00.000Z",
+  },
+];
+
 const StationMapDetail = () => {
   const { stationCode } = useParams<{ stationCode: string }>();
   const navigate = useNavigate();
@@ -136,6 +185,18 @@ const StationMapDetail = () => {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [stationSearch, setStationSearch] = useState("");
+
+  const [documents, setDocuments] = useState<DocumentItem[]>(INITIAL_DOCUMENTS);
+  const [documentsLoading, setDocumentsLoading] = useState(true);
+  const [documentsError, setDocumentsError] = useState<string | null>(null);
+  const [documentUploadModalOpen, setDocumentUploadModalOpen] = useState(false);
+  const [documentActionMenuId, setDocumentActionMenuId] = useState<number | null>(null);
+  const [editingDocumentId, setEditingDocumentId] = useState<number | null>(null);
+  const [editingDescription, setEditingDescription] = useState("");
+  const [savingDocumentId, setSavingDocumentId] = useState<number | null>(null);
+  const [deleteConfirmationDocument, setDeleteConfirmationDocument] =
+    useState<DocumentItem | null>(null);
+  const [deletingDocumentId, setDeletingDocumentId] = useState<number | null>(null);
 
   const fetchStationDetail = useCallback(async () => {
     if (!stationCode) return;
@@ -234,6 +295,16 @@ const StationMapDetail = () => {
     }
   }, [stationCode, station, fetchStationHistory]);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDocumentsLoading(false);
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, []);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -313,6 +384,128 @@ const StationMapDetail = () => {
     }
     const baseUrl = import.meta.env.VITE_SERVER_BASE_URL || 'http://localhost:5000';
     return `${baseUrl}${photoPath}`;
+  };
+
+  const formatDocumentDate = (date: string) => {
+    return new Date(date).toLocaleDateString("id-ID", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const getUniqueDocumentFileName = (
+    fileName: string,
+    existingDocuments: DocumentItem[]
+  ) => {
+    const existingNames = new Set(
+      existingDocuments.map((document) => document.fileName.toLowerCase())
+    );
+
+    if (!existingNames.has(fileName.toLowerCase())) {
+      return fileName;
+    }
+
+    const lastDot = fileName.lastIndexOf(".");
+    const baseName = lastDot > 0 ? fileName.slice(0, lastDot) : fileName;
+    const extension = lastDot > 0 ? fileName.slice(lastDot) : "";
+
+    let counter = 1;
+    let candidate = `${baseName} (${counter})${extension}`;
+
+    while (existingNames.has(candidate.toLowerCase())) {
+      counter += 1;
+      candidate = `${baseName} (${counter})${extension}`;
+    }
+
+    return candidate;
+  };
+
+  const handleDocumentUpload = async (file: File, description: string) => {
+    setDocumentsError(null);
+
+    const uniqueFileName = getUniqueDocumentFileName(file.name, documents);
+
+    const newDocument: DocumentItem = {
+      id:
+        documents.length > 0
+          ? Math.max(...documents.map((document) => document.id)) + 1
+          : 1,
+      fileName: uniqueFileName,
+      description,
+      uploadedAt: new Date().toISOString(),
+    };
+
+    setDocuments((previousDocuments) => [
+      ...previousDocuments,
+      newDocument,
+    ]);
+  };
+
+  const handleStartDescriptionEdit = (document: DocumentItem) => {
+    setDocumentActionMenuId(null);
+    setEditingDocumentId(document.id);
+    setEditingDescription(document.description);
+    setDocumentsError(null);
+  };
+
+  const handleCancelDescriptionEdit = () => {
+    setEditingDocumentId(null);
+    setEditingDescription("");
+  };
+
+  const handleSaveDescription = (documentId: number) => {
+    setDocumentsError(null);
+    setSavingDocumentId(documentId);
+
+    window.setTimeout(() => {
+      setDocuments((previousDocuments) =>
+        previousDocuments.map((document) =>
+          document.id === documentId
+            ? {
+                ...document,
+                description: editingDescription.trim(),
+              }
+            : document
+        )
+      );
+
+      setSavingDocumentId(null);
+      setEditingDocumentId(null);
+      setEditingDescription("");
+    }, 400);
+  };
+
+  const handleDocumentDownload = (document: DocumentItem) => {
+    setDocumentActionMenuId(null);
+
+    alert(
+      `Download "${document.fileName}" belum terhubung ke API. Handler frontend sudah disiapkan.`
+    );
+  };
+
+  const handleDeleteDocument = (document: DocumentItem) => {
+    setDocumentActionMenuId(null);
+    setDeleteConfirmationDocument(document);
+    setDocumentsError(null);
+  };
+
+  const confirmDeleteDocument = () => {
+    if (!deleteConfirmationDocument) return;
+
+    const documentId = deleteConfirmationDocument.id;
+
+    setDeletingDocumentId(documentId);
+    setDocumentsError(null);
+
+    window.setTimeout(() => {
+      setDocuments((previousDocuments) =>
+        previousDocuments.filter((document) => document.id !== documentId)
+      );
+
+      setDeletingDocumentId(null);
+      setDeleteConfirmationDocument(null);
+    }, 500);
   };
 
   if (loading) {
@@ -625,7 +818,96 @@ const StationMapDetail = () => {
             </div>
           </div>
 
-          {/* Bagian 2: Site Photo */}
+          {/* Bagian 2: Equipment Details dengan Station History per Channel */}
+          <div className="bg-white p-6 rounded-2xl shadow-md mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-800">Equipment Details</h2>
+              <Link
+                to={`/station-history/${stationCode}`}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium underline"
+              >
+                View Full Station History →
+              </Link>
+            </div>
+            <div className="mb-4">
+              <table className="w-full border border-gray-300 text-sm">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Station Code</th>
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Channel</th>
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Sensor Name</th>
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Digitizer Name</th>
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Total Gain</th>
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Input Unit</th>
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Sampling Rate</th>
+                    <th className="px-3 py-2 font-medium text-left">Last Updated</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historyLoading ? (
+                    <tr>
+                      <td colSpan={8} className="px-3 py-4 text-center text-gray-500">
+                        Loading equipment data...
+                      </td>
+                    </tr>
+                  ) : stationHistory.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="px-3 py-4 text-center text-gray-500">
+                        No equipment history data available
+                      </td>
+                    </tr>
+                  ) : (
+                    // Group by channel and show latest record for each channel
+                    ['SHE', 'SHN', 'SHZ'].map((channel) => {
+                      const channelData = stationHistory
+                        .filter((history: StationHistory) => history.channel === channel)
+                        .sort((a: StationHistory, b: StationHistory) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+
+                      return (
+                        <tr key={channel} className="border-t border-gray-200">
+                          <td className="px-3 py-2 font-medium text-gray-800">{station.kode_stasiun}</td>
+                          <td className="px-3 py-2 font-medium text-blue-600">{channel}</td>
+                          <td className="px-3 py-2">{channelData?.sensor_name || '-'}</td>
+                          <td className="px-3 py-2">{channelData?.digitizer_name || '-'}</td>
+                          <td className="px-3 py-2">{channelData?.total_gain || '-'}</td>
+                          <td className="px-3 py-2">{channelData?.input_unit || '-'}</td>
+                          <td className="px-3 py-2">{channelData?.sampling_rate || '-'}</td>
+                          <td className="px-3 py-2">
+                            {channelData?.created_at
+                              ? new Date(channelData.created_at).toLocaleDateString('id-ID', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })
+                              : '-'
+                            }
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex gap-4 justify-center">
+              <button
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                onClick={() => window.open(`https://geof.bmkg.go.id/fdsnws/station/1/query?network=${station.net}&station=${station.kode_stasiun}&level=response&format=sc3ml&nodata=404`, '_blank')}
+              >
+                Metadata (SC3ML)
+              </button>
+              <button
+                className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                onClick={() => window.open(`https://geof.bmkg.go.id/fdsnws/station/1/query?network=${station.net}&station=${station.kode_stasiun}&level=response&format=fdsnxml&nodata=404`, '_blank')}
+              >
+                Metadata (FDSNXML)
+              </button>
+            </div>
+          </div>
+
+          {/* Bagian 3: Site Photo */}
           <div className="bg-white p-6 rounded-2xl shadow-md mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-800">Site Photo</h2>
@@ -779,96 +1061,277 @@ const StationMapDetail = () => {
             </div>
           )}
 
-          {/* Bagian 3: Equipment Details dengan Station History per Channel */}
+          {/* Bagian 4: Documents */}
           <div className="bg-white p-6 rounded-2xl shadow-md mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Equipment Details</h2>
-              <Link
-                to={`/station-history/${stationCode}`}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium underline"
+              <h2 className="text-xl font-bold text-gray-800">Documents</h2>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setDocumentsError(null);
+                  setDocumentUploadModalOpen(true);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
               >
-                View Full Station History →
-              </Link>
+                <Upload size={16} />
+                + Upload Dokumen
+              </button>
             </div>
-            <div className="mb-4">
+
+            {documentsError && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                {documentsError}
+              </div>
+            )}
+
+            <div className="overflow-x-auto">
               <table className="w-full border border-gray-300 text-sm">
                 <thead>
                   <tr className="bg-gray-50">
-                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Station Code</th>
-                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Channel</th>
-                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Sensor Name</th>
-                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Digitizer Name</th>
-                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Total Gain</th>
-                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Input Unit</th>
-                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Sampling Rate</th>
-                    <th className="px-3 py-2 font-medium text-left">Last Updated</th>
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">
+                      Nama File
+                    </th>
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">
+                      Deskripsi
+                    </th>
+                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">
+                      Tanggal Upload
+                    </th>
+                    <th className="px-3 py-2 font-medium text-left w-24">
+                      Aksi
+                    </th>
                   </tr>
                 </thead>
+
                 <tbody>
-                  {historyLoading ? (
+                  {documentsLoading ? (
                     <tr>
-                      <td colSpan={8} className="px-3 py-4 text-center text-gray-500">
-                        Loading equipment data...
+                      <td
+                        colSpan={4}
+                        className="px-3 py-8 text-center text-gray-500"
+                      >
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                          Memuat dokumen...
+                        </div>
                       </td>
                     </tr>
-                  ) : stationHistory.length === 0 ? (
+                  ) : documents.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-3 py-4 text-center text-gray-500">
-                        No equipment history data available
+                      <td
+                        colSpan={4}
+                        className="px-3 py-10 text-center text-gray-500"
+                      >
+                        <FileText
+                          size={42}
+                          className="mx-auto mb-3 text-gray-300"
+                        />
+                        <p className="text-sm font-medium text-gray-600">
+                          Belum ada dokumen
+                        </p>
+                        <p className="mt-1 text-xs text-gray-400">
+                          Upload dokumen untuk menambahkannya ke station.
+                        </p>
                       </td>
                     </tr>
                   ) : (
-                    // Group by channel and show latest record for each channel
-                    ['SHE', 'SHN', 'SHZ'].map((channel) => {
-                      const channelData = stationHistory
-                        .filter((history: StationHistory) => history.channel === channel)
-                        .sort((a: StationHistory, b: StationHistory) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+                    documents.map((document) => (
+                      <tr
+                        key={document.id}
+                        className="border-t border-gray-200"
+                      >
+                        <td className="px-3 py-3 align-top">
+                          <div className="flex items-center gap-2">
+                            <FileText
+                              size={18}
+                              className="shrink-0 text-blue-600"
+                            />
+                            <span className="font-medium text-gray-800">
+                              {document.fileName}
+                            </span>
+                          </div>
+                        </td>
 
-                      return (
-                        <tr key={channel} className="border-t border-gray-200">
-                          <td className="px-3 py-2 font-medium text-gray-800">{station.kode_stasiun}</td>
-                          <td className="px-3 py-2 font-medium text-blue-600">{channel}</td>
-                          <td className="px-3 py-2">{channelData?.sensor_name || '-'}</td>
-                          <td className="px-3 py-2">{channelData?.digitizer_name || '-'}</td>
-                          <td className="px-3 py-2">{channelData?.total_gain || '-'}</td>
-                          <td className="px-3 py-2">{channelData?.input_unit || '-'}</td>
-                          <td className="px-3 py-2">{channelData?.sampling_rate || '-'}</td>
-                          <td className="px-3 py-2">
-                            {channelData?.created_at
-                              ? new Date(channelData.created_at).toLocaleDateString('id-ID', {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })
-                              : '-'
-                            }
-                          </td>
-                        </tr>
-                      );
-                    })
+                        <td className="px-3 py-3 align-top">
+                          {editingDocumentId === document.id ? (
+                            <div className="flex min-w-[280px] items-start gap-2">
+                              <textarea
+                                value={editingDescription}
+                                onChange={(event) =>
+                                  setEditingDescription(event.target.value)
+                                }
+                                rows={2}
+                                disabled={savingDocumentId === document.id}
+                                autoFocus
+                                className="w-full resize-none rounded-md border border-gray-300 px-2 py-1.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
+                              />
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleSaveDescription(document.id)
+                                }
+                                disabled={savingDocumentId === document.id}
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                aria-label="Save description"
+                              >
+                                {savingDocumentId === document.id ? (
+                                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                ) : (
+                                  <Save size={15} />
+                                )}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={handleCancelDescriptionEdit}
+                                disabled={savingDocumentId === document.id}
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                aria-label="Cancel description edit"
+                              >
+                                <X size={15} />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="group flex min-h-8 items-center justify-between gap-3">
+                              <span className="text-gray-600">
+                                {document.description || "-"}
+                              </span>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleStartDescriptionEdit(document)
+                                }
+                                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 opacity-0 transition-opacity hover:bg-gray-100 hover:text-blue-600 group-hover:opacity-100"
+                                aria-label={`Edit description of ${document.fileName}`}
+                              >
+                                <Pencil size={14} />
+                              </button>
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="px-3 py-3 align-top text-gray-600">
+                          {formatDocumentDate(document.uploadedAt)}
+                        </td>
+
+                        <td className="px-3 py-3 align-top">
+                          <div className="relative flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDocumentActionMenuId((currentId) =>
+                                  currentId === document.id
+                                    ? null
+                                    : document.id
+                                )
+                              }
+                              disabled={
+                                deletingDocumentId === document.id ||
+                                editingDocumentId === document.id
+                              }
+                              className="flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                              aria-label={`Actions for ${document.fileName}`}
+                            >
+                              <MoreVertical size={18} />
+                            </button>
+
+                            {documentActionMenuId === document.id && (
+                              <div className="absolute right-0 top-9 z-20 w-36 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleDocumentDownload(document)
+                                  }
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                                >
+                                  <Download size={15} />
+                                  Download
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleDeleteDocument(document)
+                                  }
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                                >
+                                  <Trash2 size={15} />
+                                  Hapus
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>
             </div>
-            <div className="flex gap-4 justify-center">
+          </div>
+        </div>
+      </MainLayout>
+
+      {/* Delete Document Confirmation */}
+      {deleteConfirmationDocument && (
+        <div
+          className="fixed inset-0 z-[1050] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => {
+            if (!deletingDocumentId) {
+              setDeleteConfirmationDocument(null);
+            }
+          }}
+        >
+          <div
+            className="w-full max-w-md rounded-xl bg-white shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="border-b border-gray-200 px-6 py-4">
+              <h2 className="text-lg font-semibold text-gray-800">
+                Hapus Dokumen
+              </h2>
+            </div>
+
+            <div className="px-6 py-5">
+              <p className="text-sm leading-6 text-gray-600">
+                Apakah Anda yakin ingin menghapus dokumen{" "}
+                <span className="font-semibold text-gray-800">
+                  "{deleteConfirmationDocument.fileName}"
+                </span>
+                ?
+              </p>
+              <p className="mt-2 text-xs text-gray-400">
+                Tindakan ini hanya menghapus data dokumen dari daftar lokal.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
               <button
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                onClick={() => window.open(`https://geof.bmkg.go.id/fdsnws/station/1/query?network=${station.net}&station=${station.kode_stasiun}&level=response&format=sc3ml&nodata=404`, '_blank')}
+                type="button"
+                onClick={() => setDeleteConfirmationDocument(null)}
+                disabled={Boolean(deletingDocumentId)}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Metadata (SC3ML)
+                Batal
               </button>
+
               <button
-                className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
-                onClick={() => window.open(`https://geof.bmkg.go.id/fdsnws/station/1/query?network=${station.net}&station=${station.kode_stasiun}&level=response&format=fdsnxml&nodata=404`, '_blank')}
+                type="button"
+                onClick={confirmDeleteDocument}
+                disabled={Boolean(deletingDocumentId)}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Metadata (FDSNXML)
+                {deletingDocumentId
+                  ? "Menghapus..."
+                  : "Hapus"}
               </button>
             </div>
           </div>
         </div>
-      </MainLayout>
+      )}
 
       {/* Edit Station Modal */}
       {station && (
@@ -915,6 +1378,13 @@ const StationMapDetail = () => {
           onClose={() => setPhotoModalOpen(false)}
         />
       )}
+
+      {/* Document Upload Modal */}
+      <DocumentUploadModal
+        isOpen={documentUploadModalOpen}
+        onClose={() => setDocumentUploadModalOpen(false)}
+        onUpload={handleDocumentUpload}
+      />
     </div>
   );
 };
