@@ -2,6 +2,7 @@
 node_modules/
 client/node_modules/
 server/node_modules/
+server/storage/documents/
 
 # Build output (jika kamu build frontend)
 client/dist/
