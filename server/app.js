@@ -2,6 +2,7 @@ import express, { json } from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import documentsRoutes from './routes/documents.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
 import signalRoutes from "./routes/signal.routes.js";
 import latencyRoutes from "./routes/latency.routes.js";
@@ -61,7 +62,7 @@ app.use(json());
       "http://202.90.198.104",           // Just the IP (fallback)
       "http://localhost:4173"
     ],
-      methods: ["GET", "POST", "PUT", "DELETE"],
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
       allowedHeaders: ["Content-Type", "Authorization"],
       credentials: true, // CRITICAL: Add this line to allow cookies to pass through
     })
@@ -85,6 +86,7 @@ app.use(requireAuth);
 app.use('/api/qc', qcRoutes);
 app.use('/api/qc', qcImageRoutes);
 app.use('/api/stasiun', stasiunRoutes);
+app.use('/api/stasiun', documentsRoutes);
 app.use('/api/station-history', stasiunHistoryRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use("/api/signal", signalRoutes);
