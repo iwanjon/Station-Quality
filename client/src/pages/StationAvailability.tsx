@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import TableFilters from "../components/TableFilters";
@@ -7,7 +7,7 @@ import DataTable from "../components/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import axiosServer from "../utilities/AxiosServer";
 import AvailabilityChartSection from "../components/station-availability/AvailabilityChartSection";
-import { ChevronLeft, ChevronRight, Download, Calendar, CalendarDays } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, Download, Calendar, CalendarDays } from "lucide-react";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -371,6 +371,28 @@ const StationAvailability = () => {
     savedDailyMonth = dm;
     setDailyMonth(dm);
   };
+
+  // State and ref for Daily Month selector dropdown with click-outside listener
+  const [isMonthDropdownOpen, setIsMonthDropdownOpen] = useState<boolean>(false);
+  const monthDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isMonthDropdownOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        monthDropdownRef.current &&
+        !monthDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsMonthDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isMonthDropdownOpen]);
 
   // Keep dailyMonth in bounds whenever selectedMonth changes
   useEffect(() => {
@@ -1029,9 +1051,12 @@ const StationAvailability = () => {
                   </button>
                 </div>
 
-                {/* Daily Month Stepper & Navigator */}
+                {/* Daily Month Stepper & Navigator with Scrollable Fixed Popover */}
                 {viewMode === "daily" && (
-                  <div className="inline-flex items-center gap-1 bg-white border border-gray-300 rounded-lg px-2 py-1 shadow-2xs">
+                  <div
+                    ref={monthDropdownRef}
+                    className="relative inline-flex items-center gap-1 bg-white border border-gray-300 rounded-lg px-1.5 py-1 shadow-2xs"
+                  >
                     <button
                       type="button"
                       onClick={handlePrevDailyMonth}
@@ -1041,20 +1066,17 @@ const StationAvailability = () => {
                     >
                       <ChevronLeft size={15} />
                     </button>
-                    <select
-                      value={`${dailyMonth.year}-${dailyMonth.month}`}
-                      onChange={(e) => {
-                        const [year, month] = e.target.value.split("-").map(Number);
-                        handleDailyMonthSelect({ year, month });
-                      }}
-                      className="text-xs font-semibold text-gray-800 bg-transparent focus:outline-none cursor-pointer px-1 py-0.5"
+
+                    <button
+                      type="button"
+                      onClick={() => setIsMonthDropdownOpen((prev) => !prev)}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-gray-800 hover:text-blue-600 px-1.5 py-0.5 rounded transition"
+                      title="Pilih bulan"
                     >
-                      {availableMonths.map((m) => (
-                        <option key={`${m.year}-${m.month}`} value={`${m.year}-${m.month}`}>
-                          {m.label}
-                        </option>
-                      ))}
-                    </select>
+                      <span>{`${MONTH_NAMES[dailyMonth.month]} ${dailyMonth.year}`}</span>
+                      <ChevronDown size={14} className="text-gray-500" />
+                    </button>
+
                     <button
                       type="button"
                       onClick={handleNextDailyMonth}
@@ -1064,6 +1086,33 @@ const StationAvailability = () => {
                     >
                       <ChevronRight size={15} />
                     </button>
+
+                    {/* Fixed Height Popover Card (~5 rows height: max-h-[160px] with smooth scrollbar) */}
+                    {isMonthDropdownOpen && (
+                      <div className="absolute left-0 top-full mt-1.5 w-44 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 max-h-[160px] overflow-y-auto scrollbar-thin">
+                        {availableMonths.map((m) => {
+                          const isSelected = m.year === dailyMonth.year && m.month === dailyMonth.month;
+                          return (
+                            <button
+                              key={`${m.year}-${m.month}`}
+                              type="button"
+                              onClick={() => {
+                                handleDailyMonthSelect({ year: m.year, month: m.month });
+                                setIsMonthDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3 py-1.5 text-xs transition flex items-center justify-between ${
+                                isSelected
+                                  ? "bg-blue-50 text-blue-600 font-bold"
+                                  : "text-gray-700 hover:bg-gray-100 font-medium"
+                              }`}
+                            >
+                              <span>{m.label}</span>
+                              {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
