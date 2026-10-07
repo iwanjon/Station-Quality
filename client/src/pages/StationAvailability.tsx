@@ -94,32 +94,34 @@ function getHeatmapCellProps(value: number | null | undefined): HeatmapCellProps
     };
   }
 
+  const roundedValue = Math.round(value);
+
   if (value >= 97) {
     return {
       bgClass: "bg-green-600",
       textClass: "text-white font-semibold",
-      label: `${value.toFixed(2)}%`,
+      label: `${roundedValue}%`,
       tooltipText: `${value.toFixed(2)}% (Sangat Baik)`,
     };
   } else if (value >= 90) {
     return {
       bgClass: "bg-yellow-400",
       textClass: "text-gray-900 font-bold", // High-contrast dark text on yellow
-      label: `${value.toFixed(2)}%`,
+      label: `${roundedValue}%`,
       tooltipText: `${value.toFixed(2)}% (Baik)`,
     };
   } else if (value >= 50) {
     return {
       bgClass: "bg-orange-500",
       textClass: "text-white font-semibold",
-      label: `${value.toFixed(2)}%`,
+      label: `${roundedValue}%`,
       tooltipText: `${value.toFixed(2)}% (Kurang Baik)`,
     };
   } else {
     return {
       bgClass: "bg-red-500",
       textClass: "text-white font-semibold",
-      label: `${value.toFixed(2)}%`,
+      label: `${roundedValue}%`,
       tooltipText: `${value.toFixed(2)}% (Buruk)`,
     };
   }
