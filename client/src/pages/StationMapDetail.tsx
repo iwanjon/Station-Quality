@@ -139,33 +139,6 @@ interface Stasiun {
   updated_at: string;
 }
 
-const INITIAL_DOCUMENTS: DocumentItem[] = [
-  {
-    id: 1,
-    fileName: "site-survey.pdf",
-    description: "Dokumen hasil survei lokasi station.",
-    uploadedAt: "2026-09-10T08:30:00.000Z",
-  },
-  {
-    id: 2,
-    fileName: "station-equipment.xlsx",
-    description: "",
-    uploadedAt: "2026-09-12T10:15:00.000Z",
-  },
-  {
-    id: 3,
-    fileName: "installation-notes.docx",
-    description: "Catatan instalasi peralatan station.",
-    uploadedAt: "2026-09-15T13:45:00.000Z",
-  },
-  {
-    id: 4,
-    fileName: "sensor-metadata.xml",
-    description: "",
-    uploadedAt: "2026-09-18T09:20:00.000Z",
-  },
-];
-
 const StationMapDetail = () => {
   const { stationCode } = useParams<{ stationCode: string }>();
   const navigate = useNavigate();
@@ -186,7 +159,7 @@ const StationMapDetail = () => {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [stationSearch, setStationSearch] = useState("");
 
-  const [documents, setDocuments] = useState<DocumentItem[]>(INITIAL_DOCUMENTS);
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [documentsLoading, setDocumentsLoading] = useState(true);
   const [documentsError, setDocumentsError] = useState<string | null>(null);
   const [documentUploadModalOpen, setDocumentUploadModalOpen] = useState(false);
@@ -269,6 +242,83 @@ const StationMapDetail = () => {
     }
   }, [stationCode]);
 
+  const getApiErrorMessage = (err: unknown, fallback: string): string => {
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "response" in err
+    ) {
+      const response = (
+        err as {
+          response?: {
+            data?: {
+              message?: string;
+              error?: string;
+            };
+          };
+        }
+      ).response;
+
+      const message = response?.data?.message || response?.data?.error;
+
+      if (message) {
+        return message;
+      }
+    }
+
+    if (err instanceof Error && err.message) {
+      return err.message;
+    }
+
+    return fallback;
+  };
+
+  const fetchDocuments = useCallback(async () => {
+    if (!stationCode) {
+      setDocuments([]);
+      setDocumentsLoading(false);
+      return;
+    }
+
+    try {
+      setDocumentsLoading(true);
+      setDocumentsError(null);
+
+      const response = await axiosServer.get(
+        `/api/stasiun/${encodeURIComponent(stationCode)}/documents`
+      );
+
+      const responseData = response.data?.data ?? response.data;
+      const documentData = Array.isArray(responseData)
+        ? responseData
+        : [];
+
+      const mappedDocuments: DocumentItem[] = documentData.map(
+        (document: {
+          document_id: number;
+          file_name: string;
+          description: string | null;
+          uploaded_at: string;
+        }) => ({
+          id: document.document_id,
+          fileName: document.file_name,
+          description: document.description || "",
+          uploadedAt: document.uploaded_at,
+        })
+      );
+
+      setDocuments(mappedDocuments);
+    } catch (err) {
+      console.error("Error fetching documents:", err);
+      setDocuments([]);
+      setDocumentsError(
+        getApiErrorMessage(err, "Gagal memuat dokumen.")
+      );
+    } finally {
+      setDocumentsLoading(false);
+    }
+  }, [stationCode]);
+
   useEffect(() => {
     // Cek apakah data station dikirim melalui state navigation
     const stationData = location.state?.station as Stasiun;
@@ -296,14 +346,13 @@ const StationMapDetail = () => {
   }, [stationCode, station, fetchStationHistory]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setDocumentsLoading(false);
-    }, 350);
+    fetchDocuments();
 
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, []);
+    setDocumentActionMenuId(null);
+    setEditingDocumentId(null);
+    setEditingDescription("");
+    setDeleteConfirmationDocument(null);
+  }, [fetchDocuments]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -394,52 +443,40 @@ const StationMapDetail = () => {
     });
   };
 
-  const getUniqueDocumentFileName = (
-    fileName: string,
-    existingDocuments: DocumentItem[]
-  ) => {
-    const existingNames = new Set(
-      existingDocuments.map((document) => document.fileName.toLowerCase())
-    );
-
-    if (!existingNames.has(fileName.toLowerCase())) {
-      return fileName;
-    }
-
-    const lastDot = fileName.lastIndexOf(".");
-    const baseName = lastDot > 0 ? fileName.slice(0, lastDot) : fileName;
-    const extension = lastDot > 0 ? fileName.slice(lastDot) : "";
-
-    let counter = 1;
-    let candidate = `${baseName} (${counter})${extension}`;
-
-    while (existingNames.has(candidate.toLowerCase())) {
-      counter += 1;
-      candidate = `${baseName} (${counter})${extension}`;
-    }
-
-    return candidate;
-  };
-
   const handleDocumentUpload = async (file: File, description: string) => {
+    if (!stationCode) {
+      throw new Error("Station code tidak tersedia.");
+    }
+
     setDocumentsError(null);
 
-    const uniqueFileName = getUniqueDocumentFileName(file.name, documents);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("description", description);
 
-    const newDocument: DocumentItem = {
-      id:
-        documents.length > 0
-          ? Math.max(...documents.map((document) => document.id)) + 1
-          : 1,
-      fileName: uniqueFileName,
-      description,
-      uploadedAt: new Date().toISOString(),
-    };
+      await axiosServer.post(
+        `/api/stasiun/${encodeURIComponent(stationCode)}/documents`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
 
-    setDocuments((previousDocuments) => [
-      ...previousDocuments,
-      newDocument,
-    ]);
+      await fetchDocuments();
+    } catch (err) {
+      console.error("Error uploading document:", err);
+
+      const message = getApiErrorMessage(
+        err,
+        "Gagal mengunggah dokumen."
+      );
+
+      setDocumentsError(message);
+      throw new Error(message);
+    }
   };
 
   const handleStartDescriptionEdit = (document: DocumentItem) => {
@@ -450,38 +487,86 @@ const StationMapDetail = () => {
   };
 
   const handleCancelDescriptionEdit = () => {
+    if (savingDocumentId !== null) return;
+
     setEditingDocumentId(null);
     setEditingDescription("");
   };
 
-  const handleSaveDescription = (documentId: number) => {
+  const handleSaveDescription = async (documentId: number) => {
+    if (!stationCode) {
+      setDocumentsError("Station code tidak tersedia.");
+      return;
+    }
+
     setDocumentsError(null);
     setSavingDocumentId(documentId);
 
-    window.setTimeout(() => {
-      setDocuments((previousDocuments) =>
-        previousDocuments.map((document) =>
-          document.id === documentId
-            ? {
-                ...document,
-                description: editingDescription.trim(),
-              }
-            : document
-        )
+    try {
+      await axiosServer.patch(
+        `/api/stasiun/${encodeURIComponent(stationCode)}/documents/${documentId}`,
+        {
+          description: editingDescription.trim(),
+        }
       );
 
-      setSavingDocumentId(null);
+      await fetchDocuments();
+
       setEditingDocumentId(null);
       setEditingDescription("");
-    }, 400);
+    } catch (err) {
+      console.error("Error updating document description:", err);
+
+      setDocumentsError(
+        getApiErrorMessage(
+          err,
+          "Gagal menyimpan deskripsi dokumen."
+        )
+      );
+    } finally {
+      setSavingDocumentId(null);
+    }
   };
 
-  const handleDocumentDownload = (document: DocumentItem) => {
-    setDocumentActionMenuId(null);
+  const handleDocumentDownload = async (document: DocumentItem) => {
+    if (!stationCode) {
+      setDocumentsError("Station code tidak tersedia.");
+      return;
+    }
 
-    alert(
-      `Download "${document.fileName}" belum terhubung ke API. Handler frontend sudah disiapkan.`
-    );
+    setDocumentActionMenuId(null);
+    setDocumentsError(null);
+
+    try {
+      const response = await axiosServer.get(
+        `/api/stasiun/${encodeURIComponent(stationCode)}/documents/${document.id}/download`,
+        {
+          responseType: "blob",
+        }
+      );
+
+      const blobUrl = window.URL.createObjectURL(
+        new Blob([response.data])
+      );
+
+      const link = window.document.createElement("a");
+      link.href = blobUrl;
+      link.download = document.fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Error downloading document:", err);
+
+      setDocumentsError(
+        getApiErrorMessage(
+          err,
+          "Gagal mengunduh dokumen."
+        )
+      );
+    }
   };
 
   const handleDeleteDocument = (document: DocumentItem) => {
@@ -490,22 +575,34 @@ const StationMapDetail = () => {
     setDocumentsError(null);
   };
 
-  const confirmDeleteDocument = () => {
-    if (!deleteConfirmationDocument) return;
+  const confirmDeleteDocument = async () => {
+    if (!deleteConfirmationDocument || !stationCode) return;
 
     const documentId = deleteConfirmationDocument.id;
 
     setDeletingDocumentId(documentId);
     setDocumentsError(null);
 
-    window.setTimeout(() => {
-      setDocuments((previousDocuments) =>
-        previousDocuments.filter((document) => document.id !== documentId)
+    try {
+      await axiosServer.delete(
+        `/api/stasiun/${encodeURIComponent(stationCode)}/documents/${documentId}`
       );
 
-      setDeletingDocumentId(null);
+      await fetchDocuments();
+
       setDeleteConfirmationDocument(null);
-    }, 500);
+    } catch (err) {
+      console.error("Error deleting document:", err);
+
+      setDocumentsError(
+        getApiErrorMessage(
+          err,
+          "Gagal menghapus dokumen."
+        )
+      );
+    } finally {
+      setDeletingDocumentId(null);
+    }
   };
 
   if (loading) {
@@ -1304,7 +1401,7 @@ const StationMapDetail = () => {
                 ?
               </p>
               <p className="mt-2 text-xs text-gray-400">
-                Tindakan ini hanya menghapus data dokumen dari daftar lokal.
+                Tindakan ini akan menghapus dokumen dari station.
               </p>
             </div>
 

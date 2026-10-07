@@ -158,7 +158,12 @@ const DocumentUploadModal = ({
       onClose();
     } catch (uploadError) {
       console.error("Document upload error:", uploadError);
-      setError("Gagal mengunggah dokumen. Silakan coba lagi.");
+
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Gagal mengunggah dokumen. Silakan coba lagi."
+      );
     } finally {
       setLoading(false);
     }
