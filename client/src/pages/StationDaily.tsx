@@ -117,7 +117,7 @@ const ImageLoader = ({ srcUrl, alt }: { srcUrl: string; alt: string }) => {
         const response = await axiosServer.get(srcUrl, {
           responseType: 'blob',
         });
-        
+
         if (isMounted) {
           const url = URL.createObjectURL(response.data);
           setObjectUrl(url);
@@ -204,20 +204,20 @@ const StationDaily = () => {
 
   useEffect(() => {
     axiosServer.get("/api/stasiun").then((res) => {
-        const stations: StationData[] = res.data || [];
-        const codes = stations.map((s) => s.kode_stasiun);
-        setStationList(codes);
+      const stations: StationData[] = res.data || [];
+      const codes = stations.map((s) => s.kode_stasiun);
+      setStationList(codes);
 
-        if (!stationCode && codes.length > 0) {
-          setSelectedStation(codes[0]);
-          navigate(`/station-daily/${codes[0]}`);
-        }
+      if (!stationCode && codes.length > 0) {
+        setSelectedStation(codes[0]);
+        navigate(`/station-daily/${codes[0]}`);
+      }
 
-        const currentStationCode = stationCode || codes[0];
-        const meta = stations.find((s) => s.kode_stasiun === currentStationCode);
-        if (meta) setStationMeta(meta);
+      const currentStationCode = stationCode || codes[0];
+      const meta = stations.find((s) => s.kode_stasiun === currentStationCode);
+      if (meta) setStationMeta(meta);
 
-      }).catch(() => setStationList([]));
+    }).catch(() => setStationList([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -226,13 +226,13 @@ const StationDaily = () => {
     setSelectedStation(stationCode);
 
     axiosServer.get("/api/stasiun").then((res) => {
-        const stations: StationData[] = res.data || [];
-        const meta = stations.find((s) => s.kode_stasiun === stationCode);
-        if (meta) setStationMeta(meta);
-      });
+      const stations: StationData[] = res.data || [];
+      const meta = stations.find((s) => s.kode_stasiun === stationCode);
+      if (meta) setStationMeta(meta);
+    });
 
   }, [stationCode]);
-  
+
   useEffect(() => {
     if (!stationCode) return;
     setLoadingSiteQuality(true);
@@ -267,28 +267,28 @@ const StationDaily = () => {
 
 
 
-useEffect(() => {
+  useEffect(() => {
     if (!selectedStation || !selectedDate) { setTableData([]); return; }
     setLoadingTable(true);
     axiosServer.get(`/api/qc/data/detail/${selectedStation}/${selectedDate}`).then((res) => {
-        const data = res.data || [];
-        const availableChannels = data.map((d: any) => d.channel);
-        
-        // Find the highest priority channel group available in the response
-        let activeChannels = ["SHE", "SHN", "SHZ"]; // Fallback default
-        for (const group of CHANNEL_PRIORITIES) {
-          if (group.some(ch => availableChannels.includes(ch))) {
-            activeChannels = group;
-            break;
-          }
-        }
+      const data = res.data || [];
+      const availableChannels = data.map((d: any) => d.channel);
 
-        const rows = activeChannels.map((ch) => {
-          const rowData = data.find((d: any) => d.channel === ch);
-          return { channel: ch, ...rowData };
-        });
-        setTableData(rows);
-      }).catch(() => setTableData([])).finally(() => setLoadingTable(false));
+      // Find the highest priority channel group available in the response
+      let activeChannels = ["SHE", "SHN", "SHZ"]; // Fallback default
+      for (const group of CHANNEL_PRIORITIES) {
+        if (group.some(ch => availableChannels.includes(ch))) {
+          activeChannels = group;
+          break;
+        }
+      }
+
+      const rows = activeChannels.map((ch) => {
+        const rowData = data.find((d: any) => d.channel === ch);
+        return { channel: ch, ...rowData };
+      });
+      setTableData(rows);
+    }).catch(() => setTableData([])).finally(() => setLoadingTable(false));
   }, [selectedStation, selectedDate]);
 
 
@@ -300,14 +300,14 @@ useEffect(() => {
   //       return; 
   //   }
   //   setLoadingStatus(true);
-    
+
   //   // TODO: GANTI URL "/api/station-status" DENGAN ENDPOINT API ACTUAL KAMU
   //   axiosServer.get(`/api/qc/summary/${selectedDate}`) 
   //     .then((res) => {
   //       const dataArray: StationStatusData[] = res.data || [];
   //       // Filter array API response mencocokkan "code" dengan selectedStation
   //       const currentStationStatus = dataArray.find((d) => d.code === selectedStation);
-        
+
   //       if (currentStationStatus) {
   //           setStationStatusData(currentStationStatus);
   //       } else {
@@ -322,19 +322,19 @@ useEffect(() => {
   //       setLoadingStatus(false);
   //     });
   // }, [selectedStation, selectedDate]);
-  
 
-// 1. Fetch data dari API HANYA ketika tanggal (selectedDate) berubah
+
+  // 1. Fetch data dari API HANYA ketika tanggal (selectedDate) berubah
   useEffect(() => {
-    if (!selectedDate) { 
-        setAllStationsStatus([]); 
-        return; 
+    if (!selectedDate) {
+      setAllStationsStatus([]);
+      return;
     }
     setLoadingStatus(true);
-    
+
     // Pastikan endpoint ini sesuai dengan API kamu yang menerima parameter tanggal
     // console.log(`/api/qc/summary/${selectedDate}/${selectedStation}`);
-    axiosServer.get(`/api/qc/summary/${selectedDate}/${selectedStation}`) 
+    axiosServer.get(`/api/qc/summary/${selectedDate}/${selectedStation}`)
       .then((res) => {
         const dataArray: StationStatusData[] = res.data || [];
         setAllStationsStatus(dataArray); // Store all stations summary data for selected date
@@ -356,7 +356,7 @@ useEffect(() => {
       navigate(`/station-daily/${newStationCode}`);
     }
   };
-  
+
   const ChartGridSection = ({ title, children }: { title: string; children: React.ReactNode; }) => (
     <div className="mb-4 bg-white p-2 rounded-lg shadow">
       <h2 className="text-base font-bold mb-2 text-gray-800">{title}</h2>
@@ -364,9 +364,17 @@ useEffect(() => {
     </div>
   );
 
-  const ImagePanel = ({ children }: { children: React.ReactNode; }) => (
+  const ImagePanel = ({
+    children,
+    heightClass = "h-[180px]",
+  }: {
+    children: React.ReactNode;
+    heightClass?: string;
+  }) => (
     <div className="flex flex-col items-center w-full h-full">
-      <div className="w-full h-[180px] flex items-center justify-center bg-gray-50 rounded-md border border-gray-300 shadow">
+      <div
+        className={`w-full ${heightClass} flex items-center justify-center bg-gray-50 rounded-md border border-gray-300 shadow p-1 transition-all`}
+      >
         {children}
       </div>
     </div>
@@ -430,7 +438,7 @@ useEffect(() => {
                   xmlns="http://www.w3.org/2000/svg"
                   aria-hidden="true"
                 >
-                  <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
             </div>
@@ -449,14 +457,14 @@ useEffect(() => {
           <div className="flex flex-col items-end">
             <div className="flex space-x-1 rounded bg-gray-200 p-0.5">
               <button className="px-2 py-0.5 rounded text-xs font-medium bg-white shadow text-blue-600">Harian</button>
-              <Link to={`/station/${selectedStation}`} className="px-2 py-0.5 rounded text-xs font-medium text-gray-700 hover:bg-gray-300">Webicorder</Link>
+              <Link to={`/station/${selectedStation}`} className="px-2 py-0.5 rounded text-xs font-medium text-gray-700 hover:bg-gray-300">Time Series</Link>
             </div>
             <div className="mt-1">
-              <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-semibold rounded border-none focus:ring-2 focus:ring-blue-500"/>
+              <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-semibold rounded border-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
         </header>
-        
+
         <main className="grid grid-cols-1 lg:grid-cols-7 gap-2">
           <div className="bg-white p-2 rounded-lg shadow-md space-y-4 lg:col-span-3 ml-2">
             {/* Station Information */}
@@ -550,7 +558,7 @@ useEffect(() => {
                   style={{ minHeight: 180, height: "100%" }}
                 >
                   <ResetMapView center={[stationMeta.lintang, stationMeta.bujur]} zoom={16} />
-                  <TileLayer attribution='&copy; <a href="https://osm.org/copyright">OSM</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"/>
+                  <TileLayer attribution='&copy; <a href="https://osm.org/copyright">OSM</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                   <Marker position={[stationMeta.lintang, stationMeta.bujur]} icon={triangleIcon(getMarkerColorByResult(stationStatusData?.result))}>
                     <Popup><b>Stasiun: {stationMeta.kode_stasiun}</b></Popup>
                   </Marker>
@@ -581,7 +589,10 @@ useEffect(() => {
           {psdCharts.map((chart) => {
             const imageUrlPath = `/api/qc/data/psd/${selectedDate}/${selectedStation}/${chart.channel}`;
             return (
-              <ImagePanel key={`${chart.type}-${chart.channel}`}>
+              <ImagePanel
+                key={`${chart.type}-${chart.channel}`}
+                heightClass="h-[360px] sm:h-[380px] lg:h-[400px]"
+              >
                 {selectedStation && selectedDate ? (
                   <ImageLoader srcUrl={imageUrlPath} alt={`PSD for ${selectedStation} on ${selectedDate} channel ${chart.channel}`} />
                 ) : (<p className="text-gray-400 text-xs">Pilih stasiun dan tanggal.</p>)}
@@ -618,11 +629,11 @@ useEffect(() => {
                     </td>
                     <td className="border border-gray-300 p-2 text-sm">
                       <span className={
-                        `px-2 py-1 rounded text-xs font-semibold whitespace-nowrap ` + 
+                        `px-2 py-1 rounded text-xs font-semibold whitespace-nowrap ` +
                         (normalizeStatusResult(stationStatusData.result) === 'Mati' ? 'bg-red-100 text-red-800' :
-                         normalizeStatusResult(stationStatusData.result) === 'Buruk' ? 'bg-orange-100 text-orange-800' : 
-                         normalizeStatusResult(stationStatusData.result) === 'Cukup Baik' ? 'bg-yellow-100 text-yellow-800' :
-                         'bg-green-100 text-green-800')
+                          normalizeStatusResult(stationStatusData.result) === 'Buruk' ? 'bg-orange-100 text-orange-800' :
+                            normalizeStatusResult(stationStatusData.result) === 'Cukup Baik' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800')
                       }>
                         {normalizeStatusResult(stationStatusData.result)}
                       </span>
@@ -668,18 +679,19 @@ useEffect(() => {
                 </thead>
                 <tbody>
                   {tableData && tableData.length > 0 ? (
-                    tableData.map((row, idx) =>{ 
+                    tableData.map((row, idx) => {
                       return (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        {simpleTableColumns.map((col) => (
-                          <td key={col.accessorKey} className="border border-gray-300 p-2 text-sm">
-                            {row && row[col.accessorKey] !== undefined && row[col.accessorKey] !== null
-                              ? row[col.accessorKey]
-                              : "-"}
-                          </td>
-                        ))}
-                      </tr>
-                    )})
+                        <tr key={idx} className="hover:bg-gray-50">
+                          {simpleTableColumns.map((col) => (
+                            <td key={col.accessorKey} className="border border-gray-300 p-2 text-sm">
+                              {row && row[col.accessorKey] !== undefined && row[col.accessorKey] !== null
+                                ? row[col.accessorKey]
+                                : "-"}
+                            </td>
+                          ))}
+                        </tr>
+                      )
+                    })
                   ) : (
                     <tr>
                       <td colSpan={simpleTableColumns.length} className="text-center p-4 text-gray-500 text-sm">
