@@ -347,11 +347,6 @@ const StationMapDetail = () => {
 
   useEffect(() => {
     fetchDocuments();
-
-    setDocumentActionMenuId(null);
-    setEditingDocumentId(null);
-    setEditingDescription("");
-    setDeleteConfirmationDocument(null);
   }, [fetchDocuments]);
 
   // Close dropdown when clicking outside
@@ -670,7 +665,7 @@ const StationMapDetail = () => {
                     </span>
                     <ChevronDown size={14} className={`text-gray-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
-                  
+
                   {dropdownOpen && (
                     <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-10 min-w-[220px]">
                       <div className="p-2 border-b border-gray-200">
@@ -779,6 +774,65 @@ const StationMapDetail = () => {
               <div className="md:col-span-2">
                 <p className="text-sm text-gray-500">Description</p>
                 <p className="font-medium text-gray-800">{station.keterangan || '-'}</p>
+              </div>
+            </div>
+            
+            {/* Kanan: Leaflet Street View */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-gray-700">Location Map</h3>
+              <div className="h-96 rounded-lg overflow-hidden border border-gray-300">
+                {station.lintang && station.bujur && !isNaN(station.lintang) && !isNaN(station.bujur) ? (
+                  <MapContainer
+                    center={[station.lintang, station.bujur]}
+                    zoom={17}
+                    style={{ height: '100%', width: '100%' }}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    <Marker position={[station.lintang, station.bujur]} icon={triangleIcon(getColorByStatus())}>
+                      <Popup>
+                        <div className="text-center">
+                          <h3 className="font-semibold">{station.kode_stasiun}</h3>
+                          <p className="text-sm text-gray-600">{station.lokasi}</p>
+                          <p className="text-sm text-gray-600">{station.provinsi}</p>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  </MapContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center bg-gray-100">
+                    <div className="text-center">
+                      <div className="text-gray-400 mb-2">
+                        <MapPin size={48} className="mx-auto" />
+                      </div>
+                      <p className="text-gray-500">Loading map...</p>
+                      <p className="text-sm text-gray-400">Coordinates not available</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="mt-4 text-end">
+                {station.lintang && station.bujur && !isNaN(station.lintang) && !isNaN(station.bujur) ? (
+                  <a
+                    href={`https://www.google.com/maps?q=${station.lintang},${station.bujur}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <MapPin size={16} />
+                    Open in Google Maps
+                  </a>
+                ) : (
+                  <button
+                    disabled
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-400 text-white text-sm font-medium rounded-lg hover:bg-gray-500 transition-colors cursor-not-allowed"
+                  >
+                    <MapPin size={16} />
+                    Open in Google Maps
+                  </button>
+                )}
               </div>
             </div>
           </div>
