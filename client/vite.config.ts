@@ -1,67 +1,3 @@
-// import { defineConfig } from 'vite'
-// import react from '@vitejs/plugin-react'
-// import tailwindcss from '@tailwindcss/vite'
-
-// // https://vite.dev/config/
-// export default defineConfig({
-//   plugins: [react(), tailwindcss()],
-//   server: {
-//     host: true, // supaya bisa diakses dari luar container
-//     watch: {
-//       usePolling: true,
-//       interval: 100, // cek perubahan setiap 100ms
-//     },
-//   },
-// })
-
-////////////////////////////////////////////////////////////////////////////////
-
-
-// import { defineConfig } from 'vite'
-// import react from '@vitejs/plugin-react'
-// import tailwindcss from '@tailwindcss/vite'
-
-// // https://vite.dev/config/
-// export default defineConfig({
-//   plugins: [react(), tailwindcss()],
-//   server: {
-//     host: true, // supaya bisa diakses dari luar container
-//     watch: {
-//       usePolling: true,
-//       interval: 100, // cek perubahan setiap 100ms
-//     },
-//   },
-//   build: {
-//     // Optional: Naikkan sedikit limit warning ke 600kB agar lebih toleran
-//     chunkSizeWarningLimit: 600, 
-//     rollupOptions: {
-//       output: {
-//         manualChunks(id) {
-//           if (id.includes('node_modules')) {
-//             // Memisahkan library yang berat ke dalam file (chunk) terpisah
-//             if (id.includes('leaflet') || id.includes('react-leaflet')) return 'vendor-leaflet';
-//             if (id.includes('recharts')) return 'vendor-recharts';
-//             if (id.includes('@tanstack')) return 'vendor-tanstack';
-//             if (id.includes('lucide-react')) return 'vendor-lucide';
-//             if (id.includes('axios')) return 'vendor-axios';
-//             if (id.includes('dayjs')) return 'vendor-dayjs';
-            
-//             // Sisa library lainnya akan digabungkan di 'vendor' umum
-//             return 'vendor';
-//           }
-//         }
-//       }
-//     }
-//   }
-// })
-
-
-
-////////////////////////////////////////////////////////////////
-
-// import { defineConfig } from 'vite'
-// import react from '@vitejs/plugin-react'
-// import tailwindcss from '@tailwindcss/vite'
 
 // // https://vite.dev/config/
 // export default defineConfig({
@@ -106,7 +42,7 @@
 //             if (id.includes('axios')) return 'vendor-axios';
 //             if (id.includes('dayjs')) return 'vendor-dayjs';
 //             if (id.includes('keen-slider')) return 'vendor-keen-slider';
-            
+
 //             // Sisa library lainnya akan digabungkan di 'vendor' umum
 //             return 'vendor';
 //           }
@@ -115,6 +51,7 @@
 //     }
 //   }
 // })
+
 
 
 ///////////////////////////////////////////////////
@@ -132,6 +69,12 @@ export default defineConfig({
     watch: {
       usePolling: true,
       interval: 100, // cek perubahan setiap 100ms
+    },
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
     },
   },
   build: {
@@ -157,7 +100,7 @@ export default defineConfig({
             if (id.includes('axios')) return 'vendor-axios';
             if (id.includes('dayjs')) return 'vendor-dayjs';
             if (id.includes('keen-slider')) return 'vendor-keen-slider';
-            
+
             // Do NOT explicitly split React core. Let Vite handle it automatically.
           }
         }

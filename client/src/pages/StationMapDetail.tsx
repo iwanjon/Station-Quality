@@ -507,6 +507,11 @@ const StationMapDetail = () => {
         `/api/stasiun/${encodeURIComponent(stationCode)}/documents/${documentId}`,
         {
           description: editingDescription.trim(),
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
         }
       );
 
@@ -528,7 +533,7 @@ const StationMapDetail = () => {
     }
   };
 
-  const handleDocumentDownload = async (document: DocumentItem) => {
+  const handleDocumentDownload = async (documentItem: DocumentItem) => {
     if (!stationCode) {
       setDocumentsError("Station code tidak tersedia.");
       return;
@@ -539,20 +544,23 @@ const StationMapDetail = () => {
 
     try {
       const response = await axiosServer.get(
-        `/api/stasiun/${encodeURIComponent(stationCode)}/documents/${document.id}/download`,
+        `/api/stasiun/${encodeURIComponent(stationCode)}/documents/${documentItem.id}/download`,
         {
           responseType: "blob",
         }
       );
 
-      const blobUrl = window.URL.createObjectURL(
-        new Blob([response.data])
-      );
+      const blob =
+        response.data instanceof Blob
+          ? response.data
+          : new Blob([response.data]);
+
+      const blobUrl = window.URL.createObjectURL(blob);
 
       const link = window.document.createElement("a");
       link.href = blobUrl;
-      link.download = document.fileName;
-      document.body.appendChild(link);
+      link.download = documentItem.fileName;
+      window.document.body.appendChild(link);
       link.click();
       link.remove();
 
@@ -668,29 +676,24 @@ const StationMapDetail = () => {
                       <div className="p-2 border-b border-gray-200">
                         <input
                           type="text"
+                          placeholder="Search station..."
                           value={stationSearch}
                           onChange={(e) => setStationSearch(e.target.value)}
-                          placeholder="Search station code..."
-                          className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          autoFocus
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
-
-                      <div className="max-h-48 overflow-y-auto">
-                        {filteredStations.length > 0 ? (
-                          filteredStations.map((station) => (
-                            <button
-                              key={station.kode_stasiun}
-                              onClick={() => handleStationSelect(station.kode_stasiun)}
-                              className="w-full text-left px-3 py-2 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 text-sm"
-                            >
-                              <div className="font-medium text-gray-900">
-                                {station.kode_stasiun}
-                              </div>
-                            </button>
-                          ))
-                        ) : (
-                          <div className="px-3 py-3 text-sm text-gray-500">
+                      <div className="max-h-60 overflow-y-auto">
+                        {filteredStations.map((station) => (
+                          <button
+                            key={station.kode_stasiun}
+                            onClick={() => handleStationSelect(station.kode_stasiun)}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 transition-colors"
+                          >
+                            {station.kode_stasiun}
+                          </button>
+                        ))}
+                        {filteredStations.length === 0 && (
+                          <div className="px-3 py-2 text-sm text-gray-500">
                             No stations found
                           </div>
                         )}
@@ -700,6 +703,7 @@ const StationMapDetail = () => {
                 </div>
               </div>
 
+              {/* Back button */}
               <button
                 onClick={() => navigate('/station-map')}
                 className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors"
@@ -710,355 +714,205 @@ const StationMapDetail = () => {
             </div>
           </div>
 
-          {/* Bagian 1: Informasi Umum dan Peta */}
+          {/* Station Information */}
           <div className="bg-white p-6 rounded-2xl shadow-md mb-6">
-            <h2 className="text-xl font-bold mb-6 text-gray-800">Station Information</h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Kiri: Informasi Umum dalam Tabel */}
-              <div className="space-y-6">
-                {/* Site Information Table */}
-                <div>
-                  <div className="flex justify-between items-center mb-3">
-                    <h4 className="text-md font-semibold text-gray-700">Site Information</h4>
-                    <button
-                      onClick={() => handleEditClick('site')}
-                      className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                    >
-                      <Edit size={14} />
-                      Edit
-                    </button>
-                  </div>
-                  <table className="w-full border border-gray-300 text-sm">
-                    <tbody>
-                      <tr>
-                        <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300 w-1/2">Station Code</td>
-                        <td className="px-3 py-2">{station.kode_stasiun}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Latitude</td>
-                        <td className="px-3 py-2">{station.lintang}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Longitude</td>
-                        <td className="px-3 py-2">{station.bujur}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Elevation</td>
-                        <td className="px-3 py-2">{station.elevasi} m</td>
-                      </tr>
-                      <tr>
-                        <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Year of Installation</td>
-                        <td className="px-3 py-2">{station.tahun_instalasi}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Group</td>
-                        <td className="px-3 py-2">{station.jaringan}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">UPT</td>
-                        <td className="px-3 py-2">{station.upt_penanggung_jawab}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-800">Station Information</h2>
+              <button
+                onClick={() => handleEditClick('site')}
+                className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+              >
+                <Edit size={16} />
+                Edit
+              </button>
+            </div>
 
-                {/* Location Information Table */}
-                <div>
-                  <div className="flex justify-between items-center mb-3">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setShowShelterInfo(false)}
-                        className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
-                          !showShelterInfo
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                      >
-                        Location Info
-                      </button>
-                      <button
-                        onClick={() => setShowShelterInfo(true)}
-                        className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
-                          showShelterInfo
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                      >
-                        Shelter Info
-                      </button>
-                    </div>
-                    <button
-                      onClick={() => handleEditClick(showShelterInfo ? 'shelter' : 'location')}
-                      className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                    >
-                      <Edit size={14} />
-                      Edit
-                    </button>
-                  </div>
-
-                  {!showShelterInfo ? (
-                    <table className="w-full border border-gray-300 text-sm">
-                      <tbody>
-                        <tr>
-                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300 w-1/2">Address</td>
-                          <td className="px-3 py-2">{station.lokasi}</td>
-                        </tr>
-                        <tr>
-                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Province</td>
-                          <td className="px-3 py-2">{station.provinsi}</td>
-                        </tr>
-                        <tr>
-                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Description</td>
-                          <td className="px-3 py-2">{station.keterangan || '-'}</td>
-                        </tr>
-                        <tr>
-                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Access Shelter</td>
-                          <td className="px-3 py-2">{station.access_shelter || '-'}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  ) : (
-                    <table className="w-full border border-gray-300 text-sm">
-                      <tbody>
-                        <tr>
-                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300 w-1/2">Shelter Type</td>
-                          <td className="px-3 py-2">{station.tipe_shelter || '-'}</td>
-                        </tr>
-                        <tr>
-                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Accelerometer</td>
-                          <td className="px-3 py-2">{station.accelerometer || '-'}</td>
-                        </tr>
-                        <tr>
-                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Communication Equipment</td>
-                          <td className="px-3 py-2">{station.digitizer_komunikasi || '-'}</td>
-                        </tr>
-                        <tr>
-                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Shelter Location</td>
-                          <td className="px-3 py-2">{station.lokasi_shelter || '-'}</td>
-                        </tr>
-                        <tr>
-                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Shelter Guard</td>
-                          <td className="px-3 py-2">{station.penjaga_shelter || '-'}</td>
-                        </tr>
-                        <tr>
-                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Assets Shelter</td>
-                          <td className="px-3 py-2">{station.assets_shelter || '-'}</td>
-                        </tr>
-                        <tr>
-                          <td className="px-3 py-2 font-medium bg-gray-50 border-r border-gray-300">Kondisi Shelter</td>
-                          <td className="px-3 py-2">{station.kondisi_shelter || '-'}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              </div>
-
-              {/* Kanan: Leaflet Street View */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h3 className="text-lg font-semibold mb-4 text-gray-700">Location Map</h3>
-                <div className="h-96 rounded-lg overflow-hidden border border-gray-300">
-                  {station.lintang && station.bujur && !isNaN(station.lintang) && !isNaN(station.bujur) ? (
-                    <MapContainer
-                      center={[station.lintang, station.bujur]}
-                      zoom={17}
-                      style={{ height: '100%', width: '100%' }}
-                    >
-                      <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      />
-                      <Marker position={[station.lintang, station.bujur]} icon={triangleIcon(getColorByStatus())}>
-                        <Popup>
-                          <div className="text-center">
-                            <h3 className="font-semibold">{station.kode_stasiun}</h3>
-                            <p className="text-sm text-gray-600">{station.lokasi}</p>
-                            <p className="text-sm text-gray-600">{station.provinsi}</p>
-                          </div>
-                        </Popup>
-                      </Marker>
-                    </MapContainer>
-                  ) : (
-                    <div className="h-full flex items-center justify-center bg-gray-100">
-                      <div className="text-center">
-                        <div className="text-gray-400 mb-2">
-                          <MapPin size={48} className="mx-auto" />
-                        </div>
-                        <p className="text-gray-500">Loading map...</p>
-                        <p className="text-sm text-gray-400">Coordinates not available</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="mt-4 text-end">
-                  {station.lintang && station.bujur && !isNaN(station.lintang) && !isNaN(station.bujur) ? (
-                    <a
-                      href={`https://www.google.com/maps?q=${station.lintang},${station.bujur}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      <MapPin size={16} />
-                      Open in Google Maps
-                    </a>
-                  ) : (
-                    <button
-                      disabled
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-gray-400 text-white text-sm font-medium rounded-lg hover:bg-gray-500 transition-colors cursor-not-allowed"
-                    >
-                      <MapPin size={16} />
-                      Open in Google Maps
-                    </button>
-                  )}
-                </div>
+                <p className="text-sm text-gray-500">Station Code</p>
+                <p className="font-medium text-gray-800">{station.kode_stasiun}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Network</p>
+                <p className="font-medium text-gray-800">{station.net}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Location</p>
+                <p className="font-medium text-gray-800">{station.lokasi}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Province</p>
+                <p className="font-medium text-gray-800">{station.provinsi}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Latitude</p>
+                <p className="font-medium text-gray-800">{station.lintang}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Longitude</p>
+                <p className="font-medium text-gray-800">{station.bujur}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Elevation</p>
+                <p className="font-medium text-gray-800">{station.elevasi}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Installation Year</p>
+                <p className="font-medium text-gray-800">{station.tahun_instalasi}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Network Type</p>
+                <p className="font-medium text-gray-800">{station.jaringan}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">PIC UPT</p>
+                <p className="font-medium text-gray-800">{station.upt_penanggung_jawab}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Status</p>
+                <p className="font-medium text-gray-800">{station.status}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Priority</p>
+                <p className="font-medium text-gray-800">{station.prioritas}</p>
+              </div>
+              <div className="md:col-span-2">
+                <p className="text-sm text-gray-500">Description</p>
+                <p className="font-medium text-gray-800">{station.keterangan || '-'}</p>
               </div>
             </div>
           </div>
 
-          {/* Bagian 2: Equipment Details dengan Station History per Channel */}
+          {/* Equipment Details */}
           <div className="bg-white p-6 rounded-2xl shadow-md mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-800">Equipment Details</h2>
               <Link
                 to={`/station-history/${stationCode}`}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium underline"
+                className="text-sm text-blue-600 hover:text-blue-800"
               >
-                View Full Station History →
+                View Station History
               </Link>
             </div>
-            <div className="mb-4">
-              <table className="w-full border border-gray-300 text-sm">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Station Code</th>
-                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Channel</th>
-                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Sensor Name</th>
-                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Digitizer Name</th>
-                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Total Gain</th>
-                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Input Unit</th>
-                    <th className="px-3 py-2 font-medium border-r border-gray-300 text-left">Sampling Rate</th>
-                    <th className="px-3 py-2 font-medium text-left">Last Updated</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {historyLoading ? (
-                    <tr>
-                      <td colSpan={8} className="px-3 py-4 text-center text-gray-500">
-                        Loading equipment data...
-                      </td>
-                    </tr>
-                  ) : stationHistory.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="px-3 py-4 text-center text-gray-500">
-                        No equipment history data available
-                      </td>
-                    </tr>
-                  ) : (
-                    // Group by channel and show latest record for each channel
-                    ['SHE', 'SHN', 'SHZ'].map((channel) => {
-                      const channelData = stationHistory
-                        .filter((history: StationHistory) => history.channel === channel)
-                        .sort((a: StationHistory, b: StationHistory) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
 
+            {historyLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            ) : stationHistory.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No equipment history available
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="border border-gray-200 px-3 py-2 text-left">Station Code</th>
+                      <th className="border border-gray-200 px-3 py-2 text-left">Channel</th>
+                      <th className="border border-gray-200 px-3 py-2 text-left">Sensor Name</th>
+                      <th className="border border-gray-200 px-3 py-2 text-left">Digitizer Name</th>
+                      <th className="border border-gray-200 px-3 py-2 text-left">Total Gain</th>
+                      <th className="border border-gray-200 px-3 py-2 text-left">Input Unit</th>
+                      <th className="border border-gray-200 px-3 py-2 text-left">Sampling Rate</th>
+                      <th className="border border-gray-200 px-3 py-2 text-left">Last Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {['SHE', 'SHN', 'SHZ'].map(channel => {
+                      const history = stationHistory.find(h => h.channel === channel);
+                      if (!history) return null;
                       return (
-                        <tr key={channel} className="border-t border-gray-200">
-                          <td className="px-3 py-2 font-medium text-gray-800">{station.kode_stasiun}</td>
-                          <td className="px-3 py-2 font-medium text-blue-600">{channel}</td>
-                          <td className="px-3 py-2">{channelData?.sensor_name || '-'}</td>
-                          <td className="px-3 py-2">{channelData?.digitizer_name || '-'}</td>
-                          <td className="px-3 py-2">{channelData?.total_gain || '-'}</td>
-                          <td className="px-3 py-2">{channelData?.input_unit || '-'}</td>
-                          <td className="px-3 py-2">{channelData?.sampling_rate || '-'}</td>
-                          <td className="px-3 py-2">
-                            {channelData?.created_at
-                              ? new Date(channelData.created_at).toLocaleDateString('id-ID', {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })
-                              : '-'
-                            }
+                        <tr key={channel}>
+                          <td className="border border-gray-200 px-3 py-2">{history.kode_stasiun}</td>
+                          <td className="border border-gray-200 px-3 py-2 font-medium">{history.channel}</td>
+                          <td className="border border-gray-200 px-3 py-2">{history.sensor_name || '-'}</td>
+                          <td className="border border-gray-200 px-3 py-2">{history.digitizer_name || '-'}</td>
+                          <td className="border border-gray-200 px-3 py-2">{history.total_gain ?? '-'}</td>
+                          <td className="border border-gray-200 px-3 py-2">{history.input_unit || '-'}</td>
+                          <td className="border border-gray-200 px-3 py-2">{history.sampling_rate ?? '-'}</td>
+                          <td className="border border-gray-200 px-3 py-2">
+                            {history.created_at
+                              ? new Date(history.created_at).toLocaleDateString('id-ID')
+                              : '-'}
                           </td>
                         </tr>
                       );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex gap-4 justify-center">
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="mt-4 flex flex-wrap gap-2">
               <button
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                onClick={() => window.open(`https://geof.bmkg.go.id/fdsnws/station/1/query?network=${station.net}&station=${station.kode_stasiun}&level=response&format=sc3ml&nodata=404`, '_blank')}
+                type="button"
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+                onClick={() => {
+                  alert("SC3ML metadata is not available for this station yet.");
+                }}
               >
-                Metadata (SC3ML)
+                SC3ML
               </button>
               <button
-                className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
-                onClick={() => window.open(`https://geof.bmkg.go.id/fdsnws/station/1/query?network=${station.net}&station=${station.kode_stasiun}&level=response&format=fdsnxml&nodata=404`, '_blank')}
+                type="button"
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+                onClick={() => {
+                  alert("FDSNXML metadata is not available for this station yet.");
+                }}
               >
-                Metadata (FDSNXML)
+                FDSNXML
               </button>
             </div>
           </div>
 
-          {/* Bagian 3: Site Photo */}
+          {/* Site Photo */}
           <div className="bg-white p-6 rounded-2xl shadow-md mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-800">Site Photo</h2>
-
               <button
                 onClick={() => setPhotoModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
               >
                 <Camera size={16} />
                 Manage Photos
               </button>
             </div>
 
-            {station.photo_shelter && getPhotoArray(station.photo_shelter).length > 0 ? (
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-sm text-gray-600 mb-3">
-                  {getPhotoArray(station.photo_shelter).length} photo
-                  {getPhotoArray(station.photo_shelter).length > 1 ? "s" : ""} uploaded
-                </p>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {getPhotoArray(station.photo_shelter)
-                    .slice(0, 4)
-                    .map((photoPath, index) => (
-                      <button
-                        key={photoPath}
-                        type="button"
-                        onClick={() => setSelectedPhoto(photoPath)}
-                        className="relative h-32 rounded-lg border border-gray-300 bg-gray-100 overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all"
-                      >
-                        <img
-                          src={getPhotoUrl(photoPath)}
-                          alt={`Site photo ${index + 1}`}
-                          className="w-full h-full object-contain"
-                          onError={(e) => {
-                            console.error("Failed to load image:", photoPath);
-                            e.currentTarget.src = "/placeholder-image.png";
-                          }}
-                        />
-                      </button>
-                    ))}
-
-                  {getPhotoArray(station.photo_shelter).length > 4 && (
+            {station.photo_shelter ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {getPhotoArray(station.photo_shelter)
+                  .slice(0, 4)
+                  .map((photoPath, index) => (
                     <button
+                      key={photoPath}
                       type="button"
-                      onClick={() => setGalleryOpen(true)}
-                      className="flex items-center justify-center w-full h-32 bg-gray-200 rounded-lg border border-gray-300 hover:bg-gray-300 transition-colors"
+                      onClick={() => setSelectedPhoto(photoPath)}
+                      className="relative h-40 rounded-lg border border-gray-300 bg-gray-100 overflow-hidden hover:ring-2 hover:ring-blue-500 transition-all"
                     >
-                      <span className="text-sm text-gray-600 font-medium">
-                        +{getPhotoArray(station.photo_shelter).length - 4} foto lainnya
-                      </span>
+                      <img
+                        src={getPhotoUrl(photoPath)}
+                        alt={`Site photo ${index + 1}`}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          console.error("Failed to load image:", photoPath);
+                          e.currentTarget.src = "/placeholder-image.png";
+                        }}
+                      />
                     </button>
-                  )}
-                </div>
+                  ))}
+
+                {getPhotoArray(station.photo_shelter).length > 4 && (
+                  <button
+                    type="button"
+                    onClick={() => setGalleryOpen(true)}
+                    className="flex items-center justify-center w-full h-32 bg-gray-200 rounded-lg border border-gray-300 hover:bg-gray-300 transition-colors"
+                  >
+                    <span className="text-sm text-gray-600 font-medium">
+                      +{getPhotoArray(station.photo_shelter).length - 4} foto lainnya
+                    </span>
+                  </button>
+                )}
               </div>
             ) : (
               <div className="text-center py-8 text-gray-500">
