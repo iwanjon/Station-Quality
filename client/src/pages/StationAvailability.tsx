@@ -439,6 +439,37 @@ const StationAvailability = () => {
           });
           memoryStationMetaMap = map;
           setStationMetaMap(map);
+
+          // Immediately enrich active stations in state with fetched metadata
+          setData((prev) => {
+            if (!prev.length) return prev;
+            return prev.map((station) => {
+              const meta = map.get(station.kode);
+              if (!meta) return station;
+              return {
+                ...station,
+                prioritas: meta.prioritas || station.prioritas || "-",
+                upt_penanggung_jawab: meta.upt_penanggung_jawab || station.upt_penanggung_jawab || "-",
+                provinsi: meta.provinsi || station.provinsi || "-",
+                jaringan: meta.jaringan || station.jaringan || "-",
+              };
+            });
+          });
+
+          // Also enrich all existing entries in RAM cache to avoid stale metadata on cache hits
+          memoryAvailabilityCache.forEach((entry) => {
+            entry.processedStations = entry.processedStations.map((station) => {
+              const meta = map.get(station.kode);
+              if (!meta) return station;
+              return {
+                ...station,
+                prioritas: meta.prioritas || station.prioritas || "-",
+                upt_penanggung_jawab: meta.upt_penanggung_jawab || station.upt_penanggung_jawab || "-",
+                provinsi: meta.provinsi || station.provinsi || "-",
+                jaringan: meta.jaringan || station.jaringan || "-",
+              };
+            });
+          });
         }
       })
       .catch((err) => {
@@ -449,7 +480,8 @@ const StationAvailability = () => {
   // Re-process stations whenever raw API data or station metadata updates
   useEffect(() => {
     if (rawApiResponse && rawApiResponse.data) {
-      const processed = processStationData(rawApiResponse, selectedMonth, stationMetaMap);
+      const currentMeta = stationMetaMap.size > 0 ? stationMetaMap : (memoryStationMetaMap || new Map());
+      const processed = processStationData(rawApiResponse, selectedMonth, currentMeta);
       setData(processed);
     } else if (data.length > 0 && stationMetaMap.size > 0) {
       // If data is already populated, enrich with updated metadata
@@ -469,13 +501,25 @@ const StationAvailability = () => {
     }
   }, [stationMetaMap, rawApiResponse, selectedMonth]);
 
-  // Active filters: Availability Category, Prioritas, UPT, Provinsi, Jaringan (Station Code removed)
-  const [filters, setFilters] = useState<Record<string, string[]>>({});
+  // Active filters: Availability Category, Prioritas, UPT, Provinsi, Jaringan (persisted in sessionStorage)
+  const [filters, setFilters] = useState<Record<string, string[]>>(() => {
+    try {
+      const saved = sessionStorage.getItem("stationAvailabilityFilters");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to parse saved availability filters:", e);
+    }
+    return {};
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem("stationAvailabilityFilters", JSON.stringify(filters));
+  }, [filters]);
 
   const [chartType, setChartType] = useState<"stacked" | "line" | "grouped">("stacked");
   const [metric, setMetric] = useState<"count" | "percentage">("percentage");
 
-  // Filtered stations based on active filter criteria
+  // Filtered stations based on active filter criteria (applies specifically to table)
   const filteredData = useMemo(() => {
     return data.filter((item) => {
       // 1. Availability Category filter
@@ -508,7 +552,7 @@ const StationAvailability = () => {
     });
   }, [filters, data]);
 
-  // Chart data reactive to filteredData (Monthly macro summary)
+  // Chart data reactive to filteredData (synced with active filter selection)
   const chartData = useMemo(() => {
     if (!filteredData.length) return [];
 
@@ -615,8 +659,9 @@ const StationAvailability = () => {
           setRawApiResponse(apiResponse);
           setApiInfo(newApiInfo);
 
-          // Process and set stations immediately
-          const processed = processStationData(apiResponse, selectedMonth, stationMetaMap);
+          // Process and set stations immediately using freshest metadata available
+          const currentMeta = stationMetaMap.size > 0 ? stationMetaMap : (memoryStationMetaMap || new Map());
+          const processed = processStationData(apiResponse, selectedMonth, currentMeta);
           setData(processed);
 
           // Store in in-memory RAM cache (persists throughout browser session with no 5MB limit)
@@ -972,7 +1017,9 @@ const StationAvailability = () => {
                     <div className={`px-2 py-1 rounded text-center font-medium ${apiInfo.cached ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
                       {apiInfo.cached ? "📋 Cache" : "🌐 Fresh"}
                     </div>
-                    <div className="text-gray-600 text-center font-medium">📊 {apiInfo.totalStations} Stasiun</div>
+                    <div className="text-gray-600 text-center font-medium">
+                      📊 {filteredData.length !== data.length ? `${filteredData.length} / ${data.length}` : apiInfo.totalStations} Stasiun
+                    </div>
                     <div className="text-gray-500 text-center text-[11px]">📅 {apiInfo.dateRange}</div>
                   </div>
                 )}
