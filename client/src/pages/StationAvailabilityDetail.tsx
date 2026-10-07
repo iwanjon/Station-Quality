@@ -416,7 +416,7 @@ const StationAvailabilityDetail = () => {
             <div className="h-80">
               {chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="date"
@@ -424,7 +424,7 @@ const StationAvailabilityDetail = () => {
                       interval={0}
                       angle={-45}
                       textAnchor="end"
-                      height={60}
+                      height={65}
                       tickFormatter={(value) => {
                         // value is date string like "2025-10-01"
                         const dateStr = value as string;
@@ -434,7 +434,7 @@ const StationAvailabilityDetail = () => {
                           day: '2-digit'
                         });
                       }}
-                      label={{ value: 'Tanggal', position: 'insideBottom', offset: -5 }}
+                      label={{ value: 'Tanggal', position: 'insideBottom', offset: -10 }}
                     />
                     <YAxis
                       domain={[0, 100]}
