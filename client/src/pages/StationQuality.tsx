@@ -15,6 +15,7 @@ import axiosServer from "../utilities/AxiosServer.tsx";
 import StatusBadge from "../components/StatusBadge";
 import dayjs from "dayjs";
 import { Calendar } from "lucide-react";
+import { SITE_QUALITY_MAP, getSiteQualityBadgeStyle } from "../utilities/siteQuality";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -25,15 +26,6 @@ const STATUS_CONFIG: { [key: string]: { label: string; color: string; textColor:
   "Mati": { label: "Mati", color: "#374151", textColor: "text-white" },
   "No Data": { label: "No Data", color: "#374151", textColor: "text-white" },
   "default": { label: "N/A", color: "#9ca3af", textColor: "text-white" },
-};
-
-// Mapping dictionary for Site Quality from external API (English) to standardized Indonesian
-const SITE_QUALITY_MAP: Record<string, string> = {
-  "Very Good": "Sangat Baik",
-  "Good": "Baik",
-  "Fair": "Cukup Baik",
-  "Poor": "Buruk",
-  "-": "-",
 };
 
 interface QCSummary {
@@ -486,11 +478,7 @@ const StationQuality = () => {
       header: "Site Quality",
       cell: ({ getValue }) => {
         const val = getValue<string>();
-        let colorClass = "bg-gray-100 text-gray-700";
-        if (val === "Sangat Baik") colorClass = "bg-emerald-100 text-emerald-800";
-        else if (val === "Baik") colorClass = "bg-green-100 text-green-800";
-        else if (val === "Cukup Baik") colorClass = "bg-orange-100 text-orange-800";
-        else if (val === "Buruk") colorClass = "bg-red-100 text-red-800";
+        const colorClass = getSiteQualityBadgeStyle(val);
 
         return (
           <span className={`block w-full py-1 rounded-sm text-[11px] font-bold text-center ${colorClass}`}>

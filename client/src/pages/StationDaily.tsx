@@ -6,6 +6,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import dayjs from "dayjs";
+import { normalizeSiteQuality, getSiteQualityBadgeStyle } from '../utilities/siteQuality';
 
 // Interface untuk data stasiun yang lebih lengkap
 interface StationData {
@@ -500,8 +501,16 @@ useEffect(() => {
               <table className="w-full border border-gray-300 text-xs">
                 <tbody>
                   <tr>
-                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300 w-1/2">Skor</td>
-                    <td className="px-2 py-1">{siteQualityData?.score ?? '-'}</td>
+                    <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300 w-1/2">Site Akhir</td>
+                    <td className="px-2 py-1">
+                      {siteQualityData?.site_quality && normalizeSiteQuality(siteQualityData.site_quality) !== "-" ? (
+                        <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${getSiteQualityBadgeStyle(normalizeSiteQuality(siteQualityData.site_quality))}`}>
+                          {normalizeSiteQuality(siteQualityData.site_quality)}
+                        </span>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
                   </tr>
                   <tr>
                     <td className="px-2 py-1 font-medium bg-gray-50 border-r border-gray-300">Geologi</td>
