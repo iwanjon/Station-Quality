@@ -10,8 +10,8 @@ import AvailabilityChartSection from "../components/station-availability/Availab
 import { ChevronLeft, ChevronRight, ChevronDown, Download, Calendar, CalendarDays } from "lucide-react";
 
 const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ];
 
 // Configuration for availability ranges, colors, and labels per BMKG mentor guidelines:
@@ -691,7 +691,7 @@ const StationAvailability = () => {
       const cols: (ColumnDef<Station> & { size?: number })[] = [
         {
           id: "kode",
-          header: "Station Code",
+          header: "Kode Stasiun",
           accessorKey: "kode",
           enableSorting: true,
           size: 110,
@@ -762,7 +762,7 @@ const StationAvailability = () => {
       const cols: (ColumnDef<Station> & { size?: number })[] = [
         {
           id: "kode",
-          header: "Station Code",
+          header: "Kode Stasiun",
           accessorKey: "kode",
           enableSorting: true,
           size: 110,
@@ -838,10 +838,10 @@ const StationAvailability = () => {
       const formatMonth = (month: string) => {
         const date = new Date(month);
         const options = { year: "numeric", month: "long" } as const;
-        return date.toLocaleDateString("en-US", options);
+        return date.toLocaleDateString("id-ID", options);
       };
 
-      let csvContent = "Station Code," + months.map(formatMonth).join(",") + "\n";
+      let csvContent = "Kode Stasiun," + months.map(formatMonth).join(",") + "\n";
 
       filteredData.forEach((item) => {
         const values = months.map((month) => {
@@ -871,7 +871,7 @@ const StationAvailability = () => {
         dayKeys.push(`${dailyMonth.year}-${monthStr}-${dayStr}`);
       }
 
-      let csvContent = "Station Code," + dayKeys.join(",") + "\n";
+      let csvContent = "Kode Stasiun," + dayKeys.join(",") + "\n";
 
       filteredData.forEach((item) => {
         const values = dayKeys.map((dateKey) => {
@@ -907,7 +907,7 @@ const StationAvailability = () => {
               <div className="space-y-3">
                 <div className="space-y-2">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-gray-700">From:</label>
+                    <label className="text-xs font-semibold text-gray-700">Dari:</label>
                     <input
                       type="month"
                       value={`${selectedMonth.startYear}-${String(selectedMonth.startMonth + 1).padStart(2, "0")}`}
@@ -937,7 +937,7 @@ const StationAvailability = () => {
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-gray-700">To:</label>
+                    <label className="text-xs font-semibold text-gray-700">Sampai:</label>
                     <input
                       type="month"
                       value={`${selectedMonth.endYear}-${String(selectedMonth.endMonth + 1).padStart(2, "0")}`}
@@ -972,7 +972,7 @@ const StationAvailability = () => {
                     <div className={`px-2 py-1 rounded text-center font-medium ${apiInfo.cached ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
                       {apiInfo.cached ? "📋 Cache" : "🌐 Fresh"}
                     </div>
-                    <div className="text-gray-600 text-center font-medium">📊 {apiInfo.totalStations} Stations</div>
+                    <div className="text-gray-600 text-center font-medium">📊 {apiInfo.totalStations} Stasiun</div>
                     <div className="text-gray-500 text-center text-[11px]">📅 {apiInfo.dateRange}</div>
                   </div>
                 )}
