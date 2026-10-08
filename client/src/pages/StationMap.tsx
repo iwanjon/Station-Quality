@@ -685,7 +685,7 @@
 import { useState, useEffect, useMemo } from "react";
 import MainLayout from "../layouts/MainLayout";
 import axiosServer from "../utilities/AxiosServer";
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import marker2x from "leaflet/dist/images/marker-icon-2x.png";
@@ -773,6 +773,40 @@ const getColorByStatus = (): string => {
   return '#6b7280'; // gray for all stations
 };
 
+const getMarkerIcon = (station: Stasiun, selectedStation: Stasiun | null) => {
+  if (selectedStation?.stasiun_id === station.stasiun_id) {
+    return L.divIcon({
+      className: "",
+      html: `
+        <div style="
+          width: 0;
+          height: 0;
+          border-left: 8px solid transparent;
+          border-right: 8px solid transparent;
+          border-bottom: 16px solid #2563eb;
+          position: relative;
+        ">
+          <div style="
+            position: absolute;
+            left: -9px;
+            top: -2px;
+            width: 0;
+            height: 0;
+            border-left: 9px solid transparent;
+            border-right: 9px solid transparent;
+            border-bottom: 18px solid #111827;
+            z-index: -1;
+          "></div>
+        </div>
+      `,
+      iconSize: [18, 18],
+      iconAnchor: [9, 18],
+    });
+  }
+
+  return triangleIcon(getColorByStatus());
+};
+
 const hasAccessorKey = (
   column: ColumnDef<Stasiun>
 ): column is ColumnDef<Stasiun> & { accessorKey: string } => {
@@ -803,22 +837,6 @@ const MapClickHandler = ({
       onMapClick();
     },
   });
-
-  return null;
-};
-
-const MapResizeHandler = ({ filterOpen }: { filterOpen: boolean }) => {
-  const map = useMap();
-
-  useEffect(() => {
-    const frameId = window.requestAnimationFrame(() => {
-      map.invalidateSize();
-    });
-
-    return () => {
-      window.cancelAnimationFrame(frameId);
-    };
-  }, [filterOpen, map]);
 
   return null;
 };
@@ -1073,7 +1091,15 @@ const StationMap = () => {
       header: "Station Code",
       accessorKey: "kode_stasiun",
       enableSorting: true,
-      cell: (info) => info.getValue(),
+      cell: (info) => (
+        <button
+          type="button"
+          onClick={() => setSelectedStation(info.row.original)}
+          className="text-blue-600 hover:underline font-medium"
+        >
+          {info.getValue<string>()}
+        </button>
+      ),
     },
     {
       header: "Accelerometer (Sensor)",
@@ -1091,7 +1117,15 @@ const StationMap = () => {
       header: "Location",
       accessorKey: "lokasi",
       enableSorting: true,
-      cell: (info) => info.getValue(),
+      cell: (info) => (
+        <button
+          type="button"
+          onClick={() => setSelectedStation(info.row.original)}
+          className="text-blue-600 hover:underline font-medium text-left"
+        >
+          {info.getValue<string>()}
+        </button>
+      ),
     },
     {
       header: "Province",
@@ -1310,7 +1344,6 @@ const StationMap = () => {
               style={{ height: "80vh", width: "100%" }}
             >
               <MapClickHandler onMapClick={() => setSelectedStation(null)} />
-              <MapResizeHandler filterOpen={filterOpen} />
 
               <TileLayer
                 attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
@@ -1323,7 +1356,7 @@ const StationMap = () => {
                     <Marker
                       key={station.stasiun_id}
                       position={[station.lintang, station.bujur]}
-                      icon={triangleIcon(getColorByStatus())}
+                      icon={getMarkerIcon(station, selectedStation)}
                       bubblingMouseEvents={false}
                       eventHandlers={{
                         click: () => setSelectedStation(station),
