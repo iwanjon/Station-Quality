@@ -540,7 +540,14 @@ const StationQuality = () => {
             </div>
 
             <div className="lg:w-3/4 w-full h-[405px] relative">
-              <MapContainer center={[-2.2, 117]} zoom={5} className="w-full h-full rounded-lg">
+              {/* Initial map view: fractional zoom and balanced center covering all stations across Indonesia seamlessly */}
+              <MapContainer
+                center={[-2.4, 118.2]}
+                zoom={4.65}
+                zoomSnap={0.1}
+                zoomDelta={0.5}
+                className="w-full h-full rounded-lg"
+              >
                 <TileLayer
                   attribution='&copy; <a href="https://osm.org/copyright">OSM</a>'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
