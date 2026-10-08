@@ -685,7 +685,7 @@
 import { useState, useEffect, useMemo } from "react";
 import MainLayout from "../layouts/MainLayout";
 import axiosServer from "../utilities/AxiosServer";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import marker2x from "leaflet/dist/images/marker-icon-2x.png";
@@ -803,6 +803,22 @@ const MapClickHandler = ({
       onMapClick();
     },
   });
+
+  return null;
+};
+
+const MapResizeHandler = ({ filterOpen }: { filterOpen: boolean }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      map.invalidateSize();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [filterOpen, map]);
 
   return null;
 };
@@ -1294,6 +1310,7 @@ const StationMap = () => {
               style={{ height: "80vh", width: "100%" }}
             >
               <MapClickHandler onMapClick={() => setSelectedStation(null)} />
+              <MapResizeHandler filterOpen={filterOpen} />
 
               <TileLayer
                 attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'

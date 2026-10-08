@@ -1681,98 +1681,61 @@ const Dashboard = () => {
   return (
     <MainLayout>
       <h1 className="text-left text-2xl font-bold mt-0 mb-2 ml-1">Dashboard</h1>
-      <div className="flex flex-col lg:flex-row gap-3">
-        {/* BAGIAN KIRI: PETA */}
-        <div className="lg:w-3/4 w-full">
-          <div className="bg-white rounded-lg shadow p-2 h-[50vh] min-h-[400px] lg:h-[450px] relative">
-            <MapContainer
-              center={[-2.5, 117]}
-              zoom={5}
-              className="w-full h-full rounded-md z-0"
-              style={{ height: "100%", width: "100%" }}
-            >
-              <TileLayer attribution='&copy; <a href="https://osm.org/copyright">OSM</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              {filteredMapData.map((s, idx) => (
-                <Marker
-                  key={idx}
-                  position={[Number(s.geometry.coordinates[1]), Number(s.geometry.coordinates[0])]}
-                  icon={triangleIcon(getTriangleColor(s))}
-                >
-                  <Popup>
-                    <b>Stasiun: {s.code}</b>
-                    <br />
-                    Status: {getStatusTextEn(s.result)}
-                    <br />
-                    {s.quality_percentage !== null && `Kualitas: ${s.quality_percentage.toFixed(1)}%`}
-                    <br />
-                    {s.latencyStrings && s.latencyStrings.length > 0 ? (
-                      <span>Latencies: {s.latencyStrings.join(", ")}</span>
-                    ) : (
-                      <span>Latency: No data</span>
-                    )}
-                  </Popup>
-                </Marker>
-              ))}
-            </MapContainer>
-            <MapLegend stationData={filteredMapData} totalStationCount={filteredMapData.length} />
-          </div>
-        </div>
-
-        {/* BAGIAN KANAN: STATUS & STACKED BAR */}
-        <div className="lg:w-1/4 w-full flex flex-col gap-2">
-          <div className="bg-white rounded p-2 text-center border border-gray-300 shadow">
-            <p className="text-xs font-semibold">OPERATIONAL</p>
-            <p className="text-3xl font-bold mb-1">{isLoading ? "..." : registeredCount}</p>
-            <div className="grid grid-cols-2 gap-1">
-              <div className="bg-green-600 text-white rounded p-1">
-                <p className="text-[10px] font-bold">ON</p>
-                <p className="text-lg font-bold">{isLoading ? "..." : totalOnSlmon}</p>
-              </div>
-              <div className="bg-black text-white rounded p-1">
-                <p className="text-[10px] font-bold">OFF</p>
-                <p className="text-lg font-bold">{isLoading ? "..." : totalOffSlmon}</p>
-              </div>
-            </div>
-          </div>
-          <div className="grid grid-cols-4 gap-1 text-center text-white text-[10px] font-bold">
-            <div className="bg-green-500 rounded p-1">
-              <p>GOOD</p>
-              <p className="text-base">{goodCount}</p>
-            </div>
-            <div className="bg-orange-400 rounded p-1">
-              <p>FAIR</p>
-              <p className="text-base">{fairCount}</p>
-            </div>
-            <div className="bg-red-600 rounded p-1">
-              <p>POOR</p>
-              <p className="text-base">{poorCount}</p>
-            </div>
-            <div className="bg-gray-400 rounded p-1">
-              <p>NO DATA</p>
-              <p className="text-base">{noDataCount}</p>
-            </div>
-          </div>
-          <div className="bg-white rounded p-2 mt-2 flex flex-col items-center border border-gray-300 shadow" style={{ minHeight: 120 }}>
-            <h2 className="text-xs font-bold mb-1 text-gray-700">Stasiun ON/OFF 7 Hari Terakhir</h2>
-            <RechartsResponsiveContainer width="100%" height={90}>
-              <BarChart data={stackedBarData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                <XAxis dataKey="date" tick={{ fontSize: 9 }} />
-                <YAxis tick={{ fontSize: 9 }} />
-                <RechartsTooltip />
-                <Legend verticalAlign="top" height={20} />
-                <Bar dataKey="ON" stackId="a" fill="#16a34a" name="ON" isAnimationActive={false} />
-                <Bar dataKey="OFF" stackId="a" fill="#ef4444" name="OFF" isAnimationActive={false} />
-              </BarChart>
-            </RechartsResponsiveContainer>
-          </div>
+      {/* --- FULL-WIDTH MAP --- */}
+      <div className="w-full">
+        <div className="bg-white rounded-lg shadow p-2 h-[50vh] min-h-[400px] lg:h-[450px] relative">
+          <MapContainer
+            center={[-2.5, 117]}
+            zoom={5}
+            className="w-full h-full rounded-md z-0"
+            style={{ height: "100%", width: "100%" }}
+          >
+            <TileLayer attribution='&copy; <a href="https://osm.org/copyright">OSM</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            {filteredMapData.map((s, idx) => (
+              <Marker
+                key={idx}
+                position={[Number(s.geometry.coordinates[1]), Number(s.geometry.coordinates[0])]}
+                icon={triangleIcon(getTriangleColor(s))}
+              >
+                <Popup>
+                  <b>Stasiun: {s.code}</b>
+                  <br />
+                  Status: {getStatusTextEn(s.result)}
+                  <br />
+                  {s.quality_percentage !== null && `Kualitas: ${s.quality_percentage.toFixed(1)}%`}
+                  <br />
+                  {s.latencyStrings && s.latencyStrings.length > 0 ? (
+                    <span>Latencies: {s.latencyStrings.join(", ")}</span>
+                  ) : (
+                    <span>Latency: No data</span>
+                  )}
+                </Popup>
+              </Marker>
+            ))}
+          </MapContainer>
+          <MapLegend stationData={filteredMapData} totalStationCount={filteredMapData.length} />
         </div>
       </div>
 
-      {/* --- AVAILABILITY & QUALITY CARD & PIECHART --- */}
+      {/* --- AVAILABILITY, QUALITY, METADATA & OPERATIONAL --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
         <AvailabilityCard availabilityPieData={availabilityPieData} />
         <QualityCard qualityPieData={qualityPieData} />
         <MetadataCard />
+        <div className="bg-white rounded p-2 text-center border border-gray-300 shadow">
+          <p className="text-xs font-semibold">OPERATIONAL</p>
+          <p className="text-3xl font-bold mb-1">{isLoading ? "..." : registeredCount}</p>
+          <div className="grid grid-cols-2 gap-1">
+            <div className="bg-green-600 text-white rounded p-1">
+              <p className="text-[10px] font-bold">ON</p>
+              <p className="text-lg font-bold">{isLoading ? "..." : totalOnSlmon}</p>
+            </div>
+            <div className="bg-black text-white rounded p-1">
+              <p className="text-[10px] font-bold">OFF</p>
+              <p className="text-lg font-bold">{isLoading ? "..." : totalOffSlmon}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* --- DASHBOARD DATA TABLE SECTION --- */}

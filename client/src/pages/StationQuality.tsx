@@ -6,7 +6,7 @@ import DataTable from "../components/DataTable.tsx";
 import TableFilters from "../components/TableFilters";
 import type { FilterConfig } from "../components/TableFilters";
 import type { ColumnDef } from "@tanstack/react-table";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import CardContainer from "../components/Card.tsx";
@@ -78,8 +78,8 @@ const triangleIcon = (color: string) =>
     html: `
       <div style="
         width: 0; height: 0; 
-        border-left: 6px solid transparent; 
-        border-right: 6px solid transparent; 
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
         border-bottom: 12px solid ${color};
         position: relative;
       ">
@@ -245,6 +245,22 @@ const QualityDonutChart = ({ data }: { data: StationDataComplete[] }) => {
   return <Doughnut data={dataForChart} options={options} plugins={[centerTextPlugin]} />;
 };
 
+const MapResizeHandler = ({ chartVisible }: { chartVisible: boolean }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      map.invalidateSize();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [chartVisible, map]);
+
+  return null;
+};
+
 const StationQuality = () => {
   const [stationData, setStationData] = useState<StationMetadata[]>([]);
   const [qcSummaryData, setQcSummaryData] = useState<QCSummary[]>([]);
@@ -259,6 +275,7 @@ const StationQuality = () => {
     return dayjs().subtract(1, 'day').format('YYYY-MM-DD');
   });
   const [summaryLoading, setSummaryLoading] = useState<boolean>(false);
+  const [chartVisible, setChartVisible] = useState(true);
 
   const fetchStationMetadata = async () => {
     try {
@@ -289,7 +306,7 @@ const StationQuality = () => {
   const fetchAllSiteQuality = async (stationCodes: string[]) => {
     const map: Record<string, string> = {};
     if (stationCodes.length === 0) return;
-    
+
     await Promise.all(
       stationCodes.map(async (code) => {
         try {
@@ -328,7 +345,7 @@ const StationQuality = () => {
   // --- CORE DATA MERGING (Standardized to Indonesian, No Data -> Mati) ---
   const allMergedData = useMemo<StationDataComplete[]>(() => {
     if (stationData.length === 0) return [];
-    
+
     const summaryMap = new Map(qcSummaryData.map(item => [item.code, item]));
 
     return stationData.map(station => {
@@ -336,7 +353,7 @@ const StationQuality = () => {
       const rawSiteQ = siteQualityMap[station.kode_stasiun] ?? "-";
       // Map Site Quality values from English to standardized Indonesian
       const siteQ = SITE_QUALITY_MAP[rawSiteQ] || rawSiteQ || "-";
-      
+
       const rawResult = summary ? summary.result : (station.result || "Mati");
       // Map empty or "No Data" status to "Mati"
       const mappedResult = (!rawResult || rawResult === "No Data") ? "Mati" : rawResult;
@@ -377,7 +394,7 @@ const StationQuality = () => {
         result: { label: "Summary Kualitas", type: "multi", options: getUniqueOptions("result") }, 
         site_quality: { label: "Site Quality", type: "multi", options: getSiteQualityOptions() },
       };
-      
+
       setFilterConfig(dynamicFilterConfig);
     }
   }, [allMergedData]); 
@@ -426,14 +443,14 @@ const StationQuality = () => {
       persentase_kualitas: item.quality_percentage !== null ? `${item.quality_percentage.toFixed(1)}%` : 'N/A',
       site_quality: item.site_quality
     }));
-    
+
     const headers = Object.keys(dataToDownload[0]).join(",");
     const csvContent = headers + "\n" + dataToDownload.map((row: any) =>
       Object.values(row)
         .map((val) => (typeof val === "string" ? `"${val.replace(/"/g, '""')}"` : val))
         .join(",")
     ).join("\n");
-    
+
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
@@ -512,7 +529,7 @@ const StationQuality = () => {
       ),
     },
   ];
-  
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <MainLayout>
@@ -521,38 +538,53 @@ const StationQuality = () => {
         </h1>
 
         <CardContainer className="mb-4 p-3">
+          <div className="mb-3 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setChartVisible((prev) => !prev)}
+              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors"
+            >
+              {chartVisible ? "Sembunyikan Grafik" : "Tampilkan Grafik"}
+            </button>
+          </div>
+
           <div className="flex flex-col lg:flex-row gap-3">
-            <div className="lg:w-1/4 w-full h-[405px] flex flex-col items-center justify-between p-2">
-              <div className="w-full flex flex-col items-center">
-                <h2 className="text-base font-bold text-gray-800 mb-1 text-center">Ringkasan Status Stasiun</h2>
-                
-                {/* Date Filter for QC Summary */}
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className="text-xs font-medium text-gray-600 whitespace-nowrap">Tanggal:</span>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    max={dayjs().format("YYYY-MM-DD")}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-semibold rounded border-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                  />
+            {chartVisible && (
+              <div className="lg:w-1/4 w-full h-[405px] flex flex-col items-center justify-between p-2">
+                <div className="w-full flex flex-col items-center">
+                  <h2 className="text-base font-bold text-gray-800 mb-1 text-center">Ringkasan Status Stasiun</h2>
+
+                  {/* Date Filter for QC Summary */}
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="text-xs font-medium text-gray-600 whitespace-nowrap">Tanggal:</span>
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      max={dayjs().format("YYYY-MM-DD")}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-semibold rounded border-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                <div className="w-full h-[320px] max-w-xs flex items-center justify-center">
+                  {summaryLoading ? (
+                    <div className="flex flex-col items-center justify-center text-xs text-gray-500 py-8">
+                      <span className="animate-pulse">Memuat ringkasan kualitas...</span>
+                    </div>
+                  ) : (
+                    /* Synchronized with active filters, table, and map data */
+                    <QualityDonutChart data={filteredData} />
+                  )}
                 </div>
               </div>
+            )}
 
-              <div className="w-full h-[320px] max-w-xs flex items-center justify-center">
-                {summaryLoading ? (
-                  <div className="flex flex-col items-center justify-center text-xs text-gray-500 py-8">
-                    <span className="animate-pulse">Memuat ringkasan kualitas...</span>
-                  </div>
-                ) : (
-                  /* Synchronized with active filters, table, and map data */
-                  <QualityDonutChart data={filteredData} />
-                )}
-              </div>
-            </div>
-
-            <div className="lg:w-3/4 w-full h-[405px] relative">
+            <div
+              className={`w-full h-[405px] relative ${chartVisible ? "lg:w-3/4" : "lg:w-full"}`}
+            >
               <MapContainer center={[-2.2, 117]} zoom={5} className="w-full h-full rounded-lg">
+                <MapResizeHandler chartVisible={chartVisible} />
                 <TileLayer
                   attribution='&copy; <a href="https://osm.org/copyright">OSM</a>'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -582,7 +614,7 @@ const StationQuality = () => {
             </div>
           </div>
         </CardContainer>
-        
+
         <CardContainer className="p-5">
           <div className="flex justify-between items-center mb-4">
             <TableFilters
