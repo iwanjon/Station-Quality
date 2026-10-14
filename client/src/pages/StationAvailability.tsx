@@ -786,6 +786,7 @@ const StationAvailability = () => {
             computeRowAverage(Object.values(row.monthlyData)) ?? -1,
           enableSorting: true,
           size: 90,
+          meta: { sticky: true, noPadding: true },
           cell: ({ row }) => {
             const average = computeRowAverage(
               Object.values(row.original.monthlyData)
@@ -874,6 +875,7 @@ const StationAvailability = () => {
             ) ?? -1,
           enableSorting: true,
           size: 90,
+          meta: { sticky: true, noPadding: true },
           cell: ({ row }) => {
             const average = computeRowAverage(
               getDailyValuesForMonth(
@@ -905,7 +907,7 @@ const StationAvailability = () => {
           header: dayStr,
           accessorKey: `dailyData.${dateKey}`,
           enableSorting: true,
-          size: 72,
+          size: 44,
           meta: { noPadding: true },
           cell: ({ row }) => {
             const value = row.original.dailyData[dateKey];
@@ -913,7 +915,7 @@ const StationAvailability = () => {
 
             return (
               <div
-                className={`w-full h-full min-h-[38px] flex items-center justify-center text-center px-1.5 py-2 ${bgClass} ${textClass} transition-colors select-none text-[11px] tabular-nums font-semibold`}
+                className={`w-full h-full min-h-[38px] flex items-center justify-center text-center px-1 py-2 ${bgClass} ${textClass} transition-colors select-none text-[11px] tabular-nums font-semibold`}
                 title={`${row.original.kode} (${dayStr} ${monthName} ${dailyMonth.year}): ${tooltipText}`}
               >
                 <span className="w-full text-center">{label}</span>

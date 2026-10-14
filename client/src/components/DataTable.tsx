@@ -129,6 +129,22 @@ function DataTable<TData extends object>({
     }
   };
 
+  // Compute cumulative left offsets so multiple sticky columns stack
+  // side-by-side instead of overlapping at left: 0.
+  const stickyLeftOffsets = React.useMemo(() => {
+    const offsets: Record<string, number> = {};
+    let cumulative = 0;
+    table.getAllLeafColumns().forEach((column) => {
+      const meta = column.columnDef.meta as { sticky?: boolean } | undefined;
+      if (meta?.sticky) {
+        offsets[column.id] = cumulative;
+        const size = (column.columnDef as { size?: number }).size;
+        cumulative += typeof size === "number" ? size : 0;
+      }
+    });
+    return offsets;
+  }, [table]);
+
   return (
     <div className="w-full min-w-0 max-w-full overflow-x-hidden">
       {/* Global Search Input */}
@@ -161,13 +177,14 @@ function DataTable<TData extends object>({
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   const isSticky = (header.column.columnDef.meta as any)?.sticky;
+                  const stickyLeft = stickyLeftOffsets[header.column.id] ?? 0;
                   return (
                     <th
                       key={header.id}
                       colSpan={header.colSpan}
                       className={`border border-gray-300 p-2 text-sm font-semibold select-none ${
                         header.column.getCanSort() ? "cursor-pointer" : ""
-                      } ${isSticky ? "sticky left-0 bg-gray-100 z-20 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.1)]" : ""}`}
+                      } ${isSticky ? "sticky bg-gray-100 z-20 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.1)]" : ""}`}
                       style={{
                         width: (
                           header.column.columnDef as ColumnDef<TData> & {
@@ -191,6 +208,7 @@ function DataTable<TData extends object>({
                               }
                             ).size}px`
                           : "auto",
+                        left: isSticky ? `${stickyLeft}px` : undefined,
                       }}
                       onClick={
                         header.column.getCanSort()
@@ -229,14 +247,16 @@ function DataTable<TData extends object>({
                   {row.getVisibleCells().map((cell) => {
                     const isSticky = (cell.column.columnDef.meta as any)?.sticky;
                     const noPadding = (cell.column.columnDef.meta as any)?.noPadding;
+                    const stickyLeft = stickyLeftOffsets[cell.column.id] ?? 0;
                     return (
                       <td
                         key={cell.id}
                         className={`border border-gray-300 text-sm align-middle text-center ${
                           noPadding ? "p-0" : "p-2"
                         } ${
-                          isSticky ? "sticky left-0 bg-white z-10 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.1)]" : ""
+                          isSticky ? "sticky bg-white z-10 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.1)]" : ""
                         }`}
+                        style={{ left: isSticky ? `${stickyLeft}px` : undefined }}
                       >
                         {flexRender(
                           cell.column.columnDef.cell,
