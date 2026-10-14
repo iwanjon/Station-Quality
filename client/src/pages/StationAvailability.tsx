@@ -906,7 +906,7 @@ const StationAvailability = () => {
           id: dateKey,
           header: dayStr,
           accessorKey: `dailyData.${dateKey}`,
-          enableSorting: true,
+          enableSorting: false,
           size: 44,
           meta: { noPadding: true },
           cell: ({ row }) => {
