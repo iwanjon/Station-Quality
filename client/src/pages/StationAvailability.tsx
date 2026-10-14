@@ -298,16 +298,18 @@ function processStationData(
   return stations;
 }
 
-// Function to determine overall availability category based on average across all months
-function getAvailabilityCategory(station: Station): string {
-  const monthlyValues = Object.values(station.monthlyData).filter(val => val !== null && val !== undefined) as number[];
-
-  if (monthlyValues.length === 0) {
-    return AVAILABILITY_CONFIG.ranges[AVAILABILITY_CONFIG.ranges.length - 1].key; // Fallback to lowest range (< 50% Buruk)
+// Compute the row-average availability for a station based on the active view mode.
+function getStationRowAverage(
+  station: Station,
+  viewMode: ViewMode,
+  dailyMonth: { year: number; month: number }
+): number | null {
+  if (viewMode === "monthly") {
+    return computeRowAverage(Object.values(station.monthlyData));
   }
-
-  const overallAverage = monthlyValues.reduce((sum, val) => sum + val, 0) / monthlyValues.length;
-  return getAvailabilityCategoryForValue(overallAverage);
+  return computeRowAverage(
+    getDailyValuesForMonth(station.dailyData, dailyMonth.year, dailyMonth.month)
+  );
 }
 
 interface AvailabilityCacheEntry {
@@ -547,9 +549,10 @@ const StationAvailability = () => {
   // Filtered stations based on active filter criteria (applies specifically to table)
   const filteredData = useMemo(() => {
     return data.filter((item) => {
-      // 1. Availability Category filter
+      // 1. Rata-rata Availability filter (based on row average, not individual cells)
       if (filters.availabilityCategory && filters.availabilityCategory.length > 0) {
-        const category = getAvailabilityCategory(item);
+        const average = getStationRowAverage(item, viewMode, dailyMonth);
+        const category = getAvailabilityCategoryForValue(average);
         if (!filters.availabilityCategory.includes(category)) return false;
       }
 
@@ -575,7 +578,7 @@ const StationAvailability = () => {
 
       return true;
     });
-  }, [filters, data]);
+  }, [filters, data, viewMode, dailyMonth]);
 
   // Chart data reactive to filteredData (synced with active filter selection)
   const chartData = useMemo(() => {
@@ -633,7 +636,7 @@ const StationAvailability = () => {
     const availabilityCategories = AVAILABILITY_CONFIG.ranges.map(range => range.key);
 
     return {
-      availabilityCategory: { label: "Kategori Availability", type: "multi" as const, options: availabilityCategories },
+      availabilityCategory: { label: "Rata-rata Availability", type: "multi" as const, options: availabilityCategories },
       prioritas: { label: "Prioritas", type: "multi" as const, options: getUniqueOptions("prioritas") },
       upt_penanggung_jawab: { label: "UPT", type: "multi" as const, options: getUniqueOptions("upt_penanggung_jawab") },
       provinsi: { label: "Provinsi", type: "multi" as const, options: getUniqueOptions("provinsi") },
@@ -1081,7 +1084,7 @@ const StationAvailability = () => {
                   </div>
                 )}
 
-                {/* Inline Accordion Filter: Kategori Availability, Prioritas, UPT, Provinsi, Jaringan */}
+                {/* Inline Accordion Filter: Rata-rata Availability, Prioritas, UPT, Provinsi, Jaringan */}
                 {Object.keys(filterConfig).length > 0 && (
                   <div className="pt-2 border-t border-gray-200">
                     <TableFilters
