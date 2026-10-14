@@ -148,8 +148,11 @@ import {
   MapIcon,
   WifiIcon,
   MenuIcon,
-  LogoutIcon, // Added LogoutIcon
+  LogoutIcon,
   ArchiveIcon,
+  ChartSquareBarIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
 } from '@heroicons/react/outline';
 import { useAuthStore } from '../store/useAuthStore'; // Import your Zustand store
 import axiosServer from '../utilities/AxiosServer';
@@ -165,6 +168,9 @@ interface NavItem {
 
 // Base URL of the BMKG equipment inventory system (Project B), configured via env.
 const INVENTARIS_ALAT_URL = import.meta.env.VITE_INVENTARIS_ALAT_URL || "";
+const WAVEFORM_VIEWER_URL = (
+  import.meta.env.VITE_WAVEFORM_VIEWER_URL || ""
+).replace(/\/+$/, "");
 
 const navItems: NavItem[] = [
   { label: 'Dashboard', to: '/', Icon: CubeIcon },
@@ -184,6 +190,8 @@ const Sidebar: React.FC = () => {
     const stored = typeof window !== 'undefined' ? localStorage.getItem('sidebar-open') : null;
     return stored === null ? false : stored === 'true';
   });
+  
+  const [waveformMenuOpen, setWaveformMenuOpen] = useState(false);
 
   const sidebarRef = useRef<HTMLElement>(null);
 
@@ -352,8 +360,84 @@ const Sidebar: React.FC = () => {
       {/* Navigasi */}
       <nav className="flex-1 px-2 py-4 space-y-2 overflow-y-auto overflow-x-hidden border-b border-gray-700">
         {navItems.map(item => (
-          <NavLink key={item.to} item={item} />
+          <NavLink key={item.to || item.href || item.label} item={item} />
         ))}
+
+        {WAVEFORM_VIEWER_URL && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                if (!open) {
+                  setOpen(true);
+                  localStorage.setItem('sidebar-open', 'true');
+                }
+
+                setWaveformMenuOpen((current) => !current);
+              }}
+              aria-expanded={waveformMenuOpen}
+              aria-controls="waveform-viewer-submenu"
+              className={`group flex items-center w-full rounded-lg transition-colors duration-200 ${
+                waveformMenuOpen
+                  ? 'bg-gray-700 text-white'
+                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center w-full gap-3 px-3 py-2 rounded-lg">
+                <ChartSquareBarIcon className="h-6 w-6 flex-shrink-0" />
+
+                <AnimatePresence>
+                  {open && (
+                    <motion.span
+                      variants={textVariants}
+                      initial="closed"
+                      animate="open"
+                      exit="closed"
+                      className="flex-1 whitespace-nowrap text-left"
+                    >
+                      Waveform Viewer
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+
+                {open && (
+                  waveformMenuOpen ? (
+                    <ChevronDownIcon className="h-4 w-4 flex-shrink-0" />
+                  ) : (
+                    <ChevronRightIcon className="h-4 w-4 flex-shrink-0" />
+                  )
+                )}
+              </div>
+
+              {!open && (
+                <div className="absolute left-full ml-3 px-3 py-2 rounded-md bg-gray-900 text-white text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap z-10">
+                  Waveform Viewer
+                </div>
+              )}
+            </button>
+
+            {open && waveformMenuOpen && (
+              <div
+                id="waveform-viewer-submenu"
+                className="ml-9 mt-1 space-y-1 border-l border-gray-600 pl-3"
+              >
+                <a
+                  href={`${WAVEFORM_VIEWER_URL}/?mode=fdsn`}
+                  className="block rounded-lg px-3 py-2 text-sm text-gray-300 transition-colors duration-200 hover:bg-gray-700 hover:text-white"
+                >
+                  FDSN
+                </a>
+
+                <a
+                  href={`${WAVEFORM_VIEWER_URL}/?mode=local`}
+                  className="block rounded-lg px-3 py-2 text-sm text-gray-300 transition-colors duration-200 hover:bg-gray-700 hover:text-white"
+                >
+                  Local File
+                </a>
+              </div>
+            )}
+          </div>
+        )}
       </nav>
 
       {/* Logout Button (Pinned to bottom) */}
