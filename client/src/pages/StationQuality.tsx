@@ -20,7 +20,7 @@ import { SITE_QUALITY_MAP, getSiteQualityBadgeStyle } from "../utilities/siteQua
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const STATUS_CONFIG: { [key: string]: { label: string; color: string; textColor: string } } = {
-  "Baik": { label: "Baik", color: "#14b8a6", textColor: "text-white" },
+  "Baik": { label: "Baik", color: "#22c55e", textColor: "text-white" },
   "Cukup Baik": { label: "Cukup Baik", color: "#fb923c", textColor: "text-white" },
   "Buruk": { label: "Buruk", color: "#ef4444", textColor: "text-white" },
   "Mati": { label: "Mati", color: "#374151", textColor: "text-white" },
@@ -366,8 +366,8 @@ const StationQuality = () => {
         upt_penanggung_jawab: { label: "UPT", type: "multi", options: getUniqueOptions("upt_penanggung_jawab") },
         jaringan: { label: "Jaringan", type: "multi", options: getUniqueOptions("jaringan") },
         provinsi: { label: "Provinsi", type: "multi", options: getUniqueOptions("provinsi") },
-        result: { label: "Summary Kualitas", type: "multi", options: getUniqueOptions("result") }, 
-        site_quality: { label: "Site Quality", type: "multi", options: getSiteQualityOptions() },
+        result: { label: "Kualitas Data", type: "multi", options: getUniqueOptions("result") }, 
+        site_quality: { label: "Kualitas Site", type: "multi", options: getSiteQualityOptions() },
       };
       
       setFilterConfig(dynamicFilterConfig);
@@ -456,7 +456,7 @@ const StationQuality = () => {
     {
       accessorKey: "result", 
       id: "result", 
-      header: "Summary Kualitas",
+      header: "Kualitas Data",
       cell: ({ row }) => {
         const result = row.original.result;
         let label = "Mati";
@@ -475,7 +475,7 @@ const StationQuality = () => {
     },
     {
       accessorKey: "site_quality",
-      header: "Site Quality",
+      header: "Kualitas Site",
       cell: ({ getValue }) => {
         const val = getValue<string>();
         const colorClass = getSiteQualityBadgeStyle(val);
