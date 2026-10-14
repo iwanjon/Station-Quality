@@ -94,37 +94,62 @@ function getHeatmapCellProps(value: number | null | undefined): HeatmapCellProps
     };
   }
 
-  const roundedValue = Math.round(value);
+  // Floor (not round) so the displayed integer always stays within its
+  // category range. e.g. 96.80% shows "96%" (Baik) instead of "97%" (Sangat Baik).
+  const flooredValue = Math.floor(value);
 
   if (value >= 97) {
     return {
       bgClass: "bg-green-600",
       textClass: "text-white font-semibold",
-      label: `${roundedValue}%`,
+      label: `${flooredValue}%`,
       tooltipText: `${value.toFixed(2)}% (Sangat Baik)`,
     };
   } else if (value >= 90) {
     return {
       bgClass: "bg-yellow-400",
       textClass: "text-gray-900 font-bold", // High-contrast dark text on yellow
-      label: `${roundedValue}%`,
+      label: `${flooredValue}%`,
       tooltipText: `${value.toFixed(2)}% (Baik)`,
     };
   } else if (value >= 50) {
     return {
       bgClass: "bg-orange-500",
       textClass: "text-white font-semibold",
-      label: `${roundedValue}%`,
+      label: `${flooredValue}%`,
       tooltipText: `${value.toFixed(2)}% (Kurang Baik)`,
     };
   } else {
     return {
       bgClass: "bg-red-500",
       textClass: "text-white font-semibold",
-      label: `${roundedValue}%`,
+      label: `${flooredValue}%`,
       tooltipText: `${value.toFixed(2)}% (Buruk)`,
     };
   }
+}
+
+// Compute the arithmetic mean of the given values, ignoring null/undefined/NaN entries.
+function computeRowAverage(values: (number | null | undefined)[]): number | null {
+  const valid = values.filter(
+    (value): value is number =>
+      value !== null && value !== undefined && !isNaN(Number(value))
+  );
+  if (valid.length === 0) return null;
+  return valid.reduce((sum, value) => sum + Number(value), 0) / valid.length;
+}
+
+// Return the daily values for a specific year-month (used for the daily Rata-Rata column).
+function getDailyValuesForMonth(
+  dailyData: Record<string, number | null>,
+  year: number,
+  month: number
+): (number | null)[] {
+  const monthStr = String(month + 1).padStart(2, "0");
+  const prefix = `${year}-${monthStr}-`;
+  return Object.entries(dailyData)
+    .filter(([key]) => key.startsWith(prefix))
+    .map(([, value]) => value);
 }
 
 interface StationData {
@@ -751,6 +776,29 @@ const StationAvailability = () => {
             </Link>
           ),
         },
+        {
+          id: "rataRata",
+          header: "Rata-Rata",
+          accessorFn: (row) =>
+            computeRowAverage(Object.values(row.monthlyData)) ?? -1,
+          enableSorting: true,
+          size: 90,
+          cell: ({ row }) => {
+            const average = computeRowAverage(
+              Object.values(row.original.monthlyData)
+            );
+            const { bgClass, textClass, label, tooltipText } =
+              getHeatmapCellProps(average);
+            return (
+              <div
+                className={`w-full h-full min-h-[38px] flex items-center justify-center text-center p-2 ${bgClass} ${textClass} transition-colors select-none`}
+                title={`${row.original.kode} (Rata-Rata): ${tooltipText}`}
+              >
+                <span className="w-full text-center">{label}</span>
+              </div>
+            );
+          },
+        },
       ];
 
       const currentDate = new Date(selectedMonth.startYear, selectedMonth.startMonth, 1);
@@ -809,6 +857,39 @@ const StationAvailability = () => {
               {row.original.kode}
             </Link>
           ),
+        },
+        {
+          id: "rataRata",
+          header: "Rata-Rata",
+          accessorFn: (row) =>
+            computeRowAverage(
+              getDailyValuesForMonth(
+                row.dailyData,
+                dailyMonth.year,
+                dailyMonth.month
+              )
+            ) ?? -1,
+          enableSorting: true,
+          size: 90,
+          cell: ({ row }) => {
+            const average = computeRowAverage(
+              getDailyValuesForMonth(
+                row.original.dailyData,
+                dailyMonth.year,
+                dailyMonth.month
+              )
+            );
+            const { bgClass, textClass, label, tooltipText } =
+              getHeatmapCellProps(average);
+            return (
+              <div
+                className={`w-full h-full min-h-[38px] flex items-center justify-center text-center p-2 ${bgClass} ${textClass} transition-colors select-none`}
+                title={`${row.original.kode} (Rata-Rata): ${tooltipText}`}
+              >
+                <span className="w-full text-center">{label}</span>
+              </div>
+            );
+          },
         },
       ];
 
