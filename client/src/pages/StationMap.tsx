@@ -1322,11 +1322,12 @@ const StationMap = () => {
                 />
               </div>
 
-              {/* TableFilters Component */}
+              {/* TableFilters Component (Inline Accordion Mode) */}
               <TableFilters
                 filters={filters}
                 setFilters={setFilters}
                 filterConfig={filterConfig}
+                variant="inline"
               />
 
               {/* Action Buttons */}

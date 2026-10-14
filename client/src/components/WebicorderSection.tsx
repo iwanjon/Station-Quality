@@ -22,26 +22,46 @@ interface WebicorderSectionProps {
   onDateChange?: (date: string) => void;
 }
 
+// ---------------------------------------------------------------------------
+// Waveform image endpoint configuration.
+//
+// The mentor will provide a backend endpoint that returns a pre-rendered
+// waveform image (PNG) per station, date, and channel. Expected URL format:
+//
+//   <WAVEFORM_IMAGE_BASE_URL>/<station_code>_<DD-MM-YYYY>_<channel>.png
+//   e.g. http://<host>/aafm_22-10-2026_hne.png
+//
+// The base URL is intentionally empty for now (endpoint not ready yet), so
+// every image request fails and falls back to the gray "data unavailable" box.
+// ---------------------------------------------------------------------------
+const WAVEFORM_IMAGE_BASE_URL = "";
+
 /**
- * Returns appropriate realistic sample image based on component orientation.
+ * Builds the waveform image URL for a given station, date, and channel.
+ * @param stationCode Station code, e.g. "AAFM"
+ * @param date Date string in YYYY-MM-DD format
+ * @param channel Channel code, e.g. "SHZ"
  */
-function getFallbackImageUrl(channel: string): string {
-  const lastChar = channel.trim().toUpperCase().slice(-1);
-  if (lastChar === "Z") return "/images/webicorder-sample-Z.png";
-  if (lastChar === "N" || lastChar === "1") return "/images/webicorder-sample-N.png";
-  if (lastChar === "E" || lastChar === "2") return "/images/webicorder-sample-E.png";
-  return "/images/webicorder-sample.png";
-}
+const buildWaveformImageUrl = (
+  stationCode: string,
+  date: string,
+  channel: string
+): string => {
+  const formattedDate = dayjs(date).format("DD-MM-YYYY");
+  return `${WAVEFORM_IMAGE_BASE_URL}/${stationCode.toLowerCase()}_${formattedDate}_${channel.toLowerCase()}.png`;
+};
 
 interface SingleWaveformCardProps {
   stationCode: string;
   channel: string;
-  formattedDate: string;
+  formattedDate: string; // YYYY-MM-DD
   onZoom: (channel: string, url: string) => void;
 }
 
 /**
- * Clean, minimalist card displaying a 24-hour Webicorder waveform for a specific channel.
+ * Minimalist card displaying a 24-hour Webicorder waveform for one channel.
+ * Loads the image directly from the waveform endpoint; shows a gray fallback
+ * box when the image is unavailable.
  */
 const SingleWaveformCard: React.FC<SingleWaveformCardProps> = ({
   stationCode,
@@ -49,50 +69,30 @@ const SingleWaveformCard: React.FC<SingleWaveformCardProps> = ({
   formattedDate,
   onZoom,
 }) => {
-  const [imageUrl, setImageUrl] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [hasError, setHasError] = useState<boolean>(false);
 
-  const fallbackUrl = useMemo(() => getFallbackImageUrl(channel), [channel]);
+  const imageUrl = useMemo(
+    () => buildWaveformImageUrl(stationCode, formattedDate, channel),
+    [stationCode, formattedDate, channel]
+  );
 
-  // Request live endpoint; fallback seamlessly to realistic simulated sample
+  const displayDate = useMemo(
+    () => dayjs(formattedDate).format("DD-MM-YYYY"),
+    [formattedDate]
+  );
+
+  // Reset loading/error state whenever the target image URL changes.
   useEffect(() => {
-    let isMounted = true;
     setIsLoading(true);
     setHasError(false);
-
-    if (!stationCode || !channel) {
-      setIsLoading(false);
-      return;
-    }
-
-    const liveApiEndpoint = `/api/qc/data/webicorder/${formattedDate}/${stationCode}/${channel}`;
-
-    axiosServer
-      .get(liveApiEndpoint, { responseType: "blob" })
-      .then((res) => {
-        if (!isMounted) return;
-        const blobUrl = URL.createObjectURL(res.data);
-        setImageUrl(blobUrl);
-        setIsLoading(false);
-        setHasError(false);
-      })
-      .catch(() => {
-        if (!isMounted) return;
-        setImageUrl(fallbackUrl);
-        setIsLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [formattedDate, stationCode, channel, fallbackUrl]);
+  }, [imageUrl]);
 
   const handleDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
     const link = document.createElement("a");
     link.href = imageUrl;
-    link.download = `Webicorder_${stationCode}_${channel}_${formattedDate}.png`;
+    link.download = `Webicorder_${stationCode}_${channel}_${displayDate}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -153,14 +153,14 @@ const SingleWaveformCard: React.FC<SingleWaveformCardProps> = ({
               Data gelombang {stationCode}.{channel} tidak tersedia
             </span>
             <span className="text-[11px] text-gray-400 mt-1">
-              Tidak ada rekaman sinyal seismik pada tanggal {formattedDate}
+              Tidak ada rekaman sinyal seismik pada tanggal {displayDate}
             </span>
           </div>
         ) : (
           <>
             <img
               src={imageUrl}
-              alt={`Webicorder ${stationCode} ${channel} ${formattedDate}`}
+              alt={`Webicorder ${stationCode} ${channel} ${displayDate}`}
               className="w-full max-w-5xl h-auto object-contain rounded border border-gray-100 shadow-2xs transition-transform duration-200 group-hover:brightness-98"
               onLoad={() => {
                 setIsLoading(false);
@@ -222,54 +222,51 @@ export const WebicorderSection: React.FC<WebicorderSectionProps> = ({
     zoom: 100,
   });
 
-  // Fetch station's actual active channels from operational QC data (matching StationDaily & StationDetail)
+  // Fetch the station's available channels from station history records.
+  // The previous QC-detail based approach only exposed a subset of channels;
+  // station history exposes every channel configured for the station.
   useEffect(() => {
     let isMounted = true;
     if (!stationCode) return;
 
-    const fetchActiveChannels = async () => {
-      // 1. Try querying daily QC detail for this station & date
+    const fetchStationChannels = async () => {
       try {
-        const res = await axiosServer.get(`/api/qc/data/detail/${stationCode}/${selectedDate}`);
+        const res = await axiosServer.get(`/api/station-history/bycode`, {
+          params: { code: stationCode },
+        });
         if (!isMounted) return;
-        const data = Array.isArray(res.data) ? res.data : [];
-        const rawChannels = data.map((d: any) => d.channel).filter(Boolean);
-        const unique = Array.from(new Set(rawChannels)).sort();
-        if (unique.length > 0) {
-          setStationChannels(unique);
-          return;
-        }
-      } catch {
-        // Continue to 7-days QC data
-      }
 
-      // 2. Try querying 7-days QC detail data for this station
-      try {
-        const res7 = await axiosServer.get(`/api/qc/data/detail/7days/${stationCode}`);
-        if (!isMounted) return;
-        const data7 = Array.isArray(res7.data) ? res7.data : [];
-        const rawChannels7 = data7.map((d: any) => d.channel).filter(Boolean);
-        const unique7 = Array.from(new Set(rawChannels7)).sort();
-        if (unique7.length > 0) {
-          setStationChannels(unique7);
-          return;
-        }
-      } catch {
-        // Fallback default
-      }
+        const payload = res.data?.data;
+        const records = Array.isArray(payload)
+          ? payload
+          : Array.isArray(res.data)
+            ? res.data
+            : [];
 
-      // 3. Fallback default active seismic channels
-      if (isMounted) {
-        setStationChannels(["SHE", "SHN", "SHZ"]);
+        const uniqueChannels = Array.from(
+          new Set(
+            records
+              .map((record: any) =>
+                record.channel ? String(record.channel).toUpperCase() : ""
+              )
+              .filter(Boolean)
+          )
+        ).sort();
+
+        setStationChannels(uniqueChannels);
+      } catch {
+        // Leave any previously loaded channels untouched; empty state will be
+        // shown by the UI if no channels are available.
+        if (isMounted) setStationChannels([]);
       }
     };
 
-    fetchActiveChannels();
+    fetchStationChannels();
 
     return () => {
       isMounted = false;
     };
-  }, [stationCode, selectedDate]);
+  }, [stationCode]);
 
   // Compute clean dropdown options: wildcard groups with '*' and individual channels
   const channelOptions = useMemo(() => {
@@ -310,9 +307,7 @@ export const WebicorderSection: React.FC<WebicorderSectionProps> = ({
   // Determine list of channel codes to render based on selection
   const channelsToDisplay = useMemo((): string[] => {
     if (selectedChannel === "*") {
-      return stationChannels.length > 0
-        ? stationChannels
-        : ["BHZ", "BHN", "BHE", "SHZ", "SHN", "SHE", "HNZ", "HNN", "HNE"];
+      return stationChannels;
     }
 
     if (selectedChannel.endsWith("*")) {
@@ -338,10 +333,10 @@ export const WebicorderSection: React.FC<WebicorderSectionProps> = ({
   const handleDownloadAll = () => {
     channelsToDisplay.forEach((ch, idx) => {
       setTimeout(() => {
-        const fallbackUrl = getFallbackImageUrl(ch);
+        const imageUrl = buildWaveformImageUrl(stationCode, selectedDate, ch);
         const link = document.createElement("a");
-        link.href = fallbackUrl;
-        link.download = `Webicorder_${stationCode}_${ch}_${selectedDate}.png`;
+        link.href = imageUrl;
+        link.download = `Webicorder_${stationCode}_${ch}_${dayjs(selectedDate).format("DD-MM-YYYY")}.png`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -366,7 +361,7 @@ export const WebicorderSection: React.FC<WebicorderSectionProps> = ({
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200/70 shadow-2xs">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-            <span>Simulasi Webicorder</span>
+            <span>Rekaman 24 Jam</span>
           </span>
         </div>
       </div>

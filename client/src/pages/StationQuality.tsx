@@ -15,25 +15,17 @@ import axiosServer from "../utilities/AxiosServer.tsx";
 import StatusBadge from "../components/StatusBadge";
 import dayjs from "dayjs";
 import { Calendar } from "lucide-react";
+import { SITE_QUALITY_MAP, getSiteQualityBadgeStyle } from "../utilities/siteQuality";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const STATUS_CONFIG: { [key: string]: { label: string; color: string; textColor: string } } = {
-  "Baik": { label: "Baik", color: "#14b8a6", textColor: "text-white" },
+  "Baik": { label: "Baik", color: "#22c55e", textColor: "text-white" },
   "Cukup Baik": { label: "Cukup Baik", color: "#fb923c", textColor: "text-white" },
   "Buruk": { label: "Buruk", color: "#ef4444", textColor: "text-white" },
   "Mati": { label: "Mati", color: "#374151", textColor: "text-white" },
   "No Data": { label: "No Data", color: "#374151", textColor: "text-white" },
   "default": { label: "N/A", color: "#9ca3af", textColor: "text-white" },
-};
-
-// Mapping dictionary for Site Quality from external API (English) to standardized Indonesian
-const SITE_QUALITY_MAP: Record<string, string> = {
-  "Very Good": "Sangat Baik",
-  "Good": "Baik",
-  "Fair": "Cukup Baik",
-  "Poor": "Buruk",
-  "-": "-",
 };
 
 interface QCSummary {
@@ -391,8 +383,8 @@ const StationQuality = () => {
         upt_penanggung_jawab: { label: "UPT", type: "multi", options: getUniqueOptions("upt_penanggung_jawab") },
         jaringan: { label: "Jaringan", type: "multi", options: getUniqueOptions("jaringan") },
         provinsi: { label: "Provinsi", type: "multi", options: getUniqueOptions("provinsi") },
-        result: { label: "Summary Kualitas", type: "multi", options: getUniqueOptions("result") }, 
-        site_quality: { label: "Site Quality", type: "multi", options: getSiteQualityOptions() },
+        result: { label: "Kualitas Data", type: "multi", options: getUniqueOptions("result") }, 
+        site_quality: { label: "Kualitas Site", type: "multi", options: getSiteQualityOptions() },
       };
 
       setFilterConfig(dynamicFilterConfig);
@@ -466,22 +458,24 @@ const StationQuality = () => {
     {
       id: "no",
       header: "No",
+      size: 50,
       accessorFn: (row) => row.stasiun_id,
       cell: ({ row, table }) => {
         const { pageIndex, pageSize } = table.getState().pagination;
         return pageIndex * pageSize + row.index + 1;
       },
     },
-    { accessorKey: "kode_stasiun", header: "Kode Stasiun" },
-    { accessorKey: "lokasi", header: "Lokasi" },
-    { accessorKey: "provinsi", header: "Provinsi" },
-    { accessorKey: "jaringan", header: "Jaringan" },
-    { accessorKey: "prioritas", header: "Prioritas" },
-    { accessorKey: "upt_penanggung_jawab", header: "UPT" },
+    { accessorKey: "kode_stasiun", header: "Kode Stasiun", size: 110 },
+    { accessorKey: "lokasi", header: "Lokasi", size: 220 },
+    { accessorKey: "provinsi", header: "Provinsi", size: 140 },
+    { accessorKey: "jaringan", header: "Jaringan", size: 130 },
+    { accessorKey: "prioritas", header: "Prioritas", size: 90 },
+    { accessorKey: "upt_penanggung_jawab", header: "UPT", size: 160 },
     {
       accessorKey: "result", 
       id: "result", 
-      header: "Summary Kualitas",
+      header: "Kualitas Data",
+      size: 140,
       cell: ({ row }) => {
         const result = row.original.result;
         let label = "Mati";
@@ -500,14 +494,11 @@ const StationQuality = () => {
     },
     {
       accessorKey: "site_quality",
-      header: "Site Quality",
+      header: "Kualitas Site",
+      size: 140,
       cell: ({ getValue }) => {
         const val = getValue<string>();
-        let colorClass = "bg-gray-100 text-gray-700";
-        if (val === "Sangat Baik") colorClass = "bg-emerald-100 text-emerald-800";
-        else if (val === "Baik") colorClass = "bg-green-100 text-green-800";
-        else if (val === "Cukup Baik") colorClass = "bg-orange-100 text-orange-800";
-        else if (val === "Buruk") colorClass = "bg-red-100 text-red-800";
+        const colorClass = getSiteQualityBadgeStyle(val);
 
         return (
           <span className={`block w-full py-1 rounded-sm text-[11px] font-bold text-center ${colorClass}`}>
@@ -519,6 +510,7 @@ const StationQuality = () => {
     {
       id: "detail",
       header: "Detail Stasiun",
+      size: 100,
       cell: ({ row }) => (
         <Link
           to={`/station-daily/${row.original.kode_stasiun}`}
@@ -583,7 +575,14 @@ const StationQuality = () => {
             <div
               className={`w-full h-[405px] relative ${chartVisible ? "lg:w-3/4" : "lg:w-full"}`}
             >
-              <MapContainer center={[-2.2, 117]} zoom={5} className="w-full h-full rounded-lg">
+              {/* Initial map view: fractional zoom and balanced center covering all stations across Indonesia seamlessly */}
+              <MapContainer
+                center={[-2.4, 118.2]}
+                zoom={4.65}
+                zoomSnap={0.1}
+                zoomDelta={0.5}
+                className="w-full h-full rounded-lg"
+              >
                 <MapResizeHandler chartVisible={chartVisible} />
                 <TileLayer
                   attribution='&copy; <a href="https://osm.org/copyright">OSM</a>'

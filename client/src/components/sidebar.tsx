@@ -149,6 +149,7 @@ import {
   WifiIcon,
   MenuIcon,
   LogoutIcon, // Added LogoutIcon
+  ArchiveIcon,
 } from '@heroicons/react/outline';
 import { useAuthStore } from '../store/useAuthStore'; // Import your Zustand store
 import axiosServer from '../utilities/AxiosServer';
@@ -157,9 +158,13 @@ const logoBMKG = 'https://placehold.co/48x48/FFFFFF/1F2937?text=B';
 
 interface NavItem {
   label: string;
-  to: string;
+  to?: string; // Internal route path (react-router)
+  href?: string; // External URL (navigates away from this app)
   Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 }
+
+// Base URL of the BMKG equipment inventory system (Project B), configured via env.
+const INVENTARIS_ALAT_URL = import.meta.env.VITE_INVENTARIS_ALAT_URL || "";
 
 const navItems: NavItem[] = [
   { label: 'Dashboard', to: '/', Icon: CubeIcon },
@@ -168,6 +173,11 @@ const navItems: NavItem[] = [
   { label: 'Station map', to: '/station-map', Icon: MapIcon },
   { label: 'Station performance', to: '/station-performance', Icon: WifiIcon },
 ];
+
+// Append the external inventory-system link only when its URL is configured.
+if (INVENTARIS_ALAT_URL) {
+  navItems.push({ label: 'Inventaris Alat', href: INVENTARIS_ALAT_URL, Icon: ArchiveIcon });
+}
 
 const Sidebar: React.FC = () => {
   const [open, setOpen] = useState<boolean>(() => {
@@ -245,12 +255,10 @@ const Sidebar: React.FC = () => {
   }, [open]);
 
   const NavLink: React.FC<{ item: NavItem }> = ({ item }) => {
-    const isActive = pathname === item.to;
-    return (
-      <Link
-        to={item.to}
-        className="group relative flex items-center rounded-lg transition-colors duration-200"
-      >
+    const isActive = item.to ? pathname === item.to : false;
+
+    const linkContent = (
+      <>
         <div
           className={`flex items-center w-full gap-3 px-3 py-2 rounded-lg transition-colors duration-200 ${
             isActive
@@ -278,6 +286,27 @@ const Sidebar: React.FC = () => {
             {item.label}
           </div>
         )}
+      </>
+    );
+
+    // External links use a plain anchor (same tab); internal routes use Link.
+    if (item.href) {
+      return (
+        <a
+          href={item.href}
+          className="group relative flex items-center rounded-lg transition-colors duration-200"
+        >
+          {linkContent}
+        </a>
+      );
+    }
+
+    return (
+      <Link
+        to={item.to || '/'}
+        className="group relative flex items-center rounded-lg transition-colors duration-200"
+      >
+        {linkContent}
       </Link>
     );
   };

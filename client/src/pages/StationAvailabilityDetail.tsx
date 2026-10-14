@@ -301,7 +301,7 @@ const StationAvailabilityDetail = () => {
                 aria-hidden
                 className="min-w-[90px] bg-gray-200 text-gray-800 font-bold px-3 py-2 rounded-md text-sm flex items-center justify-center"
               >
-                Station
+                Stasiun
               </div>
 
               <div className="relative">
@@ -363,7 +363,7 @@ const StationAvailabilityDetail = () => {
               aria-hidden
               className="min-w-[90px] bg-gray-200 text-gray-800 font-bold px-3 py-2 rounded-md text-sm flex items-center justify-center"
             >
-              Station
+              Stasiun
             </div>
 
             <div className="relative">
@@ -402,7 +402,7 @@ const StationAvailabilityDetail = () => {
                   ‹
                 </button>
                 <span className="text-lg font-semibold text-gray-800 min-w-[140px] text-center">
-                  {new Date(selectedYear, selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                  {new Date(selectedYear, selectedMonth).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
                 </span>
                 <button
                   onClick={handleNextMonth}
@@ -416,7 +416,7 @@ const StationAvailabilityDetail = () => {
             <div className="h-80">
               {chartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="date"
@@ -424,17 +424,17 @@ const StationAvailabilityDetail = () => {
                       interval={0}
                       angle={-45}
                       textAnchor="end"
-                      height={60}
+                      height={65}
                       tickFormatter={(value) => {
                         // value is date string like "2025-10-01"
                         const dateStr = value as string;
                         const date = new Date(dateStr + 'T00:00:00'); // Add time to ensure proper parsing
-                        return date.toLocaleDateString('en-US', {
+                        return date.toLocaleDateString('id-ID', {
                           month: 'short',
                           day: '2-digit'
                         });
                       }}
-                      label={{ value: 'Date', position: 'insideBottom', offset: -5 }}
+                      label={{ value: 'Tanggal', position: 'insideBottom', offset: -10 }}
                     />
                     <YAxis
                       domain={[0, 100]}
@@ -449,7 +449,7 @@ const StationAvailabilityDetail = () => {
                       labelFormatter={(label: string) => {
                         // label is date string like "2025-10-01"
                         const date = new Date(label + 'T00:00:00');
-                        return date.toLocaleDateString('en-US', {
+                        return date.toLocaleDateString('id-ID', {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric'

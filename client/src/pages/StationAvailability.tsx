@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import TableFilters from "../components/TableFilters";
@@ -7,11 +7,11 @@ import DataTable from "../components/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import axiosServer from "../utilities/AxiosServer";
 import AvailabilityChartSection from "../components/station-availability/AvailabilityChartSection";
-import { ChevronLeft, ChevronRight, Download, Calendar, CalendarDays } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, Download, Calendar, CalendarDays } from "lucide-react";
 
 const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ];
 
 // Configuration for availability ranges, colors, and labels per BMKG mentor guidelines:
@@ -94,35 +94,62 @@ function getHeatmapCellProps(value: number | null | undefined): HeatmapCellProps
     };
   }
 
+  // Floor (not round) so the displayed integer always stays within its
+  // category range. e.g. 96.80% shows "96%" (Baik) instead of "97%" (Sangat Baik).
+  const flooredValue = Math.floor(value);
+
   if (value >= 97) {
     return {
       bgClass: "bg-green-600",
       textClass: "text-white font-semibold",
-      label: `${value.toFixed(2)}%`,
+      label: `${flooredValue}%`,
       tooltipText: `${value.toFixed(2)}% (Sangat Baik)`,
     };
   } else if (value >= 90) {
     return {
       bgClass: "bg-yellow-400",
       textClass: "text-gray-900 font-bold", // High-contrast dark text on yellow
-      label: `${value.toFixed(2)}%`,
+      label: `${flooredValue}%`,
       tooltipText: `${value.toFixed(2)}% (Baik)`,
     };
   } else if (value >= 50) {
     return {
       bgClass: "bg-orange-500",
       textClass: "text-white font-semibold",
-      label: `${value.toFixed(2)}%`,
+      label: `${flooredValue}%`,
       tooltipText: `${value.toFixed(2)}% (Kurang Baik)`,
     };
   } else {
     return {
       bgClass: "bg-red-500",
       textClass: "text-white font-semibold",
-      label: `${value.toFixed(2)}%`,
+      label: `${flooredValue}%`,
       tooltipText: `${value.toFixed(2)}% (Buruk)`,
     };
   }
+}
+
+// Compute the arithmetic mean of the given values, ignoring null/undefined/NaN entries.
+function computeRowAverage(values: (number | null | undefined)[]): number | null {
+  const valid = values.filter(
+    (value): value is number =>
+      value !== null && value !== undefined && !isNaN(Number(value))
+  );
+  if (valid.length === 0) return null;
+  return valid.reduce((sum, value) => sum + Number(value), 0) / valid.length;
+}
+
+// Return the daily values for a specific year-month (used for the daily Rata-Rata column).
+function getDailyValuesForMonth(
+  dailyData: Record<string, number | null>,
+  year: number,
+  month: number
+): (number | null)[] {
+  const monthStr = String(month + 1).padStart(2, "0");
+  const prefix = `${year}-${monthStr}-`;
+  return Object.entries(dailyData)
+    .filter(([key]) => key.startsWith(prefix))
+    .map(([, value]) => value);
 }
 
 interface StationData {
@@ -271,16 +298,18 @@ function processStationData(
   return stations;
 }
 
-// Function to determine overall availability category based on average across all months
-function getAvailabilityCategory(station: Station): string {
-  const monthlyValues = Object.values(station.monthlyData).filter(val => val !== null && val !== undefined) as number[];
-
-  if (monthlyValues.length === 0) {
-    return AVAILABILITY_CONFIG.ranges[AVAILABILITY_CONFIG.ranges.length - 1].key; // Fallback to lowest range (< 50% Buruk)
+// Compute the row-average availability for a station based on the active view mode.
+function getStationRowAverage(
+  station: Station,
+  viewMode: ViewMode,
+  dailyMonth: { year: number; month: number }
+): number | null {
+  if (viewMode === "monthly") {
+    return computeRowAverage(Object.values(station.monthlyData));
   }
-
-  const overallAverage = monthlyValues.reduce((sum, val) => sum + val, 0) / monthlyValues.length;
-  return getAvailabilityCategoryForValue(overallAverage);
+  return computeRowAverage(
+    getDailyValuesForMonth(station.dailyData, dailyMonth.year, dailyMonth.month)
+  );
 }
 
 interface AvailabilityCacheEntry {
@@ -372,6 +401,28 @@ const StationAvailability = () => {
     setDailyMonth(dm);
   };
 
+  // State and ref for Daily Month selector dropdown with click-outside listener
+  const [isMonthDropdownOpen, setIsMonthDropdownOpen] = useState<boolean>(false);
+  const monthDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isMonthDropdownOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        monthDropdownRef.current &&
+        !monthDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsMonthDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isMonthDropdownOpen]);
+
   // Keep dailyMonth in bounds whenever selectedMonth changes
   useEffect(() => {
     const currentDailyTime = dailyMonth.year * 12 + dailyMonth.month;
@@ -415,6 +466,37 @@ const StationAvailability = () => {
           });
           memoryStationMetaMap = map;
           setStationMetaMap(map);
+
+          // Immediately enrich active stations in state with fetched metadata
+          setData((prev) => {
+            if (!prev.length) return prev;
+            return prev.map((station) => {
+              const meta = map.get(station.kode);
+              if (!meta) return station;
+              return {
+                ...station,
+                prioritas: meta.prioritas || station.prioritas || "-",
+                upt_penanggung_jawab: meta.upt_penanggung_jawab || station.upt_penanggung_jawab || "-",
+                provinsi: meta.provinsi || station.provinsi || "-",
+                jaringan: meta.jaringan || station.jaringan || "-",
+              };
+            });
+          });
+
+          // Also enrich all existing entries in RAM cache to avoid stale metadata on cache hits
+          memoryAvailabilityCache.forEach((entry) => {
+            entry.processedStations = entry.processedStations.map((station) => {
+              const meta = map.get(station.kode);
+              if (!meta) return station;
+              return {
+                ...station,
+                prioritas: meta.prioritas || station.prioritas || "-",
+                upt_penanggung_jawab: meta.upt_penanggung_jawab || station.upt_penanggung_jawab || "-",
+                provinsi: meta.provinsi || station.provinsi || "-",
+                jaringan: meta.jaringan || station.jaringan || "-",
+              };
+            });
+          });
         }
       })
       .catch((err) => {
@@ -425,7 +507,8 @@ const StationAvailability = () => {
   // Re-process stations whenever raw API data or station metadata updates
   useEffect(() => {
     if (rawApiResponse && rawApiResponse.data) {
-      const processed = processStationData(rawApiResponse, selectedMonth, stationMetaMap);
+      const currentMeta = stationMetaMap.size > 0 ? stationMetaMap : (memoryStationMetaMap || new Map());
+      const processed = processStationData(rawApiResponse, selectedMonth, currentMeta);
       setData(processed);
     } else if (data.length > 0 && stationMetaMap.size > 0) {
       // If data is already populated, enrich with updated metadata
@@ -445,18 +528,31 @@ const StationAvailability = () => {
     }
   }, [stationMetaMap, rawApiResponse, selectedMonth]);
 
-  // Active filters: Availability Category, Prioritas, UPT, Provinsi, Jaringan (Station Code removed)
-  const [filters, setFilters] = useState<Record<string, string[]>>({});
+  // Active filters: Availability Category, Prioritas, UPT, Provinsi, Jaringan (persisted in sessionStorage)
+  const [filters, setFilters] = useState<Record<string, string[]>>(() => {
+    try {
+      const saved = sessionStorage.getItem("stationAvailabilityFilters");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to parse saved availability filters:", e);
+    }
+    return {};
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem("stationAvailabilityFilters", JSON.stringify(filters));
+  }, [filters]);
 
   const [chartType, setChartType] = useState<"stacked" | "line" | "grouped">("stacked");
   const [metric, setMetric] = useState<"count" | "percentage">("percentage");
 
-  // Filtered stations based on active filter criteria
+  // Filtered stations based on active filter criteria (applies specifically to table)
   const filteredData = useMemo(() => {
     return data.filter((item) => {
-      // 1. Availability Category filter
+      // 1. Rata-rata Availability filter (based on row average, not individual cells)
       if (filters.availabilityCategory && filters.availabilityCategory.length > 0) {
-        const category = getAvailabilityCategory(item);
+        const average = getStationRowAverage(item, viewMode, dailyMonth);
+        const category = getAvailabilityCategoryForValue(average);
         if (!filters.availabilityCategory.includes(category)) return false;
       }
 
@@ -482,9 +578,9 @@ const StationAvailability = () => {
 
       return true;
     });
-  }, [filters, data]);
+  }, [filters, data, viewMode, dailyMonth]);
 
-  // Chart data reactive to filteredData (Monthly macro summary)
+  // Chart data reactive to filteredData (synced with active filter selection)
   const chartData = useMemo(() => {
     if (!filteredData.length) return [];
 
@@ -540,7 +636,7 @@ const StationAvailability = () => {
     const availabilityCategories = AVAILABILITY_CONFIG.ranges.map(range => range.key);
 
     return {
-      availabilityCategory: { label: "Availability Category", type: "multi" as const, options: availabilityCategories },
+      availabilityCategory: { label: "Rata-rata Availability", type: "multi" as const, options: availabilityCategories },
       prioritas: { label: "Prioritas", type: "multi" as const, options: getUniqueOptions("prioritas") },
       upt_penanggung_jawab: { label: "UPT", type: "multi" as const, options: getUniqueOptions("upt_penanggung_jawab") },
       provinsi: { label: "Provinsi", type: "multi" as const, options: getUniqueOptions("provinsi") },
@@ -591,8 +687,9 @@ const StationAvailability = () => {
           setRawApiResponse(apiResponse);
           setApiInfo(newApiInfo);
 
-          // Process and set stations immediately
-          const processed = processStationData(apiResponse, selectedMonth, stationMetaMap);
+          // Process and set stations immediately using freshest metadata available
+          const currentMeta = stationMetaMap.size > 0 ? stationMetaMap : (memoryStationMetaMap || new Map());
+          const processed = processStationData(apiResponse, selectedMonth, currentMeta);
           setData(processed);
 
           // Store in in-memory RAM cache (persists throughout browser session with no 5MB limit)
@@ -667,16 +764,44 @@ const StationAvailability = () => {
       const cols: (ColumnDef<Station> & { size?: number })[] = [
         {
           id: "kode",
-          header: "Station Code",
+          header: "Kode Stasiun",
           accessorKey: "kode",
           enableSorting: true,
           size: 110,
           meta: { sticky: true },
           cell: ({ row }) => (
-            <span className="font-semibold text-gray-900 tracking-wide">
+            <Link
+              to={`/station-availability/${row.original.kode}?year=${selectedMonth.endYear}&month=${selectedMonth.endMonth + 1}`}
+              className="font-semibold text-blue-600 hover:underline hover:text-blue-800 tracking-wide"
+              title={`Lihat detail ${row.original.kode}`}
+            >
               {row.original.kode}
-            </span>
+            </Link>
           ),
+        },
+        {
+          id: "rataRata",
+          header: "Rata-Rata",
+          accessorFn: (row) =>
+            computeRowAverage(Object.values(row.monthlyData)) ?? -1,
+          enableSorting: true,
+          size: 90,
+          meta: { sticky: true, noPadding: true },
+          cell: ({ row }) => {
+            const average = computeRowAverage(
+              Object.values(row.original.monthlyData)
+            );
+            const { bgClass, textClass, label, tooltipText } =
+              getHeatmapCellProps(average);
+            return (
+              <div
+                className={`w-full h-full min-h-[38px] flex items-center justify-center text-center p-2 ${bgClass} ${textClass} transition-colors select-none`}
+                title={`${row.original.kode} (Rata-Rata): ${tooltipText}`}
+              >
+                <span className="w-full text-center">{label}</span>
+              </div>
+            );
+          },
         },
       ];
 
@@ -712,22 +837,6 @@ const StationAvailability = () => {
         currentDate.setMonth(currentDate.getMonth() + 1);
       }
 
-      cols.push({
-        id: "actions",
-        header: "Detail",
-        accessorKey: "actions",
-        enableSorting: false,
-        size: 80,
-        cell: ({ row }) => (
-          <Link
-            to={`/station-availability/${row.original.kode}?year=${selectedMonth.endYear}&month=${selectedMonth.endMonth + 1}`}
-            className="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors shadow-2xs"
-          >
-            Detail
-          </Link>
-        ),
-      });
-
       return cols;
     } else {
       // Daily Mode Columns
@@ -738,16 +847,54 @@ const StationAvailability = () => {
       const cols: (ColumnDef<Station> & { size?: number })[] = [
         {
           id: "kode",
-          header: "Station Code",
+          header: "Kode Stasiun",
           accessorKey: "kode",
           enableSorting: true,
           size: 110,
           meta: { sticky: true },
           cell: ({ row }) => (
-            <span className="font-semibold text-gray-900 tracking-wide">
+            <Link
+              to={`/station-availability/${row.original.kode}?year=${dailyMonth.year}&month=${dailyMonth.month + 1}`}
+              className="font-semibold text-blue-600 hover:underline hover:text-blue-800 tracking-wide"
+              title={`Lihat detail ${row.original.kode}`}
+            >
               {row.original.kode}
-            </span>
+            </Link>
           ),
+        },
+        {
+          id: "rataRata",
+          header: "Rata-Rata",
+          accessorFn: (row) =>
+            computeRowAverage(
+              getDailyValuesForMonth(
+                row.dailyData,
+                dailyMonth.year,
+                dailyMonth.month
+              )
+            ) ?? -1,
+          enableSorting: true,
+          size: 90,
+          meta: { sticky: true, noPadding: true },
+          cell: ({ row }) => {
+            const average = computeRowAverage(
+              getDailyValuesForMonth(
+                row.original.dailyData,
+                dailyMonth.year,
+                dailyMonth.month
+              )
+            );
+            const { bgClass, textClass, label, tooltipText } =
+              getHeatmapCellProps(average);
+            return (
+              <div
+                className={`w-full h-full min-h-[38px] flex items-center justify-center text-center p-2 ${bgClass} ${textClass} transition-colors select-none`}
+                title={`${row.original.kode} (Rata-Rata): ${tooltipText}`}
+              >
+                <span className="w-full text-center">{label}</span>
+              </div>
+            );
+          },
         },
       ];
 
@@ -759,8 +906,8 @@ const StationAvailability = () => {
           id: dateKey,
           header: dayStr,
           accessorKey: `dailyData.${dateKey}`,
-          enableSorting: true,
-          size: 72,
+          enableSorting: false,
+          size: 44,
           meta: { noPadding: true },
           cell: ({ row }) => {
             const value = row.original.dailyData[dateKey];
@@ -768,7 +915,7 @@ const StationAvailability = () => {
 
             return (
               <div
-                className={`w-full h-full min-h-[38px] flex items-center justify-center text-center px-1.5 py-2 ${bgClass} ${textClass} transition-colors select-none text-[11px] tabular-nums font-semibold`}
+                className={`w-full h-full min-h-[38px] flex items-center justify-center text-center px-1 py-2 ${bgClass} ${textClass} transition-colors select-none text-[11px] tabular-nums font-semibold`}
                 title={`${row.original.kode} (${dayStr} ${monthName} ${dailyMonth.year}): ${tooltipText}`}
               >
                 <span className="w-full text-center">{label}</span>
@@ -777,22 +924,6 @@ const StationAvailability = () => {
           },
         });
       }
-
-      cols.push({
-        id: "actions",
-        header: "Detail",
-        accessorKey: "actions",
-        enableSorting: false,
-        size: 80,
-        cell: ({ row }) => (
-          <Link
-            to={`/station-availability/${row.original.kode}?year=${dailyMonth.year}&month=${dailyMonth.month + 1}`}
-            className="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors shadow-2xs"
-          >
-            Detail
-          </Link>
-        ),
-      });
 
       return cols;
     }
@@ -814,10 +945,10 @@ const StationAvailability = () => {
       const formatMonth = (month: string) => {
         const date = new Date(month);
         const options = { year: "numeric", month: "long" } as const;
-        return date.toLocaleDateString("en-US", options);
+        return date.toLocaleDateString("id-ID", options);
       };
 
-      let csvContent = "Station Code," + months.map(formatMonth).join(",") + "\n";
+      let csvContent = "Kode Stasiun," + months.map(formatMonth).join(",") + "\n";
 
       filteredData.forEach((item) => {
         const values = months.map((month) => {
@@ -847,7 +978,7 @@ const StationAvailability = () => {
         dayKeys.push(`${dailyMonth.year}-${monthStr}-${dayStr}`);
       }
 
-      let csvContent = "Station Code," + dayKeys.join(",") + "\n";
+      let csvContent = "Kode Stasiun," + dayKeys.join(",") + "\n";
 
       filteredData.forEach((item) => {
         const values = dayKeys.map((dateKey) => {
@@ -883,7 +1014,7 @@ const StationAvailability = () => {
               <div className="space-y-3">
                 <div className="space-y-2">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-gray-700">From:</label>
+                    <label className="text-xs font-semibold text-gray-700">Dari:</label>
                     <input
                       type="month"
                       value={`${selectedMonth.startYear}-${String(selectedMonth.startMonth + 1).padStart(2, "0")}`}
@@ -913,7 +1044,7 @@ const StationAvailability = () => {
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-gray-700">To:</label>
+                    <label className="text-xs font-semibold text-gray-700">Sampai:</label>
                     <input
                       type="month"
                       value={`${selectedMonth.endYear}-${String(selectedMonth.endMonth + 1).padStart(2, "0")}`}
@@ -948,19 +1079,21 @@ const StationAvailability = () => {
                     <div className={`px-2 py-1 rounded text-center font-medium ${apiInfo.cached ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
                       {apiInfo.cached ? "📋 Cache" : "🌐 Fresh"}
                     </div>
-                    <div className="text-gray-600 text-center font-medium">📊 {apiInfo.totalStations} Stations</div>
+                    <div className="text-gray-600 text-center font-medium">
+                      📊 {filteredData.length !== data.length ? `${filteredData.length} / ${data.length}` : apiInfo.totalStations} Stasiun
+                    </div>
                     <div className="text-gray-500 text-center text-[11px]">📅 {apiInfo.dateRange}</div>
                   </div>
                 )}
 
-                {/* Popover Filter: Availability Category, Prioritas, UPT, Provinsi, Jaringan */}
+                {/* Inline Accordion Filter: Rata-rata Availability, Prioritas, UPT, Provinsi, Jaringan */}
                 {Object.keys(filterConfig).length > 0 && (
                   <div className="pt-2 border-t border-gray-200">
                     <TableFilters
                       filters={filters}
                       setFilters={setFilters}
                       filterConfig={filterConfig}
-                      closeOnClickOutside={true}
+                      variant="inline"
                     />
                   </div>
                 )}
@@ -1029,9 +1162,12 @@ const StationAvailability = () => {
                   </button>
                 </div>
 
-                {/* Daily Month Stepper & Navigator */}
+                {/* Daily Month Stepper & Navigator with Scrollable Fixed Popover */}
                 {viewMode === "daily" && (
-                  <div className="inline-flex items-center gap-1 bg-white border border-gray-300 rounded-lg px-2 py-1 shadow-2xs">
+                  <div
+                    ref={monthDropdownRef}
+                    className="relative inline-flex items-center gap-1 bg-white border border-gray-300 rounded-lg px-1.5 py-1 shadow-2xs"
+                  >
                     <button
                       type="button"
                       onClick={handlePrevDailyMonth}
@@ -1041,20 +1177,17 @@ const StationAvailability = () => {
                     >
                       <ChevronLeft size={15} />
                     </button>
-                    <select
-                      value={`${dailyMonth.year}-${dailyMonth.month}`}
-                      onChange={(e) => {
-                        const [year, month] = e.target.value.split("-").map(Number);
-                        handleDailyMonthSelect({ year, month });
-                      }}
-                      className="text-xs font-semibold text-gray-800 bg-transparent focus:outline-none cursor-pointer px-1 py-0.5"
+
+                    <button
+                      type="button"
+                      onClick={() => setIsMonthDropdownOpen((prev) => !prev)}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-gray-800 hover:text-blue-600 px-1.5 py-0.5 rounded transition"
+                      title="Pilih bulan"
                     >
-                      {availableMonths.map((m) => (
-                        <option key={`${m.year}-${m.month}`} value={`${m.year}-${m.month}`}>
-                          {m.label}
-                        </option>
-                      ))}
-                    </select>
+                      <span>{`${MONTH_NAMES[dailyMonth.month]} ${dailyMonth.year}`}</span>
+                      <ChevronDown size={14} className="text-gray-500" />
+                    </button>
+
                     <button
                       type="button"
                       onClick={handleNextDailyMonth}
@@ -1064,6 +1197,33 @@ const StationAvailability = () => {
                     >
                       <ChevronRight size={15} />
                     </button>
+
+                    {/* Fixed Height Popover Card (~5 rows height: max-h-[160px] with smooth scrollbar) */}
+                    {isMonthDropdownOpen && (
+                      <div className="absolute left-0 top-full mt-1.5 w-44 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 max-h-[160px] overflow-y-auto scrollbar-thin">
+                        {availableMonths.map((m) => {
+                          const isSelected = m.year === dailyMonth.year && m.month === dailyMonth.month;
+                          return (
+                            <button
+                              key={`${m.year}-${m.month}`}
+                              type="button"
+                              onClick={() => {
+                                handleDailyMonthSelect({ year: m.year, month: m.month });
+                                setIsMonthDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3 py-1.5 text-xs transition flex items-center justify-between ${
+                                isSelected
+                                  ? "bg-blue-50 text-blue-600 font-bold"
+                                  : "text-gray-700 hover:bg-gray-100 font-medium"
+                              }`}
+                            >
+                              <span>{m.label}</span>
+                              {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -65,7 +65,7 @@ const StationDetail = () => {
   const [qcData, setQcData] = useState<QCData[]>([]);
   // Inisialisasi summaryData diubah menjadi kosong, kita akan populate semua variasi prioritas di fetch
   const [summaryData, setSummaryData] = useState<Record<string, SummaryDataItem[]>>({});
-  const [loadingSummary, setLoadingSummary]= useState(false);
+  const [loadingSummary, setLoadingSummary] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,12 +73,12 @@ const StationDetail = () => {
 
 
   // // add authorizationn 
-  
+
   // const originalList = ['AAFM', 'AAI', 'AAII', 'ABJI', 'ABSM', 'ACBM', 'ACJM', 'ALKI', 'ALTI', 'AMPM']; 
   // // Normalize the list to a Set of lowercase strings for efficient lookup
   // const lowercaseSet = new Set(originalList.map(item => item.toLowerCase()));
 
-  
+
   // const lowercaseWord = (stationCode || "").toLowerCase();
 
   // // Check if the lowercase word is NOT in the set
@@ -87,7 +87,7 @@ const StationDetail = () => {
   //   stationCode = ""
   // } else {
   //   console.log(`"${stationCode}" is in the list.`);
-  
+
   // }
 
 
@@ -111,7 +111,7 @@ const StationDetail = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
-  
+
   useEffect(() => {
     if (!stationCode) return;
 
@@ -138,7 +138,7 @@ const StationDetail = () => {
           bw_percentage: Number(d.bw_percentage ?? 0),
           lp_percentage: Number(d.lp_percentage ?? 0),
         }));
-        
+
         normalized.sort((a, b) => {
           const ta = new Date(a.date).getTime();
           const tb = new Date(b.date).getTime();
@@ -176,19 +176,19 @@ const StationDetail = () => {
     // fetchSummaryData();
 
   }, [stationCode]);
-  
+
   const xAxisConfig = {
-    tickFormatter: formatDateTick, 
-    angle: -45, 
-    textAnchor: "end", 
-    height: 50, 
-    interval: 0, 
+    tickFormatter: formatDateTick,
+    angle: -45,
+    textAnchor: "end",
+    height: 50,
+    interval: 0,
   };
 
   // --- LOGIC PENENTUAN PRIORITAS CHANNEL ---
   const activeChannels = useMemo(() => {
     const available = Array.from(new Set(qcData.map((d) => d.channel.toUpperCase())));
-    
+
     // Prioritas pencarian: SH > BH > HH
     const getBest = (comp: string) => {
       if (available.includes(`SH${comp}`)) return `SH${comp}`;
@@ -262,40 +262,40 @@ const StationDetail = () => {
             >
               Stasiun
             </div>
- 
-             <div className="relative">
-               <select
-                 value={selectedStation ?? ""}
-                 onChange={(e) => {
-                   const newStationCode = e.target.value;
-                   setSelectedStation(newStationCode);
-                   if (newStationCode) navigate(`/station/${newStationCode}`);
-                 }}
+
+            <div className="relative">
+              <select
+                value={selectedStation ?? ""}
+                onChange={(e) => {
+                  const newStationCode = e.target.value;
+                  setSelectedStation(newStationCode);
+                  if (newStationCode) navigate(`/station/${newStationCode}`);
+                }}
 
                 className="appearance-none min-w-[120px] border border-gray-300 rounded px-3 pr-10 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-               >
-                 {stationList.length === 0 && <option value="">Loading...</option>}
-                 {stationList.map((station) => (
-                   <option key={station} value={station}>
-                     {station}
-                   </option>
-                 ))}
-               </select>
+              >
+                {stationList.length === 0 && <option value="">Loading...</option>}
+                {stationList.map((station) => (
+                  <option key={station} value={station}>
+                    {station}
+                  </option>
+                ))}
+              </select>
 
-               <div className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center">
-                 <span className="w-px h-6 bg-gray-200 mr-2" />
-                 <svg
-                   className="w-4 h-4 text-gray-400"
-                   viewBox="0 0 20 20"
-                   fill="none"
-                   xmlns="http://www.w3.org/2000/svg"
-                   aria-hidden="true"
-                 >
-                   <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                 </svg>
-               </div>
-             </div>
+              <div className="pointer-events-none absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center">
+                <span className="w-px h-6 bg-gray-200 mr-2" />
+                <svg
+                  className="w-4 h-4 text-gray-400"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path d="M6 8l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
             </div>
+          </div>
           <div className="flex flex-col items-end">
             <div className="flex space-x-1 rounded bg-gray-200 p-0.5">
               <button
@@ -309,7 +309,7 @@ const StationDetail = () => {
                 Harian
               </button>
               <button className="px-2 py-0.5 rounded text-xs font-medium bg-white shadow text-blue-600">
-                Webicorder
+                Time Series
               </button>
             </div>
             {/* Last 7 Days badge commented out per client request */}
@@ -403,7 +403,7 @@ const StationDetail = () => {
                       },
                     ]}
                     height={180}
-                    xAxisProps={xAxisConfig} 
+                    xAxisProps={xAxisConfig}
                   />
                 </div>
               ))}
@@ -419,7 +419,7 @@ const StationDetail = () => {
                     lines={[{ dataKey: "num_gap", stroke: "#f97316" }]}
                     yAxisProps={{ domain: [0, 24], tickCount: 7 }}
                     height={180}
-                    xAxisProps={xAxisConfig} 
+                    xAxisProps={xAxisConfig}
                   />
                 </div>
               ))}
@@ -435,7 +435,7 @@ const StationDetail = () => {
                     lines={[{ dataKey: "num_spikes", stroke: "#ef4444" }]}
                     yAxisProps={{ domain: [0, 24], tickCount: 7 }}
                     height={180}
-                    xAxisProps={xAxisConfig} 
+                    xAxisProps={xAxisConfig}
                   />
                 </div>
               ))}
@@ -455,7 +455,7 @@ const StationDetail = () => {
                     ]}
                     yAxisProps={{ domain: [50, 120] }}
                     height={180}
-                    xAxisProps={xAxisConfig} 
+                    xAxisProps={xAxisConfig}
                   />
                 </div>
               ))}
@@ -476,7 +476,7 @@ const StationDetail = () => {
                     ]}
                     yAxisProps={{ domain: [0, 100] }}
                     height={180}
-                    xAxisProps={xAxisConfig} 
+                    xAxisProps={xAxisConfig}
                   />
                 </div>
               ))}
@@ -494,7 +494,7 @@ const StationDetail = () => {
                     ]}
                     yAxisProps={{ domain: [0, "auto"] }}
                     height={180}
-                    xAxisProps={xAxisConfig} 
+                    xAxisProps={xAxisConfig}
                   />
                 </div>
               ))}
@@ -512,7 +512,7 @@ const StationDetail = () => {
                     ]}
                     yAxisProps={{ domain: [0, "auto"] }}
                     height={180}
-                    xAxisProps={xAxisConfig} 
+                    xAxisProps={xAxisConfig}
                   />
                 </div>
               ))}

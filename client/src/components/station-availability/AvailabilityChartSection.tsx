@@ -103,7 +103,7 @@ const AvailabilityChartSection = ({
                 {range.label}
               </span>
               <span className="text-gray-700">
-                : {count} stations ({percentage.toFixed(1)}%)
+                : {count} stasiun ({percentage.toFixed(1)}%)
               </span>
             </div>
           );
@@ -112,18 +112,18 @@ const AvailabilityChartSection = ({
     );
   };
 
-  const axisLabel = isPercentage ? "Percentage (%)" : "Stations";
+  const axisLabel = isPercentage ? "Persentase (%)" : "Jumlah Stasiun";
 
   return (
     <div className={`bg-white p-4 rounded-lg ${minHeightClassName}`}>
       <div className="flex items-center justify-between gap-4 mb-3">
         <h2 className="text-lg font-semibold text-gray-700">
-          Station Percentage Distribution by Month based on Availability
+          Distribusi Persentase Stasiun per Bulan Berdasarkan Ketersediaan
         </h2>
 
         <div className="flex items-center gap-2 shrink-0">
           <label className="text-xs font-medium text-gray-700">
-            Chart Type:
+            Tipe Grafik:
           </label>
           <select
             value={chartType}
@@ -141,7 +141,7 @@ const AvailabilityChartSection = ({
 
       <div className="flex items-center gap-1 mb-3">
         <span className="text-xs font-medium text-gray-700 mr-1">
-          Metric:
+          Metrik:
         </span>
         <button
           type="button"
