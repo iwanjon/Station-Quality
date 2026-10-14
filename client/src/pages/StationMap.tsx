@@ -773,6 +773,40 @@ const getColorByStatus = (): string => {
   return '#6b7280'; // gray for all stations
 };
 
+const getMarkerIcon = (station: Stasiun, selectedStation: Stasiun | null) => {
+  if (selectedStation?.stasiun_id === station.stasiun_id) {
+    return L.divIcon({
+      className: "",
+      html: `
+        <div style="
+          width: 0;
+          height: 0;
+          border-left: 8px solid transparent;
+          border-right: 8px solid transparent;
+          border-bottom: 16px solid #2563eb;
+          position: relative;
+        ">
+          <div style="
+            position: absolute;
+            left: -9px;
+            top: -2px;
+            width: 0;
+            height: 0;
+            border-left: 9px solid transparent;
+            border-right: 9px solid transparent;
+            border-bottom: 18px solid #111827;
+            z-index: -1;
+          "></div>
+        </div>
+      `,
+      iconSize: [18, 18],
+      iconAnchor: [9, 18],
+    });
+  }
+
+  return triangleIcon(getColorByStatus());
+};
+
 const hasAccessorKey = (
   column: ColumnDef<Stasiun>
 ): column is ColumnDef<Stasiun> & { accessorKey: string } => {
@@ -1057,7 +1091,15 @@ const StationMap = () => {
       header: "Station Code",
       accessorKey: "kode_stasiun",
       enableSorting: true,
-      cell: (info) => info.getValue(),
+      cell: (info) => (
+        <button
+          type="button"
+          onClick={() => setSelectedStation(info.row.original)}
+          className="text-blue-600 hover:underline font-medium"
+        >
+          {info.getValue<string>()}
+        </button>
+      ),
     },
     {
       header: "Accelerometer (Sensor)",
@@ -1075,7 +1117,15 @@ const StationMap = () => {
       header: "Location",
       accessorKey: "lokasi",
       enableSorting: true,
-      cell: (info) => info.getValue(),
+      cell: (info) => (
+        <button
+          type="button"
+          onClick={() => setSelectedStation(info.row.original)}
+          className="text-blue-600 hover:underline font-medium text-left"
+        >
+          {info.getValue<string>()}
+        </button>
+      ),
     },
     {
       header: "Province",
@@ -1307,7 +1357,7 @@ const StationMap = () => {
                     <Marker
                       key={station.stasiun_id}
                       position={[station.lintang, station.bujur]}
-                      icon={triangleIcon(getColorByStatus())}
+                      icon={getMarkerIcon(station, selectedStation)}
                       bubblingMouseEvents={false}
                       eventHandlers={{
                         click: () => setSelectedStation(station),
