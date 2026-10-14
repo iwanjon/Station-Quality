@@ -441,22 +441,24 @@ const StationQuality = () => {
     {
       id: "no",
       header: "No",
+      size: 50,
       accessorFn: (row) => row.stasiun_id,
       cell: ({ row, table }) => {
         const { pageIndex, pageSize } = table.getState().pagination;
         return pageIndex * pageSize + row.index + 1;
       },
     },
-    { accessorKey: "kode_stasiun", header: "Kode Stasiun" },
-    { accessorKey: "lokasi", header: "Lokasi" },
-    { accessorKey: "provinsi", header: "Provinsi" },
-    { accessorKey: "jaringan", header: "Jaringan" },
-    { accessorKey: "prioritas", header: "Prioritas" },
-    { accessorKey: "upt_penanggung_jawab", header: "UPT" },
+    { accessorKey: "kode_stasiun", header: "Kode Stasiun", size: 110 },
+    { accessorKey: "lokasi", header: "Lokasi", size: 220 },
+    { accessorKey: "provinsi", header: "Provinsi", size: 140 },
+    { accessorKey: "jaringan", header: "Jaringan", size: 130 },
+    { accessorKey: "prioritas", header: "Prioritas", size: 90 },
+    { accessorKey: "upt_penanggung_jawab", header: "UPT", size: 160 },
     {
       accessorKey: "result", 
       id: "result", 
       header: "Kualitas Data",
+      size: 140,
       cell: ({ row }) => {
         const result = row.original.result;
         let label = "Mati";
@@ -476,6 +478,7 @@ const StationQuality = () => {
     {
       accessorKey: "site_quality",
       header: "Kualitas Site",
+      size: 140,
       cell: ({ getValue }) => {
         const val = getValue<string>();
         const colorClass = getSiteQualityBadgeStyle(val);
@@ -490,6 +493,7 @@ const StationQuality = () => {
     {
       id: "detail",
       header: "Detail Stasiun",
+      size: 100,
       cell: ({ row }) => (
         <Link
           to={`/station-daily/${row.original.kode_stasiun}`}

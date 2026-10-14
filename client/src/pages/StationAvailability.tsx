@@ -742,9 +742,13 @@ const StationAvailability = () => {
           size: 110,
           meta: { sticky: true },
           cell: ({ row }) => (
-            <span className="font-semibold text-gray-900 tracking-wide">
+            <Link
+              to={`/station-availability/${row.original.kode}?year=${selectedMonth.endYear}&month=${selectedMonth.endMonth + 1}`}
+              className="font-semibold text-blue-600 hover:underline hover:text-blue-800 tracking-wide"
+              title={`Lihat detail ${row.original.kode}`}
+            >
               {row.original.kode}
-            </span>
+            </Link>
           ),
         },
       ];
@@ -781,22 +785,6 @@ const StationAvailability = () => {
         currentDate.setMonth(currentDate.getMonth() + 1);
       }
 
-      cols.push({
-        id: "actions",
-        header: "Detail",
-        accessorKey: "actions",
-        enableSorting: false,
-        size: 80,
-        cell: ({ row }) => (
-          <Link
-            to={`/station-availability/${row.original.kode}?year=${selectedMonth.endYear}&month=${selectedMonth.endMonth + 1}`}
-            className="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors shadow-2xs"
-          >
-            Detail
-          </Link>
-        ),
-      });
-
       return cols;
     } else {
       // Daily Mode Columns
@@ -813,9 +801,13 @@ const StationAvailability = () => {
           size: 110,
           meta: { sticky: true },
           cell: ({ row }) => (
-            <span className="font-semibold text-gray-900 tracking-wide">
+            <Link
+              to={`/station-availability/${row.original.kode}?year=${dailyMonth.year}&month=${dailyMonth.month + 1}`}
+              className="font-semibold text-blue-600 hover:underline hover:text-blue-800 tracking-wide"
+              title={`Lihat detail ${row.original.kode}`}
+            >
               {row.original.kode}
-            </span>
+            </Link>
           ),
         },
       ];
@@ -846,22 +838,6 @@ const StationAvailability = () => {
           },
         });
       }
-
-      cols.push({
-        id: "actions",
-        header: "Detail",
-        accessorKey: "actions",
-        enableSorting: false,
-        size: 80,
-        cell: ({ row }) => (
-          <Link
-            to={`/station-availability/${row.original.kode}?year=${dailyMonth.year}&month=${dailyMonth.month + 1}`}
-            className="inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors shadow-2xs"
-          >
-            Detail
-          </Link>
-        ),
-      });
 
       return cols;
     }
