@@ -1211,7 +1211,13 @@ const MetadataCard = memo(() => {
   );
 });
 
-const AVAILABILITY_COLORS = ["#16a34a", "#facc15", "#fb923c", "#ef4444", "#a3a3a3"];
+const AVAILABILITY_COLOR_MAP: Record<string, string> = {
+  ">97%": "#16a34a",
+  "90-97%": "#facc15",
+  "1-89%": "#fb923c",
+  "0%": "#ef4444",
+  "No Data": "#a3a3a3",
+};
 
 const getAvailabilityCategory = (value: number | null) => {
   if (value === null) return "No Data";
@@ -1230,8 +1236,11 @@ const AvailabilityCard = memo(({ availabilityPieData }: { availabilityPieData: {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie data={availabilityPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={40} label isAnimationActive={false}>
-                {availabilityPieData.map((_, idx) => (
-                  <Cell key={`cell-${idx}`} fill={AVAILABILITY_COLORS[idx % AVAILABILITY_COLORS.length]} />
+                {availabilityPieData.map((entry, idx) => (
+                  <Cell
+                    key={`cell-${idx}`}
+                    fill={AVAILABILITY_COLOR_MAP[entry.name] ?? "#a3a3a3"}
+                  />
                 ))}
               </Pie>
               <Tooltip />
