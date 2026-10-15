@@ -262,7 +262,7 @@ export async function fetchQCSummary(date, customTtl) {
   // ✅ MODIFIED: Use today's date for the cache key if customTtl exists.
   // (Make sure to import dayjs at the top of this file if you haven't already)
   const cacheDate = customTtl ? dayjs().format('YYYY-MM-DD') : date;
-  const cacheKey = `qc:summary:${cacheDate}`;
+  const cacheKey = `qc:summary:${date}`;
   
   const redisClient = getRedisClient();
 

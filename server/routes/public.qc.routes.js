@@ -24,24 +24,34 @@ const router = Router();
 
 
 router.get("/summary/:date", async (req, res) => {
-  let { date } = req.params;
-  const requestedTtl = req.query.ttl ? parseInt(req.query.ttl) : null;
+  const { date } = req.params;
+  const requestedTtl = req.query.ttl
+    ? Number.parseInt(String(req.query.ttl), 10)
+    : null;
 
-  // If TTL exists, force the date to be yesterday
-  if (requestedTtl !== null) {
-    date = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
-  } else if (!date) {
-    // If no TTL is provided and no date is in the URL, return an error
-    return res.status(400).json({ error: "Date parameter is required when no TTL is provided" });
+  if (!date) {
+    return res.status(400).json({
+      error: "Date parameter is required",
+    });
+  }
+
+  if (
+    requestedTtl !== null &&
+    (!Number.isInteger(requestedTtl) || requestedTtl <= 0)
+  ) {
+    return res.status(400).json({
+      error: "ttl must be a positive integer",
+    });
   }
 
   try {
-    console.log(date);
     const data = await fetchQCSummary(date, requestedTtl);
-    res.json(data);
+    return res.json(data);
   } catch (err) {
     console.error("Error in /summary:", err);
-    res.status(500).json({ error: "Failed to fetch QC summary" });
+    return res.status(500).json({
+      error: "Failed to fetch QC summary",
+    });
   }
 });
 
