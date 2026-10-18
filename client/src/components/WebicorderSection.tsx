@@ -36,8 +36,22 @@ interface WebicorderSectionProps {
 // ---------------------------------------------------------------------------
 const WAVEFORM_IMAGE_BASE_URL = "";
 
+// Additional accelerometer channels (Strong Motion: East, North, Vertical)
+const ACCELEROMETER_CHANNELS = ["HNE", "HNN", "HNZ"];
+
+// Standard 3-component groups for fallback if API returns empty
+const CHANNEL_PRIORITIES = [
+  ["SHE", "SHN", "SHZ"],
+  ["BHE", "BHN", "BHZ"],
+  ["HHE", "HHN", "HHZ"],
+  ["E", "N", "Z"],
+];
+
 /**
  * Builds the waveform image URL for a given station, date, and channel.
+ * If WAVEFORM_IMAGE_BASE_URL is provided, it attempts to load from the remote endpoint.
+ * Otherwise, it loads dummy waveform samples from /images/ matching the component (E, N, Z).
+ *
  * @param stationCode Station code, e.g. "AAFM"
  * @param date Date string in YYYY-MM-DD format
  * @param channel Channel code, e.g. "SHZ"
@@ -47,8 +61,22 @@ const buildWaveformImageUrl = (
   date: string,
   channel: string
 ): string => {
-  const formattedDate = dayjs(date).format("DD-MM-YYYY");
-  return `${WAVEFORM_IMAGE_BASE_URL}/${stationCode.toLowerCase()}_${formattedDate}_${channel.toLowerCase()}.png`;
+  if (WAVEFORM_IMAGE_BASE_URL) {
+    const formattedDate = dayjs(date).format("DD-MM-YYYY");
+    return `${WAVEFORM_IMAGE_BASE_URL}/${stationCode.toLowerCase()}_${formattedDate}_${channel.toLowerCase()}.png`;
+  }
+
+  // Load component-specific dummy preview images from public/images/
+  // Special test image with different dimensions (Landscape 3200x1600 px, 2:1 ratio) for HNZ
+  if (channel.toUpperCase() === "HNZ") {
+    return "/images/webicorder-sample-HNZ.png";
+  }
+
+  const component = channel.toUpperCase().slice(-1);
+  if (component === "E") return "/images/webicorder-sample-E.png";
+  if (component === "N") return "/images/webicorder-sample-N.png";
+  if (component === "Z") return "/images/webicorder-sample-Z.png";
+  return "/images/webicorder-sample.png";
 };
 
 interface SingleWaveformCardProps {
@@ -222,42 +250,49 @@ export const WebicorderSection: React.FC<WebicorderSectionProps> = ({
     zoom: 100,
   });
 
-  // Fetch the station's available channels from station history records.
-  // The previous QC-detail based approach only exposed a subset of channels;
-  // station history exposes every channel configured for the station.
+  // Fetch available channels from the daily QC endpoint (matching StationDaily)
+  // plus additional accelerometer channels (HN*).
   useEffect(() => {
     let isMounted = true;
     if (!stationCode) return;
 
     const fetchStationChannels = async () => {
       try {
-        const res = await axiosServer.get(`/api/station-history/bycode`, {
-          params: { code: stationCode },
-        });
+        const res = await axiosServer.get(
+          `/api/qc/data/detail/${stationCode}/${selectedDate}`
+        );
         if (!isMounted) return;
 
-        const payload = res.data?.data;
-        const records = Array.isArray(payload)
-          ? payload
-          : Array.isArray(res.data)
-            ? res.data
-            : [];
+        const data = Array.isArray(res.data) ? res.data : [];
+        const rawChannels = data
+          .map((d: any) => (d.channel ? String(d.channel).toUpperCase() : ""))
+          .filter(Boolean);
 
-        const uniqueChannels = Array.from(
-          new Set(
-            records
-              .map((record: any) =>
-                record.channel ? String(record.channel).toUpperCase() : ""
-              )
-              .filter(Boolean)
-          )
+        // Find the highest priority channel group available in the response
+        let detectedDailyChannels: string[] = [];
+        for (const group of CHANNEL_PRIORITIES) {
+          if (group.some((ch) => rawChannels.includes(ch))) {
+            detectedDailyChannels = group;
+            break;
+          }
+        }
+
+        // If no priority group matched, use raw channels or fallback to default
+        if (detectedDailyChannels.length === 0) {
+          detectedDailyChannels =
+            rawChannels.length > 0 ? rawChannels : ["SHE", "SHN", "SHZ"];
+        }
+
+        // Combine daily channels with additional accelerometer HN channels
+        const combined = Array.from(
+          new Set([...detectedDailyChannels, ...ACCELEROMETER_CHANNELS])
         ).sort();
 
-        setStationChannels(uniqueChannels);
+        setStationChannels(combined);
       } catch {
-        // Leave any previously loaded channels untouched; empty state will be
-        // shown by the UI if no channels are available.
-        if (isMounted) setStationChannels([]);
+        if (!isMounted) return;
+        // On error or 404, fallback to standard daily channels + HN channels
+        setStationChannels(["SHE", "SHN", "SHZ", ...ACCELEROMETER_CHANNELS].sort());
       }
     };
 
@@ -266,7 +301,7 @@ export const WebicorderSection: React.FC<WebicorderSectionProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [stationCode]);
+  }, [stationCode, selectedDate]);
 
   // Compute clean dropdown options: wildcard groups with '*' and individual channels
   const channelOptions = useMemo(() => {
@@ -361,7 +396,7 @@ export const WebicorderSection: React.FC<WebicorderSectionProps> = ({
         <div className="flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200/70 shadow-2xs">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-            <span>Rekaman 24 Jam</span>
+            <span>Simulasi Webicorder (Dummy)</span>
           </span>
         </div>
       </div>
