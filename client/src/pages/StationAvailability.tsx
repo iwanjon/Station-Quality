@@ -84,7 +84,10 @@ interface HeatmapCellProps {
   tooltipText: string;
 }
 
-function getHeatmapCellProps(value: number | null | undefined): HeatmapCellProps {
+function getHeatmapCellProps(
+  value: number | null | undefined,
+  showDecimals: boolean = false
+): HeatmapCellProps {
   if (value === null || value === undefined || isNaN(value)) {
     return {
       bgClass: "bg-gray-100",
@@ -94,36 +97,38 @@ function getHeatmapCellProps(value: number | null | undefined): HeatmapCellProps
     };
   }
 
-  // Floor (not round) so the displayed integer always stays within its
-  // category range. e.g. 96.80% shows "96%" (Baik) instead of "97%" (Sangat Baik).
-  const flooredValue = Math.floor(value);
+  // Display label: format with 2 decimal places if showDecimals is true (monthly columns in monthly view),
+  // otherwise floor the integer to ensure it visually falls within its category boundary (daily & rata-rata columns).
+  const displayLabel = showDecimals
+    ? `${value.toFixed(2)}%`
+    : `${Math.floor(value)}%`;
 
   if (value >= 97) {
     return {
       bgClass: "bg-green-600",
       textClass: "text-white font-semibold",
-      label: `${flooredValue}%`,
+      label: displayLabel,
       tooltipText: `${value.toFixed(2)}% (Sangat Baik)`,
     };
   } else if (value >= 90) {
     return {
       bgClass: "bg-yellow-400",
       textClass: "text-gray-900 font-bold", // High-contrast dark text on yellow
-      label: `${flooredValue}%`,
+      label: displayLabel,
       tooltipText: `${value.toFixed(2)}% (Baik)`,
     };
   } else if (value >= 50) {
     return {
       bgClass: "bg-orange-500",
       textClass: "text-white font-semibold",
-      label: `${flooredValue}%`,
+      label: displayLabel,
       tooltipText: `${value.toFixed(2)}% (Kurang Baik)`,
     };
   } else {
     return {
       bgClass: "bg-red-500",
       textClass: "text-white font-semibold",
-      label: `${flooredValue}%`,
+      label: displayLabel,
       tooltipText: `${value.toFixed(2)}% (Buruk)`,
     };
   }
@@ -821,7 +826,7 @@ const StationAvailability = () => {
           meta: { noPadding: true },
           cell: ({ row }) => {
             const value = row.original.monthlyData[monthKey];
-            const { bgClass, textClass, label, tooltipText } = getHeatmapCellProps(value);
+            const { bgClass, textClass, label, tooltipText } = getHeatmapCellProps(value, true);
 
             return (
               <div
