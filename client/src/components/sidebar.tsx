@@ -297,11 +297,13 @@ const Sidebar: React.FC = () => {
       </>
     );
 
-    // External links use a plain anchor (same tab); internal routes use Link.
+    // External links open in a new tab; internal routes use Link.
     if (item.href) {
       return (
         <a
           href={item.href}
+          target="_blank"
+          rel="noopener noreferrer"
           className="group relative flex items-center rounded-lg transition-colors duration-200"
         >
           {linkContent}
