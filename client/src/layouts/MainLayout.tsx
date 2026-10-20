@@ -1,34 +1,30 @@
-// src/layouts/MainLayout.tsx
-import type { ReactNode } from 'react'
-import Header from '../components/Header'
-import Footer from '../components/Footer'
-import Sidebar from '../components/sidebar'
+import type { ReactNode } from 'react';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
+
 interface Props {
-  children: ReactNode
-  className?: string
+  children: ReactNode;
+  className?: string;
 }
 
 const MainLayout = ({ children, className }: Props) => {
-// const MainLayout = ({ children }: Props) => {
   return (
     <div className="flex min-h-screen">
-      <div className='z-50'>
-        <Sidebar />
-      </div>
-
-      {/* content column */}
       <div className="flex-1 min-w-0 flex flex-col">
         <Header />
 
-      <main className={className || "mx-16 px-4 py-8 bg-gray-100 h-full min-w-0"}>
-        {/* <main className="mx-16 px-4 py-8 bg-gray-100 h-full"> */}
-            {children}
+        <main
+          className={
+            className || 'mx-16 px-4 py-8 bg-gray-100 h-full min-w-0'
+          }
+        >
+          {children}
         </main>
 
         <Footer />
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default MainLayout
+export default MainLayout;
