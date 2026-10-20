@@ -918,12 +918,13 @@ import dayjs from "dayjs";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { Link } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, ResponsiveContainer as RechartsResponsiveContainer } from "recharts";
-import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import DataTable from "../components/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Download } from "lucide-react";
 import ColumnVisibilityDropdown from "../components/shared/ColumnVisibilityDropdown";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 // --- INTERFACES ---
 
@@ -1214,27 +1215,29 @@ const MetadataCard = memo(() => {
   }, []);
 
   return (
-    <InfoCard title="Metadata" className="min-h-[220px]">
+    <InfoCard title="Metadata" className="min-h-[150px]">
       <div className="flex-1 w-full text-left text-sm text-gray-800">
-        <p className="font-semibold mb-3">Recent updates:</p>
+        <p className="font-semibold text-xs mb-2">
+          Recent updates:
+        </p>
 
         {isLoading ? (
-          <div className="flex items-center justify-center min-h-[100px]">
-            <p className="text-sm text-gray-500">Loading...</p>
+          <div className="flex items-center justify-center min-h-[48px]">
+            <p className="text-xs text-gray-500">Loading...</p>
           </div>
         ) : recentUpdates.length > 0 ? (
-          <ul className="grid grid-rows-3 grid-flow-col auto-cols-fr gap-x-5 gap-y-2 list-disc list-inside">
+          <ul className="grid grid-rows-3 grid-flow-col auto-cols-fr gap-x-3 gap-y-1 list-disc list-inside">
             {recentUpdates.map((station) => (
               <li
                 key={station.kode_stasiun}
-                className="text-sm text-gray-700"
+                className="text-xs text-gray-700"
               >
                 {station.kode_stasiun}
               </li>
             ))}
           </ul>
         ) : (
-          <p className="italic text-gray-500">
+          <p className="italic text-xs text-gray-500">
             No recent updates.
           </p>
         )}
@@ -1260,109 +1263,110 @@ const getAvailabilityCategory = (value: number | null) => {
   return "No Data";
 };
 
+
 const AvailabilityCard = memo(({
-    availabilityPieData,
-    selectedDate,
-    isHistoricalLoading,
-  }: {
-    availabilityPieData: { name: string; value: number }[];
-    selectedDate: Date;
-    isHistoricalLoading: boolean;
-  }) => {
-    const legendItems = [
-      { label: ">97%", color: AVAILABILITY_COLOR_MAP[">97%"] },
-      { label: "90-97%", color: AVAILABILITY_COLOR_MAP["90-97%"] },
-      { label: "1-89%", color: AVAILABILITY_COLOR_MAP["1-89%"] },
-      { label: "0%", color: AVAILABILITY_COLOR_MAP["0%"] },
-      { label: "No Data", color: AVAILABILITY_COLOR_MAP["No Data"] },
-    ];
+  availabilityPieData,
+  selectedDate,
+  isHistoricalLoading,
+}: {
+  availabilityPieData: { name: string; value: number }[];
+  selectedDate: Date;
+  isHistoricalLoading: boolean;
+}) => {
+  const legendItems = [
+    { label: ">97%", color: AVAILABILITY_COLOR_MAP[">97%"] },
+    { label: "90-97%", color: AVAILABILITY_COLOR_MAP["90-97%"] },
+    { label: "1-89%", color: AVAILABILITY_COLOR_MAP["1-89%"] },
+    { label: "0%", color: AVAILABILITY_COLOR_MAP["0%"] },
+    { label: "No Data", color: AVAILABILITY_COLOR_MAP["No Data"] },
+  ];
 
-    return (
-      <InfoCard title="Availability" className="min-h-[440px]">
-        <div className="flex flex-1 min-w-0 flex-col w-full">
-          <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.2fr)_minmax(200px,0.8fr)] gap-4 flex-1 items-stretch">
-            {/* PIE CHART */}
-            <div className="w-full min-w-0 h-[320px] lg:h-[350px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart margin={{ top: 24, right: 24, bottom: 24, left: 24 }}>
-                  <Pie
-                    data={availabilityPieData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius="62%"
-                    label
-                    isAnimationActive={false}
-                  >
-                    {availabilityPieData.map((entry, idx) => (
-                      <Cell
-                        key={`cell-${idx}`}
-                        fill={
-                          AVAILABILITY_COLOR_MAP[entry.name] ??
-                          "#a3a3a3"
-                        }
-                      />
-                    ))}
-                  </Pie>
+  return (
+    <InfoCard title="Availability" className="min-h-[340px]">
+      <div className="flex flex-1 min-w-0 flex-col w-full">
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.1fr)_minmax(140px,0.9fr)] gap-2 flex-1 items-stretch">
+          {/* Availability Pie Chart */}
+          <div className="w-full min-w-0 h-[220px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart
+                margin={{ top: 12, right: 12, bottom: 12, left: 12 }}
+              >
+                <Pie
+                  data={availabilityPieData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius="52%"
+                  label
+                  isAnimationActive={false}
+                >
+                  {availabilityPieData.map((entry, idx) => (
+                    <Cell
+                      key={`cell-${idx}`}
+                      fill={
+                        AVAILABILITY_COLOR_MAP[entry.name] ??
+                        "#a3a3a3"
+                      }
+                    />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
 
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+          {/* Availability Legend and Counts */}
+          <div className="flex flex-col justify-center border-t border-gray-200 pt-2 md:border-t-0 md:border-l md:pt-0 md:pl-3">
+            {legendItems.map((item) => {
+              const count =
+                availabilityPieData.find(
+                  (entry) => entry.name === item.label
+                )?.value ?? 0;
 
-            {/* CATEGORY LEGEND AND COUNTS */}
-            <div className="flex flex-col justify-center border-t border-gray-200 pt-3 md:border-t-0 md:border-l md:pt-0 md:pl-5">
-              {legendItems.map((item) => {
-                const count =
-                  availabilityPieData.find(
-                    (entry) => entry.name === item.label
-                  )?.value ?? 0;
-
-                return (
-                  <div
-                    key={item.label}
-                    className="flex items-center justify-between gap-3 border-b border-gray-100 py-3 last:border-b-0"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span
-                        className="inline-block h-3.5 w-3.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: item.color }}
-                      />
-
-                      <span className="text-sm text-gray-700">
-                        {item.label}
-                      </span>
-                    </div>
-
-                    <span className="text-sm font-semibold tabular-nums text-gray-900">
-                      {count.toLocaleString("en-US")}
+              return (
+                <div
+                  key={item.label}
+                  className="flex items-center justify-between gap-2 border-b border-gray-100 py-2 last:border-b-0"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      className="inline-block h-3 w-3 shrink-0 rounded-full"
+                      style={{ backgroundColor: item.color }}
+                    />
+                    <span className="text-xs text-gray-700">
+                      {item.label}
                     </span>
                   </div>
-                );
-              })}
-            </div>
-          </div>
 
-          {/* DATE AND DETAILS */}
-          <div className="mt-auto flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
-            <span className="text-xs text-gray-500">
-              {isHistoricalLoading
-                ? "Loading availability..."
-                : `Data for ${dayjs(selectedDate).format("DD MMM YYYY")}`}
-            </span>
-
-            <Link
-              to="/station-availability"
-              className="shrink-0 text-sm text-blue-600 hover:underline"
-            >
-              Details...
-            </Link>
+                  <span className="text-xs font-semibold tabular-nums text-gray-900">
+                    {count.toLocaleString("en-US")}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
-      </InfoCard>
-    );
-  });
+
+        {/* Date and Details */}
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-gray-100 pt-2">
+          <span className="text-[11px] text-gray-500">
+            {isHistoricalLoading
+              ? "Loading availability..."
+              : `Data for ${dayjs(selectedDate).format("DD MMM YYYY")}`}
+          </span>
+
+          <Link
+            to="/station-availability"
+            className="shrink-0 text-xs text-blue-600 hover:underline"
+          >
+            Details...
+          </Link>
+        </div>
+      </div>
+    </InfoCard>
+  );
+});
 
 const QUALITY_COLORS = ["#16a34a", "#fb923c", "#ef4444", "#a3a3a3"];
 const QUALITY_LABELS = [
@@ -1372,102 +1376,104 @@ const QUALITY_LABELS = [
   { label: "NO DATA", color: "#a3a3a3" },
 ];
 
+
 const QualityCard = memo(({
-    qualityPieData,
-    selectedDate,
-    isHistoricalLoading,
-  }: {
-    qualityPieData: { name: string; value: number }[];
-    selectedDate: Date;
-    isHistoricalLoading: boolean;
-  }) => {
-    return (
-      <InfoCard title="Quality" className="min-h-[440px]">
-        <div className="flex flex-1 min-w-0 flex-col w-full">
-          <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.2fr)_minmax(200px,0.8fr)] gap-4 flex-1 items-stretch">
-            {/* PIE CHART */}
-            <div className="w-full min-w-0 h-[320px] lg:h-[350px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart margin={{ top: 24, right: 24, bottom: 24, left: 24 }}>
-                  <Pie
-                    data={qualityPieData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius="62%"
-                    label
-                    isAnimationActive={false}
-                  >
-                    {qualityPieData.map((entry, idx) => (
-                      <Cell
-                        key={`cell-q-${idx}`}
-                        fill={
-                          QUALITY_LABELS.find(
-                            (item) => item.label === entry.name
-                          )?.color ?? QUALITY_COLORS[idx % QUALITY_COLORS.length]
-                        }
-                      />
-                    ))}
-                  </Pie>
+  qualityPieData,
+  selectedDate,
+  isHistoricalLoading,
+}: {
+  qualityPieData: { name: string; value: number }[];
+  selectedDate: Date;
+  isHistoricalLoading: boolean;
+}) => {
+  return (
+    <InfoCard title="Quality" className="min-h-[340px]">
+      <div className="flex flex-1 min-w-0 flex-col w-full">
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.1fr)_minmax(140px,0.9fr)] gap-2 flex-1 items-stretch">
+          {/* Quality Pie Chart */}
+          <div className="w-full min-w-0 h-[220px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart
+                margin={{ top: 12, right: 12, bottom: 12, left: 12 }}
+              >
+                <Pie
+                  data={qualityPieData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius="52%"
+                  label
+                  isAnimationActive={false}
+                >
+                  {qualityPieData.map((entry, idx) => (
+                    <Cell
+                      key={`cell-q-${idx}`}
+                      fill={
+                        QUALITY_LABELS.find(
+                          (item) => item.label === entry.name
+                        )?.color ??
+                        QUALITY_COLORS[idx % QUALITY_COLORS.length]
+                      }
+                    />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
 
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+          {/* Quality Legend and Counts */}
+          <div className="flex flex-col justify-center border-t border-gray-200 pt-2 md:border-t-0 md:border-l md:pt-0 md:pl-3">
+            {QUALITY_LABELS.map((item) => {
+              const count =
+                qualityPieData.find(
+                  (entry) => entry.name === item.label
+                )?.value ?? 0;
 
-            {/* CATEGORY LEGEND AND COUNTS */}
-            <div className="flex flex-col justify-center border-t border-gray-200 pt-3 md:border-t-0 md:border-l md:pt-0 md:pl-5">
-              {QUALITY_LABELS.map((item) => {
-                const count =
-                  qualityPieData.find(
-                    (entry) => entry.name === item.label
-                  )?.value ?? 0;
-
-                return (
-                  <div
-                    key={item.label}
-                    className="flex items-center justify-between gap-3 border-b border-gray-100 py-3 last:border-b-0"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span
-                        className="inline-block h-3.5 w-3.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: item.color }}
-                      />
-
-                      <span className="text-sm text-gray-700">
-                        {item.label}
-                      </span>
-                    </div>
-
-                    <span className="text-sm font-semibold tabular-nums text-gray-900">
-                      {count.toLocaleString("en-US")}
+              return (
+                <div
+                  key={item.label}
+                  className="flex items-center justify-between gap-2 border-b border-gray-100 py-2 last:border-b-0"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      className="inline-block h-3 w-3 shrink-0 rounded-full"
+                      style={{ backgroundColor: item.color }}
+                    />
+                    <span className="text-xs text-gray-700">
+                      {item.label}
                     </span>
                   </div>
-                );
-              })}
-            </div>
-          </div>
 
-          {/* DATE AND DETAILS */}
-          <div className="mt-auto flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
-            <span className="text-xs text-gray-500">
-              {isHistoricalLoading
-                ? "Loading quality..."
-                : `Data for ${dayjs(selectedDate).format("DD MMM YYYY")}`}
-            </span>
-
-            <Link
-              to="/station-quality"
-              className="shrink-0 text-sm text-blue-600 hover:underline"
-            >
-              Details...
-            </Link>
+                  <span className="text-xs font-semibold tabular-nums text-gray-900">
+                    {count.toLocaleString("en-US")}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
-      </InfoCard>
-    );
-  });
+
+        {/* Date and Details */}
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-gray-100 pt-2">
+          <span className="text-[11px] text-gray-500">
+            {isHistoricalLoading
+              ? "Loading quality..."
+              : `Data for ${dayjs(selectedDate).format("DD MMM YYYY")}`}
+          </span>
+
+          <Link
+            to="/station-quality"
+            className="shrink-0 text-xs text-blue-600 hover:underline"
+          >
+            Details...
+          </Link>
+        </div>
+      </div>
+    </InfoCard>
+  );
+});
 
 const hasAccessorKey = (
   column: ColumnDef<TableStasiun>
@@ -1955,7 +1961,7 @@ const Dashboard = () => {
       <h1 className="text-left text-2xl font-bold mt-0 mb-2 ml-1">Dashboard</h1>
       {/* --- FULL-WIDTH MAP --- */}
       <div className="w-full">
-        <div className="bg-white rounded-lg shadow p-2 h-[50vh] min-h-[400px] lg:h-[450px] relative">
+        <div className="bg-white rounded-lg shadow p-2 h-[42vh] min-h-[320px] lg:h-[400px] relative">
           <MapContainer
             center={[-2.5, 117]}
             zoom={5}
@@ -1990,113 +1996,119 @@ const Dashboard = () => {
       </div>
 
       {/* --- TOP ROW: DATE PICKER, OPERATIONAL, METADATA --- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mt-3 items-stretch">
-        
-        {/* DATE PICKER */}
-        <div className="bg-white rounded-xl shadow p-4 border border-gray-200 min-h-[220px] flex flex-col">
-          <label
-            htmlFor="dashboard-date-picker"
-            className="block text-base font-semibold text-gray-800"
-          >
-            Pilih Tanggal Data
-          </label>
-
-          {/* Area input dan keterangan diposisikan di tengah */}
-          <div className="flex flex-1 flex-col justify-center gap-3 pt-2">
-            <DatePicker
-              id="dashboard-date-picker"
-              selected={selectedDate}
-              onChange={(date: Date | null) => {
-                if (date) setSelectedDate(date);
-              }}
-              dateFormat="dd MMMM yyyy"
-              placeholderText="Pilih tanggal"
-              className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm"
-              wrapperClassName="w-full"
-            />
-
-            <p className="text-xs leading-5 text-gray-500">
-              Tanggal ini mengatur grafik Availability dan Quality.
+            {/* --- DASHBOARD SUMMARY AND CHARTS --- */}
+      <div className="grid grid-cols-1 xl:grid-cols-[260px_minmax(0,1fr)] gap-3 mt-3 items-start">
+        {/* LEFT COLUMN: OPERATIONAL AND METADATA */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3 min-w-0">
+          {/* OPERATIONAL */}
+          <div className="bg-white rounded-xl p-3 text-center border border-gray-200 shadow min-h-[156px] flex flex-col justify-center">
+            <p className="text-xs font-semibold tracking-wide text-gray-800">
+              OPERATIONAL
             </p>
 
-            {isHistoricalLoading && (
-              <p className="text-xs text-blue-600">
-                Memuat data historis...
-              </p>
-            )}
+            <p className="text-3xl font-bold mb-2 text-gray-900">
+              {isLoading ? "..." : registeredCount}
+            </p>
 
-            {!isHistoricalLoading && historicalError && (
-              <p className="text-xs text-red-600">
-                {historicalError}
-              </p>
-            )}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-green-600 text-white rounded-md p-2">
+                <p className="text-xs font-bold">ON</p>
+                <p className="text-xl font-bold">
+                  {isLoading ? "..." : totalOnSlmon}
+                </p>
+              </div>
 
-            {!isHistoricalLoading &&
-              !historicalError &&
-              !historicalDataAvailable && (
-                <p className="text-xs text-gray-500">
-                  Data tidak tersedia untuk tanggal ini.
+              <div className="bg-black text-white rounded-md p-2">
+                <p className="text-xs font-bold">OFF</p>
+                <p className="text-xl font-bold">
+                  {isLoading ? "..." : totalOffSlmon}
+                </p>
+              </div>
+            </div>
+
+            <p className="mt-2 text-[10px] leading-4 text-gray-500">
+              Status SLMON terkini, bukan status historis tanggal pilihan.
+            </p>
+          </div>
+
+          {/* METADATA */}
+          <MetadataCard />
+        </div>
+
+        {/* RIGHT COLUMN: DATE PICKER AND CHARTS */}
+        <div className="min-w-0">
+          {/*
+            DATE PICKER — SENGAJA DINONAKTIFKAN SEMENTARA.
+            Jika ingin diaktifkan lagi, letakkan kembali komponen ini
+            di atas Availability dan Quality.
+
+            <div className="bg-white rounded-xl shadow p-3 border border-gray-200 mb-3">
+              <label
+                htmlFor="dashboard-date-picker"
+                className="block text-sm font-semibold text-gray-800 mb-2"
+              >
+                Pilih Tanggal Data
+              </label>
+
+              <DatePicker
+                id="dashboard-date-picker"
+                selected={selectedDate}
+                onChange={(date: Date | null) => {
+                  if (date) setSelectedDate(date);
+                }}
+                dateFormat="dd MMMM yyyy"
+                placeholderText="Pilih tanggal"
+                className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                wrapperClassName="w-full"
+              />
+
+              <p className="text-xs leading-5 text-gray-500 mt-2">
+                Tanggal ini mengatur grafik Availability dan Quality.
+              </p>
+
+              {isHistoricalLoading && (
+                <p className="text-xs text-blue-600 mt-1">
+                  Memuat data historis...
                 </p>
               )}
+
+              {!isHistoricalLoading && historicalError && (
+                <p className="text-xs text-red-600 mt-1">
+                  {historicalError}
+                </p>
+              )}
+
+              {!isHistoricalLoading &&
+                !historicalError &&
+                !historicalDataAvailable && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Data tidak tersedia untuk tanggal ini.
+                  </p>
+                )}
+            </div>
+          */}
+
+          {/* AVAILABILITY AND QUALITY */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 min-w-0">
+            <AvailabilityCard
+              availabilityPieData={availabilityPieData}
+              selectedDate={selectedDate}
+              isHistoricalLoading={isHistoricalLoading}
+            />
+
+            <QualityCard
+              qualityPieData={qualityPieData}
+              selectedDate={selectedDate}
+              isHistoricalLoading={isHistoricalLoading}
+            />
           </div>
         </div>
-
-        {/* OPERATIONAL */}
-        <div className="bg-white rounded-xl p-3 text-center border border-gray-200 shadow min-h-[220px] flex flex-col justify-center">
-          <p className="text-sm font-semibold tracking-wide text-gray-800">
-            OPERATIONAL
-          </p>
-
-          <p className="text-4xl font-bold mb-3 text-gray-900">
-            {isLoading ? "..." : registeredCount}
-          </p>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-green-600 text-white rounded-md p-2">
-              <p className="text-xs font-bold">ON</p>
-              <p className="text-2xl font-bold">
-                {isLoading ? "..." : totalOnSlmon}
-              </p>
-            </div>
-
-            <div className="bg-black text-white rounded-md p-2">
-              <p className="text-xs font-bold">OFF</p>
-              <p className="text-2xl font-bold">
-                {isLoading ? "..." : totalOffSlmon}
-              </p>
-            </div>
-          </div>
-
-          <p className="mt-3 text-[10px] leading-4 text-gray-500">
-            Status SLMON terkini, bukan status historis tanggal pilihan.
-          </p>
-        </div>
-
-        {/* METADATA */}
-        <MetadataCard />
       </div>
 
-      {/* --- LARGE CHARTS: AVAILABILITY AND QUALITY --- */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 mt-3">
-        <AvailabilityCard
-          availabilityPieData={availabilityPieData}
-          selectedDate={selectedDate}
-          isHistoricalLoading={isHistoricalLoading}
-        />
-
-        <QualityCard
-          qualityPieData={qualityPieData}
-          selectedDate={selectedDate}
-          isHistoricalLoading={isHistoricalLoading}
-        />
-      </div>
-      
       {/* --- DASHBOARD DATA TABLE SECTION --- */}
-      <div className="bg-white p-4 rounded-xl shadow mt-6 mb-4">
-
-        {/* HEADER: Export Button & Column Visibility Toggles */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
-          
+      <div className="bg-white p-4 rounded-xl shadow mt-3 mb-3">
+        {/* HEADER: EXPORT BUTTON AND COLUMN VISIBILITY */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
           {/* Export Button */}
           <div className="flex gap-2 w-full md:w-auto">
             <button
@@ -2111,16 +2123,19 @@ const Dashboard = () => {
 
           {/* Column Visibility Controls */}
           <div className="flex flex-wrap gap-2 text-sm md:justify-end flex-1">
-            <span className="font-medium text-gray-700 flex items-center mr-2 w-full md:w-auto">Show/Hide Column(s):</span>
+            <span className="font-medium text-gray-700 flex items-center mr-2 w-full md:w-auto">
+              Show/Hide Column(s):
+            </span>
+
             <ColumnVisibilityDropdown
               columns={getColumnVisibilityOptions(columns)}
               visibleColumns={visibleColumns}
               onToggleColumn={toggleColumnVisibility}
             />
           </div>
-
         </div>
-        
+
+        {/* DATA TABLE */}
         <div className="overflow-x-auto w-full pb-2">
           <DataTable
             columns={visibleColumnsArray}
