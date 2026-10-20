@@ -1,4 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+
+@font-face {
+  font-family: 'Montserrat';
+    src: url('../public/fonts/Montserrat%5Bwght%5D.ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: swap;
+}
 
 @import "tailwindcss";
 /* @import "leaflet/dist/leaflet.css"; */
@@ -30,4 +36,3 @@ body {
 .leaflet-pane {
   z-index: 0 !important;
 }
-

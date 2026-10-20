@@ -709,130 +709,202 @@ const StationMapDetail = () => {
             </div>
           </div>
 
+          
           {/* Station Information */}
-          <div className="bg-white p-6 rounded-2xl shadow-md mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Station Information</h2>
+          <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-md mb-6">
+            {/* Station Information Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+              <h2 className="text-xl font-bold text-gray-800">
+                Station Information
+              </h2>
+
               <button
+                type="button"
                 onClick={() => handleEditClick('site')}
-                className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+                className="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
               >
                 <Edit size={16} />
                 Edit
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-500">Station Code</p>
-                <p className="font-medium text-gray-800">{station.kode_stasiun}</p>
+            {/* Station Information and Location Map Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.85fr)] gap-6 items-start">
+              {/* Station Information Fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4 min-w-0">
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-500">Station Code</p>
+                  <p className="font-medium text-gray-800 break-words">
+                    {station.kode_stasiun}
+                  </p>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-500">Network</p>
+                  <p className="font-medium text-gray-800 break-words">
+                    {station.net}
+                  </p>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-500">Location</p>
+                  <p className="font-medium text-gray-800 break-words">
+                    {station.lokasi}
+                  </p>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-500">Province</p>
+                  <p className="font-medium text-gray-800 break-words">
+                    {station.provinsi}
+                  </p>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-500">Latitude</p>
+                  <p className="font-medium text-gray-800 break-words">
+                    {station.lintang}
+                  </p>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-500">Longitude</p>
+                  <p className="font-medium text-gray-800 break-words">
+                    {station.bujur}
+                  </p>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-500">Elevation</p>
+                  <p className="font-medium text-gray-800 break-words">
+                    {station.elevasi}
+                  </p>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-500">Installation Year</p>
+                  <p className="font-medium text-gray-800 break-words">
+                    {station.tahun_instalasi}
+                  </p>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-500">Network Type</p>
+                  <p className="font-medium text-gray-800 break-words">
+                    {station.jaringan}
+                  </p>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-500">PIC UPT</p>
+                  <p className="font-medium text-gray-800 break-words">
+                    {station.upt_penanggung_jawab}
+                  </p>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-500">Status</p>
+                  <p className="font-medium text-gray-800 break-words">
+                    {station.status}
+                  </p>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-sm text-gray-500">Priority</p>
+                  <p className="font-medium text-gray-800 break-words">
+                    {station.prioritas}
+                  </p>
+                </div>
+
+                <div className="sm:col-span-2 min-w-0">
+                  <p className="text-sm text-gray-500">Description</p>
+                  <p className="font-medium text-gray-800 break-words">
+                    {station.keterangan || '-'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-500">Network</p>
-                <p className="font-medium text-gray-800">{station.net}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Location</p>
-                <p className="font-medium text-gray-800">{station.lokasi}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Province</p>
-                <p className="font-medium text-gray-800">{station.provinsi}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Latitude</p>
-                <p className="font-medium text-gray-800">{station.lintang}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Longitude</p>
-                <p className="font-medium text-gray-800">{station.bujur}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Elevation</p>
-                <p className="font-medium text-gray-800">{station.elevasi}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Installation Year</p>
-                <p className="font-medium text-gray-800">{station.tahun_instalasi}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Network Type</p>
-                <p className="font-medium text-gray-800">{station.jaringan}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">PIC UPT</p>
-                <p className="font-medium text-gray-800">{station.upt_penanggung_jawab}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Status</p>
-                <p className="font-medium text-gray-800">{station.status}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Priority</p>
-                <p className="font-medium text-gray-800">{station.prioritas}</p>
-              </div>
-              <div className="md:col-span-2">
-                <p className="text-sm text-gray-500">Description</p>
-                <p className="font-medium text-gray-800">{station.keterangan || '-'}</p>
-              </div>
-            </div>
-            
-            {/* Kanan: Leaflet Street View */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4 text-gray-700">Location Map</h3>
-              <div className="h-96 rounded-lg overflow-hidden border border-gray-300">
-                {station.lintang && station.bujur && !isNaN(station.lintang) && !isNaN(station.bujur) ? (
-                  <MapContainer
-                    center={[station.lintang, station.bujur]}
-                    zoom={17}
-                    style={{ height: '100%', width: '100%' }}
-                  >
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-                    <Marker position={[station.lintang, station.bujur]} icon={triangleIcon(getColorByStatus())}>
-                      <Popup>
-                        <div className="text-center">
-                          <h3 className="font-semibold">{station.kode_stasiun}</h3>
-                          <p className="text-sm text-gray-600">{station.lokasi}</p>
-                          <p className="text-sm text-gray-600">{station.provinsi}</p>
+
+              {/* Location Map */}
+              <div className="min-w-0">
+                <h3 className="text-lg font-semibold mb-3 text-gray-700">
+                  Location Map
+                </h3>
+
+                <div className="h-64 sm:h-72 lg:h-80 rounded-lg overflow-hidden border border-gray-300">
+                  {station.lintang &&
+                  station.bujur &&
+                  !isNaN(station.lintang) &&
+                  !isNaN(station.bujur) ? (
+                    <MapContainer
+                      center={[station.lintang, station.bujur]}
+                      zoom={17}
+                      style={{ height: '100%', width: '100%' }}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+
+                      <Marker
+                        position={[station.lintang, station.bujur]}
+                        icon={triangleIcon(getColorByStatus())}
+                      >
+                        <Popup>
+                          <div className="text-center">
+                            <h3 className="font-semibold">
+                              {station.kode_stasiun}
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                              {station.lokasi}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {station.provinsi}
+                            </p>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    </MapContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center bg-gray-100">
+                      <div className="text-center">
+                        <div className="text-gray-400 mb-2">
+                          <MapPin size={40} className="mx-auto" />
                         </div>
-                      </Popup>
-                    </Marker>
-                  </MapContainer>
-                ) : (
-                  <div className="h-full flex items-center justify-center bg-gray-100">
-                    <div className="text-center">
-                      <div className="text-gray-400 mb-2">
-                        <MapPin size={48} className="mx-auto" />
+                        <p className="text-gray-500">Loading map...</p>
+                        <p className="text-sm text-gray-400">
+                          Coordinates not available
+                        </p>
                       </div>
-                      <p className="text-gray-500">Loading map...</p>
-                      <p className="text-sm text-gray-400">Coordinates not available</p>
                     </div>
-                  </div>
-                )}
-              </div>
-              <div className="mt-4 text-end">
-                {station.lintang && station.bujur && !isNaN(station.lintang) && !isNaN(station.bujur) ? (
-                  <a
-                    href={`https://www.google.com/maps?q=${station.lintang},${station.bujur}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <MapPin size={16} />
-                    Open in Google Maps
-                  </a>
-                ) : (
-                  <button
-                    disabled
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-400 text-white text-sm font-medium rounded-lg hover:bg-gray-500 transition-colors cursor-not-allowed"
-                  >
-                    <MapPin size={16} />
-                    Open in Google Maps
-                  </button>
-                )}
+                  )}
+                </div>
+
+                {/* Google Maps Link */}
+                <div className="mt-3 flex justify-end">
+                  {station.lintang &&
+                  station.bujur &&
+                  !isNaN(station.lintang) &&
+                  !isNaN(station.bujur) ? (
+                    <a
+                      href={`https://www.google.com/maps?q=${station.lintang},${station.bujur}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <MapPin size={16} />
+                      Open in Google Maps
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-gray-400 text-white text-sm font-medium rounded-lg cursor-not-allowed"
+                    >
+                      <MapPin size={16} />
+                      Open in Google Maps
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
