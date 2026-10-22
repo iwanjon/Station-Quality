@@ -180,10 +180,7 @@ const navItems: NavItem[] = [
   { label: 'Station performance', to: '/station-performance', Icon: WifiIcon },
 ];
 
-// Append the external inventory-system link only when its URL is configured.
-if (INVENTARIS_ALAT_URL) {
-  navItems.push({ label: 'Inventaris Alat', href: INVENTARIS_ALAT_URL, Icon: ArchiveIcon });
-}
+
 
 const Sidebar: React.FC = () => {
   const [open, setOpen] = useState<boolean>(() => {
@@ -359,12 +356,17 @@ const Sidebar: React.FC = () => {
         </button>
       </div>
 
-      {/* Navigasi */}
+     {/* Navigasi */}
       <nav className="flex-1 px-2 py-4 space-y-2 overflow-y-auto overflow-x-hidden border-b border-gray-700">
-        {navItems.map(item => (
-          <NavLink key={item.to || item.href || item.label} item={item} />
+        {/* Menu utama Monitoring Station */}
+        {navItems.map((item) => (
+          <NavLink
+            key={item.to || item.href || item.label}
+            item={item}
+          />
         ))}
 
+        {/* Waveform Viewer */}
         {WAVEFORM_VIEWER_URL && (
           <div className="relative">
             <button
@@ -372,7 +374,7 @@ const Sidebar: React.FC = () => {
               onClick={() => {
                 if (!open) {
                   setOpen(true);
-                  localStorage.setItem('sidebar-open', 'true');
+                  localStorage.setItem("sidebar-open", "true");
                 }
 
                 setWaveformMenuOpen((current) => !current);
@@ -381,8 +383,8 @@ const Sidebar: React.FC = () => {
               aria-controls="waveform-viewer-submenu"
               className={`group flex items-center w-full rounded-lg transition-colors duration-200 ${
                 waveformMenuOpen
-                  ? 'bg-gray-700 text-white'
-                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                  ? "bg-gray-700 text-white"
+                  : "text-gray-300 hover:bg-gray-700 hover:text-white"
               }`}
             >
               <div className="flex items-center w-full gap-3 px-3 py-2 rounded-lg">
@@ -402,13 +404,12 @@ const Sidebar: React.FC = () => {
                   )}
                 </AnimatePresence>
 
-                {open && (
-                  waveformMenuOpen ? (
+                {open &&
+                  (waveformMenuOpen ? (
                     <ChevronDownIcon className="h-4 w-4 flex-shrink-0" />
                   ) : (
                     <ChevronRightIcon className="h-4 w-4 flex-shrink-0" />
-                  )
-                )}
+                  ))}
               </div>
 
               {!open && (
@@ -439,6 +440,17 @@ const Sidebar: React.FC = () => {
               </div>
             )}
           </div>
+        )}
+
+        {/* Inventaris Alat — posisi paling bawah */}
+        {INVENTARIS_ALAT_URL && (
+          <NavLink
+            item={{
+              label: "Inventaris Alat",
+              href: INVENTARIS_ALAT_URL,
+              Icon: ArchiveIcon,
+            }}
+          />
         )}
       </nav>
 
