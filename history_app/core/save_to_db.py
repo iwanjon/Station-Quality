@@ -36,6 +36,7 @@ from static_variable import (
                         STATIC_FOLDER 
                         )
 
+from pdb import set_trace as sstt
 log = logging.getLogger(__name__)
 
 # Get the current datetime
@@ -297,18 +298,39 @@ class Custome_Response(Response):
 
 
 
-def download_inventory_from_api(station_code: str):
-    url = settings.INV_URL
-    url = url.format(station_code=station_code)
-    try:
-        with urllib.request.urlopen(url) as response:
-            inv_data = response.read()
-            inv = read_inventory(io.BytesIO(inv_data))
+# def download_inventory_from_api(station_code: str):
+#     url = settings.INV_URL
+#     url = url.format(station_code=station_code)
+#     print(url)
+#     print(repr(station_code))
+#     print(repr(url))
+#     try:
+#         with urllib.request.urlopen(url) as response:
+#             inv_data = response.read()
+#             inv = read_inventory(io.BytesIO(inv_data))
+#
+#             return inv
+#     except Exception as e:
+#         print(f"❌ Gagal mengambil response dari API untuk stasiun {station_code}: {e}")
+#         return None
 
-            return inv
+
+
+def download_inventory_from_api(station_code: str):
+    client = Client("http://geof.bmkg.go.id")
+    try:
+        inv = client.get_stations(
+            network="IA",
+            station=station_code.strip(),
+            level="response",
+            format="fdsnxml",
+        )
+        return inv
     except Exception as e:
-        print(f"❌ Gagal mengambil response dari API untuk stasiun {station_code}: {e}")
+        print(f"❌ Gagal mengambil inventory BMKG untuk {station_code}: {e}")
         return None
+
+
 
 def calculate_rms_and_mean(tr):
     data = tr.data
@@ -392,7 +414,7 @@ def get_station_history(
     if inv is None:
         raise HTTPException(status_code=400, detail='stasiun inventory not found.')
 
-
+    # sstt()
     station_list = instrument_meta(inv, station_code, save_response=save_response)
 
     # print(station_list)
@@ -557,7 +579,7 @@ def replace_symbol(word:str):
 def instrument_meta(inv,sta, save_response=None):
     channel_full_data = []
     
-    
+
     # 1. Loop through all networks
     for net_idx, network in enumerate(inv.networks):
         
@@ -575,6 +597,7 @@ def instrument_meta(inv,sta, save_response=None):
                 paz_det = get_vars_safe(i, "response.get_paz")
                 dict_data_logger = get_vars_safe(i, "data_logger")
                 dict_sensor = get_vars_safe(i, "sensor")
+                # sstt()
             
                 sensor_type = get_type_safe(dict_sensor, get_sensor_type)
                 datalogger_type = get_type_safe(dict_data_logger, get_digitizer_type)

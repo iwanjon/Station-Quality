@@ -9,6 +9,7 @@ import logging
 import traceback
 import __main__
 
+from pdb import set_trace as sstt
 setup_logger(name="auto_update_history",log_file="cron_auto_update_history.log")
 
 log = logging.getLogger("auto_update_history")
